@@ -5,6 +5,19 @@ import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
 import { REFERRAL_STYLE, inputClass } from "./styles";
 
+const PRIORITY_STYLE = {
+  urgent: "bg-red-600 text-white",
+  high: "bg-orange-100 text-orange-800",
+  routine: "bg-stone-100 text-stone-600",
+};
+
+// 45 -> "45m", 130 -> "2h 10m", 1500 -> "1d 1h"
+function formatWait(mins) {
+  if (mins < 60) return `${mins}m`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  return `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`;
+}
+
 // Shared by nurses (health centre) and doctors (hospital): each sees only their own facility
 export default function InboxApp(props) {
   const { t, user } = props;
@@ -102,7 +115,27 @@ function ReferralCard({ r, t, hospitals, onChanged }) {
   const canEscalate = hospitals.length > 0 && r.status === "arrived";
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5">
+    <div
+      className={`rounded-2xl border bg-white p-5 ${
+        r.priority_label === "urgent" && r.status !== "completed" ? "border-red-300 ring-2 ring-red-100" : "border-stone-200"
+      }`}
+    >
+      {/* Why this card is where it is in the list */}
+      {r.status !== "completed" && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${PRIORITY_STYLE[r.priority_label]}`}>
+            {t["priority_" + r.priority_label]}
+          </span>
+          {r.danger_signs.map((d) => (
+            <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
+              ⚠ {t["sym_" + d] || t["ds_" + d] || d}
+            </span>
+          ))}
+          <span className="ml-auto text-xs text-stone-500">
+            {t.waiting} {formatWait(r.waiting_minutes)}
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

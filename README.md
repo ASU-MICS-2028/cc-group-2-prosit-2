@@ -83,7 +83,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Nurse referral inbox + outcomes | ✅ Done |
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
-| Inbox shows most urgent (HIGH) first | ✅ Done |
+| Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
 | Doctor video consults (telemedicine) | ⬜ Week 2, next |
@@ -121,9 +121,20 @@ All of this work is on the **`main`** branch.
 This follows Ghana's referral tiers: community (CHV / CHPS) → health centre → district hospital.
 
 ### For a facility nurse / midwife
-- **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed. **HIGH-risk cases are listed first.**
+- **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed, **sorted by priority** (see below).
 - See whether it is a general or antenatal visit, the readings and symptoms that triggered it, the possible conditions (e.g. meningitis, so they can prepare), and which CHV sent it.
 - **Mark as arrived**, then either **record the outcome** or **Refer to doctor / hospital** (choose a hospital, give a reason). The CHV sees the result on their screen.
+
+### How the inbox is prioritised (`backend/priority.py`)
+
+| Factor | Points |
+|---|---|
+| Risk HIGH / MEDIUM | +50 / +20 |
+| Any danger sign (danger-sign symptom, BP ≥ 160/110, or Hb < 7) | +30 |
+| Waiting time while not completed | +1 per 10 min, **capped at +30** |
+
+**≥ 80 = Urgent, ≥ 50 = High, otherwise Routine.** Ties: whoever has waited longest first.
+The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, but never overtake a HIGH case with danger signs. Each card shows its badge, danger signs and waiting time, so staff can see why it is where it is.
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
@@ -401,7 +412,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/patients/{id}/assess` | chv | Antenatal check (pregnant patients only) → risk score |
 | POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
 | POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
-| GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, most urgent first |
+| GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, sorted by priority score |
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` or `completed` (+ outcome) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
 | POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient on to a hospital (`facility`, `reason`) |
@@ -423,6 +434,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── schemas.py         # Request validation (Pydantic)
 │   ├── model.py           # Antenatal risk score (official copy)
 │   ├── general_model.py   # General visit triage + possible conditions (official copy)
+│   ├── priority.py        # Inbox priority score (risk + danger signs + waiting time)
 │   ├── seed.py            # Creates fake demo accounts
 │   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
 │   ├── requirements.txt
@@ -467,8 +479,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Referral records and nurse inbox with outcomes
 - [x] CHV can refer MEDIUM cases with a required reason
 - [x] Nurse escalation to a hospital; doctor inbox with outcomes
-- [x] Basic prioritisation: HIGH listed before MEDIUM
-- [ ] Fuller prioritisation: also weigh waiting time and danger signs
+- [x] Prioritisation: risk + danger signs + waiting time (capped), with reasons shown on each card
 - [ ] Doctor workspace: patient history view for referred cases
 - [ ] Appointments: nurse/doctor books a follow-up; patient gets an SMS reminder
 - [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback

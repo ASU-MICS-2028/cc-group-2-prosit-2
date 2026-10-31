@@ -14,6 +14,7 @@ from auth import verify_password, create_token, get_current_user, require_role, 
 from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
 from model import predict_risk
+from priority import priority
 from schemas import (LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
                      PregnancyUpdate, ReferralCreate, EscalateIn)
 
@@ -347,14 +348,17 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
         LEFT JOIN referrals parent ON parent.id = r.parent_id
         LEFT JOIN referrals esc ON esc.parent_id = r.id
         WHERE r.facility = ?
-        ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'arrived' THEN 1 ELSE 2 END,
-                 CASE o.risk_level WHEN 'HIGH' THEN 0 ELSE 1 END,  -- most urgent first
-                 r.id DESC
     """, (user["facility"],)).fetchall()
     log_access(conn, user["id"], "list_referrals", user["facility"])
     conn.commit()
     conn.close()
-    return [dict(r) for r in rows]
+
+    # Add each referral's priority (risk + danger signs + waiting time), then sort:
+    # open cases first, highest score first, and on a tie whoever has waited longest
+    referrals = [{**dict(r), **priority(r)} for r in rows]
+    status_order = {"pending": 0, "arrived": 1, "completed": 2}
+    referrals.sort(key=lambda r: (status_order[r["status"]], -r["priority_score"], r["created_at"]))
+    return referrals
 
 
 @app.post("/referrals/{referral_id}/status")
