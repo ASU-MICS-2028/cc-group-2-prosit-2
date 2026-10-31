@@ -13,6 +13,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from calls import router as calls_router
+from surveillance import router as surveillance_router
 from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
 from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
@@ -49,6 +50,7 @@ async def lifespan(app):
 
 app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
 app.include_router(calls_router)  # video consult signalling (calls.py)
+app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
 
 # Only our own frontend may call this API from a browser
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -148,10 +150,10 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
     conn = get_db()
     ref = "HC-" + secrets.token_hex(3).upper()  # random, not derived from the name
     cur = conn.execute(
-        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, consent) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
         (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant),
-         body.phone.strip() or None, body.community.strip()),
+         body.phone.strip() or None, body.community.strip(), user["district"]),
     )
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()

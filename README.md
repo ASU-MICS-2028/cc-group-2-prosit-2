@@ -72,7 +72,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
-| Role-based access control (RBAC) | ✅ Done for CHV, nurse and doctor; GHS officer and admin see a "coming soon" screen |
+| Role-based access control (RBAC) | ✅ Done for CHV, nurse, doctor and GHS officer; admin sees a "coming soon" screen |
 | Patient registration with consent | ✅ Done |
 | General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
 | Antenatal risk check (pregnant patients) | ✅ Done |
@@ -89,7 +89,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
-| GHS surveillance dashboard | ⬜ Week 3 |
+| GHS surveillance dashboard (anonymised, alerts, trends) | ✅ Done |
 | Admin account management | ⬜ Planned |
 | Sustainability model | ⬜ Week 4 (report) |
 
@@ -162,6 +162,16 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **How it works:** **WebRTC** sends video **directly between the two browsers**. Our server is only the *introducer* (**signalling**): it passes the setup messages (offer, answer, network addresses) and nothing else. A public **STUN** server helps each side find its public address.
 - **Limits (honest):** no **TURN** relay, so some strict mobile networks may fail to connect; call rooms live in server memory (one server only; in the cloud use Redis or API Gateway WebSockets); real phones need **HTTPS** for camera access (comes with the cloud deployment). Calls are not recorded.
 
+### For a GHS officer: surveillance dashboard (`backend/surveillance.py`, `frontend/src/GhsApp.jsx`)
+**Why:** spot outbreaks within days. Every general visit records possible conditions (malaria, cholera, meningitis…); counted by district and week, they show unusual rises early (**syndromic surveillance**).
+
+- **Never names:** the query reads only *district, date, risk level, conditions*. No name, reference, phone or notes reach GHS.
+- **Small counts hidden:** 1–4 shown as **"<5"**, so a single case in a small community can't identify someone.
+- **Outbreak alert:** this week's cases **≥ 5** and **≥ 2× the usual** (average of the 4 weeks before) → red alert, e.g. *"Cholera, Tamale Metropolitan: 14 this week (usual ~2)"*.
+- **Screen:** KPI tiles (last 7 days), alert cards, a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
+- **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
+- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN".
+
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
 - **View patient history**: every earlier visit, reading and referral outcome for that patient, as a timeline. Only for patients referred to their own hospital.
@@ -219,7 +229,7 @@ RBAC (role-based access control) means what you can see and do depends on your r
 | **CHV** | Register patients (with consent), record general visits and antenatal checks, refer | Only **their own** patients | ✅ Built |
 | **Facility nurse / midwife** | Mark referrals arrived, treat, refer every patient on to a doctor | Only referrals to **their facility** | ✅ Built |
 | **Doctor / specialist** | Receive referrals, record the **final** outcome (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
-| **GHS officer** | Surveillance dashboard | **Anonymised totals only, never names** | ⬜ Week 3 |
+| **GHS officer** | Surveillance dashboard, outbreak alerts | **Anonymised district totals only, never names** | ✅ Built |
 | **System admin** | Manage accounts | No routine patient-data access | ⬜ Planned |
 
 Not app users: the **patient** (receives care, gives consent), the **pharmacist** and the **traditional healer** (described in the report only).
@@ -358,6 +368,7 @@ JWT_SECRET=paste-a-long-random-string-here
 Create the fake demo accounts (one time), then start the server:
 ```bash
 python seed.py
+python seed_demo_data.py   # optional: fake surveillance data for the GHS dashboard
 python -m uvicorn main:app --reload
 ```
 The API runs at **http://127.0.0.1:8000**, with interactive docs at **http://127.0.0.1:8000/docs**.
@@ -442,6 +453,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
 | GET | `/referrals/{id}/history` | nurse, doctor | All visits of the referred patient (only if the referral is to the user's facility) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
+| GET | `/surveillance/summary?weeks=8` | ghs | Anonymised district × condition × week counts, KPI totals, outbreak alerts |
 | GET | `/calls/active` | any | Calls waiting for this user (incoming-call banner) |
 | POST | `/calls/{referral_id}/join` · `/leave` | chv, nurse, doctor on that referral | Enter / leave the 1-to-1 call room |
 | POST/GET | `/calls/{referral_id}/signal` | same | Send / collect WebRTC setup messages (offer, answer, ice, bye) |
@@ -471,6 +483,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── sms.py             # Arkesel SMS sender (referrals + reminders)
 │   ├── reminders.py       # Appointment confirmation + 24h reminder job
 │   ├── calls.py           # Video call signalling (WebRTC introducer)
+│   ├── surveillance.py    # GHS dashboard: anonymised counts, "<5" rule, outbreak alerts
+│   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
 │   ├── seed.py            # Creates fake demo accounts
 │   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
 │   ├── requirements.txt
@@ -487,6 +501,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── AppointmentsPanel.jsx # Book follow-up, upcoming list, reminder status
         ├── VideoCall.jsx      # 1-to-1 WebRTC call screen (mute, audio only, hang up)
         ├── IncomingCalls.jsx  # "X is calling about Y: Join" banner
+        ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -533,8 +548,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Least-privilege IAM role (from Clifford's Lab 6)
 - [ ] CloudWatch logs and alarms
 
-### ⬜ Phase 4: Week 3, Surveillance (Henry and Clifford)
-- [ ] GHS officer dashboard: **anonymised** district totals, never names
+### 🟡 Phase 4: Week 3, Surveillance (Henry and Clifford, in progress)
+- [x] GHS officer dashboard: **anonymised** district totals, never names; small counts shown as "<5"; outbreak alerts; 8-week trend
 - [ ] Map of HIGH-risk cases by district
 - [ ] ML prediction: evaluate the XGBoost model on suitable data before wiring it in
 - [ ] DHIMS2 integration: **described**, not built (no real GHS access)

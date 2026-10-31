@@ -2,7 +2,6 @@ import Header from "./Header";
 
 // What each non-CHV role will get, and in which PROSIT week
 const PLANS = {
-  ghs: { week: "Week 3", text: "Surveillance dashboard: anonymised district totals, maps and outbreak alerts. Never patient names." },
   admin: { week: "Later", text: "Account management: create and disable staff accounts. No routine access to patient data." },
 };
 

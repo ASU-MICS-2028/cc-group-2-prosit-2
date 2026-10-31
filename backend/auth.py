@@ -57,7 +57,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
 
     conn = get_db()
     user = conn.execute(
-        "SELECT id, username, role, full_name, facility, facility_phone FROM users WHERE id = ?",
+        "SELECT id, username, role, full_name, facility, facility_phone, district FROM users WHERE id = ?",
         (int(payload["sub"]),),
     ).fetchone()
     conn.close()

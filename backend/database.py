@@ -41,7 +41,8 @@ def init_db():
         role           TEXT NOT NULL CHECK (role IN ('chv','nurse','doctor','ghs','admin')),
         full_name      TEXT NOT NULL,
         facility       TEXT,
-        facility_phone TEXT
+        facility_phone TEXT,
+        district       TEXT   -- for surveillance totals (GHS sees districts, never names)
     );
 
     -- FHIR Patient. Registered by a CHV, only after consent (Act 843)
@@ -55,6 +56,7 @@ def init_db():
         pregnant   INTEGER NOT NULL DEFAULT 0,
         phone      TEXT,      -- optional; used ONLY for appointment reminders
         community  TEXT,
+        district   TEXT,      -- copied from the registering CHV
         consent    INTEGER NOT NULL CHECK (consent = 1),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -126,6 +128,10 @@ def migrate(conn):
         add_column_if_missing(conn, "patients", "pregnant", "INTEGER NOT NULL DEFAULT 0")
         conn.execute("UPDATE patients SET sex = 'female', pregnant = 1")
     add_column_if_missing(conn, "patients", "phone", "TEXT")
+    add_column_if_missing(conn, "users", "district", "TEXT")
+    if add_column_if_missing(conn, "patients", "district", "TEXT"):
+        # Existing patients take their CHV's district
+        conn.execute("UPDATE patients SET district = (SELECT district FROM users WHERE users.id = patients.chv_id)")
     add_column_if_missing(conn, "observations", "visit_type", "TEXT NOT NULL DEFAULT 'antenatal'")
     add_column_if_missing(conn, "observations", "symptoms", "TEXT")
     add_column_if_missing(conn, "observations", "possible_conditions", "TEXT")
