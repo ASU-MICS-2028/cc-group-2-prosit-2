@@ -43,7 +43,8 @@ def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs")
     """, (f"-{weeks * 7} days",)).fetchall()
     referrals = conn.execute("""
         SELECT p.district, COUNT(*) AS n FROM referrals r JOIN patients p ON p.id = r.patient_id
-        WHERE r.parent_id IS NULL AND r.created_at >= datetime('now', '-7 days') GROUP BY p.district
+        WHERE r.parent_id IS NULL AND r.created_at >= datetime('now', '-7 days') AND p.district IS NOT NULL
+        GROUP BY p.district
     """).fetchall()
     log_access(conn, user["id"], "view_surveillance", f"last {weeks} weeks")
     conn.commit()
