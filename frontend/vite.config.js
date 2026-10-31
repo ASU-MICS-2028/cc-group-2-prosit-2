@@ -9,47 +9,26 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico'],
+      includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'SafeArrive',
-        short_name: 'SafeArrive',
-        description: 'Antenatal Risk Assessment for Community Health Workers',
-        theme_color: '#16a34a',
-        background_color: '#f0fdf4',
+        name: 'HealthConnect Ghana',
+        short_name: 'HealthConnect',
+        description: 'Connecting rural patients and CHVs with health facilities',
+        theme_color: '#0f766e',
+        background_color: '#fafaf9',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
         icons: [
-          {
-            src: 'https://placehold.co/192x192/16a34a/white?text=SA',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'https://placehold.co/512x512/16a34a/white?text=SA',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^http:\/\/127\.0\.0\.1:8000\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-              caches: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24
-              }
-            }
-          }
-        ]
-      }
-    })
+        // Cache the app itself (HTML/JS/CSS) so it opens offline.
+        // API replies are NOT cached: they contain patient data.
+        globPatterns: ['**/*.{js,css,html,svg}'],
+      },
+    }),
   ],
 })

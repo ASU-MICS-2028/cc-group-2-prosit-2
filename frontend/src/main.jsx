@@ -12,7 +12,7 @@ const updateSW = registerSW({
     }
   },
   onOfflineReady() {
-    console.log('SafeArrive is ready to work offline!')
+    console.log('HealthConnect is ready to work offline!')
   },
 })
 

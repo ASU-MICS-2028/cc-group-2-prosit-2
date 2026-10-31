@@ -1,7 +1,32 @@
 from pydantic import BaseModel
 
-class PatientData(BaseModel):
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class PatientCreate(BaseModel):
+    full_name: str
     age: int
+    community: str = ""
+    consent: bool
+
+
+class PatientData(BaseModel):
+    # Vitals for one antenatal check (age comes from the patient record)
+    age: int
+    gestational_age: int
+    systolic_bp: int
+    diastolic_bp: int
+    weight: float
+    hemoglobin: float
+    body_temp: float
+    heart_rate: int
+    previous_complications: bool
+
+
+class VitalsIn(BaseModel):
     gestational_age: int
     systolic_bp: int
     diastolic_bp: int
