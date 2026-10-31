@@ -35,6 +35,21 @@ export default function GhsApp(props) {
       .catch((err) => setError(err.message));
   }, []);
 
+  // Download last week's totals in DHIS2 format (simulated: nothing is sent to DHIMS2)
+  const exportDhims2 = async () => {
+    try {
+      const file = await api("/surveillance/dhims2-export");
+      const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `dhims2-${file.period}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (error) return <p className="p-6 text-red-600">{error}</p>;
   if (!data) return null;
 
@@ -50,7 +65,18 @@ export default function GhsApp(props) {
     <div className="min-h-screen bg-stone-50">
       <Header {...props} />
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <h1 className="text-2xl font-bold text-stone-800">{t.ghsTitle}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-stone-800">{t.ghsTitle}</h1>
+          <div className="text-right">
+            <button
+              onClick={exportDhims2}
+              className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
+            >
+              ⬇ {t.ghsExport}
+            </button>
+            <p className="mt-1 text-[11px] text-stone-400">{t.ghsExportNote}</p>
+          </div>
+        </div>
         <p className="mt-1 text-sm text-stone-500">{t.ghsHint}</p>
         <p className="mt-1 text-xs text-stone-400">
           {t.ghsPrivacy} · {t.ghsUpdated} {data.generated_at}

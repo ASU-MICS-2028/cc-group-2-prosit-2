@@ -6,7 +6,7 @@ What GHS never gets: names, references, patient ids, phone numbers, notes.
 Weeks are counted back from now: week 0 = last 7 days, week 1 = 8-14 days ago, ...
 """
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 
@@ -108,4 +108,52 @@ def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs")
             }
             for d in districts
         ],
+    }
+
+
+# ---------- DHIMS2 export (SIMULATED: produces the file, sends nothing) ----------
+# DHIMS2 runs on DHIS2. DHIS2 accepts aggregate data as a "dataValueSet".
+# Real integration needs the official IDs (UIDs) from GHS's DHIMS2 metadata;
+# these placeholders show the shape only.
+DHIMS2_DATASET = "PLACEHOLDER_DATASET_IDSR_WEEKLY"
+# "Cape Coast Metropolitan" -> PLACEHOLDER_OU_CAPE_COAST
+DHIMS2_ORG_UNITS = {d: "PLACEHOLDER_OU_" + d.rsplit(" ", 1)[0].upper().replace(" ", "_") for d in DISTRICT_CENTRES}
+DHIMS2_DATA_ELEMENTS = {c: f"PLACEHOLDER_DE_{c.upper()}_SUSPECTED" for c in CONDITIONS}
+
+
+@router.get("/surveillance/dhims2-export")
+def dhims2_export(user=Depends(require_role("ghs"))):
+    # Last COMPLETE week, Monday-Sunday (DHIS2 weekly periods are ISO weeks, e.g. "2026W43")
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=today.weekday() + 7)
+    end = start + timedelta(days=7)
+    year, week, _ = start.isocalendar()
+
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT p.district, o.possible_conditions
+        FROM observations o JOIN patients p ON p.id = o.patient_id
+        WHERE o.created_at >= ? AND o.created_at < ? AND p.district IS NOT NULL
+    """, (start.isoformat(), end.isoformat())).fetchall()
+    log_access(conn, user["id"], "dhims2_export", f"{year}W{week:02d}")
+    conn.commit()
+    conn.close()
+
+    counts = defaultdict(int)
+    for r in rows:
+        for c in (r["possible_conditions"] or "").split(","):
+            if c in CONDITIONS:
+                counts[(r["district"], c)] += 1
+
+    # Official reporting uses exact counts (public-health reporting duty); still aggregate only, no names.
+    data_values = [
+        {"dataElement": DHIMS2_DATA_ELEMENTS[c], "orgUnit": DHIMS2_ORG_UNITS.get(d, "UNMAPPED_" + d), "value": str(n)}
+        for (d, c), n in sorted(counts.items())
+    ]
+    return {
+        "_note": "SIMULATED export for PROSIT 2. Not sent to DHIMS2. Replace PLACEHOLDER ids with official DHIMS2 UIDs.",
+        "dataSet": DHIMS2_DATASET,
+        "period": f"{year}W{week:02d}",
+        "completeDate": today.isoformat(),
+        "dataValues": data_values,
     }

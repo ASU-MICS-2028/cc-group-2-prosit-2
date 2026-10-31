@@ -89,7 +89,9 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
-| GHS surveillance dashboard (anonymised, alerts, trends) | ✅ Done |
+| GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
+| ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
+| DHIMS2 export (DHIS2 format, simulated) | ✅ Done (not sent to DHIMS2) |
 | Admin account management | ⬜ Planned |
 | Sustainability model | ⬜ Week 4 (report) |
 
@@ -168,7 +170,8 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Never names:** the query reads only *district, date, risk level, conditions*. No name, reference, phone or notes reach GHS.
 - **Small counts hidden:** 1–4 shown as **"<5"**, so a single case in a small community can't identify someone.
 - **Outbreak alert:** this week's cases **≥ 5** and **≥ 2× the usual** (average of the 4 weeks before) → red alert, e.g. *"Cholera, Tamale Metropolitan: 14 this week (usual ~2)"*.
-- **Screen:** KPI tiles (last 7 days), alert cards, a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
+- **Screen:** KPI tiles (last 7 days), alert cards, a **map** (bubble area = cases at each district capital, red ring = alert), a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
+- **Export for DHIMS2:** downloads last complete week's totals in the national system's DHIS2 format. Simulated: not sent anywhere. See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md).
 - **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
 - **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN".
 
@@ -453,7 +456,8 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
 | GET | `/referrals/{id}/history` | nurse, doctor | All visits of the referred patient (only if the referral is to the user's facility) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
-| GET | `/surveillance/summary?weeks=8` | ghs | Anonymised district × condition × week counts, KPI totals, outbreak alerts |
+| GET | `/surveillance/summary?weeks=8` | ghs | Anonymised district × condition × week counts, district map positions, KPI totals, outbreak alerts |
+| GET | `/surveillance/dhims2-export` | ghs | Last complete ISO week as a DHIS2 `dataValueSet` (simulated, placeholder IDs) |
 | GET | `/calls/active` | any | Calls waiting for this user (incoming-call banner) |
 | POST | `/calls/{referral_id}/join` · `/leave` | chv, nurse, doctor on that referral | Enter / leave the 1-to-1 call room |
 | POST/GET | `/calls/{referral_id}/signal` | same | Send / collect WebRTC setup messages (offer, answer, ice, bye) |
@@ -485,8 +489,9 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── calls.py           # Video call signalling (WebRTC introducer)
 │   ├── surveillance.py    # GHS dashboard: anonymised counts, "<5" rule, outbreak alerts
 │   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
+│   ├── evaluate_model.py  # Honest XGBoost evaluation (needs requirements-ml.txt)
 │   ├── seed.py            # Creates fake demo accounts
-│   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
+│   ├── train_model.py     # Old XGBoost predictor (NOT wired in; evaluated in docs/ML_EVALUATION.md)
 │   ├── requirements.txt
 │   └── data/              # Kaggle Maternal Health Risk dataset (public)
 └── frontend/
@@ -501,7 +506,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── AppointmentsPanel.jsx # Book follow-up, upcoming list, reminder status
         ├── VideoCall.jsx      # 1-to-1 WebRTC call screen (mute, audio only, hang up)
         ├── IncomingCalls.jsx  # "X is calling about Y: Join" banner
-        ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend
+        ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend, DHIMS2 export
+        ├── DistrictMap.jsx    # Leaflet/OpenStreetMap bubble map of districts
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -548,11 +554,11 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Least-privilege IAM role (from Clifford's Lab 6)
 - [ ] CloudWatch logs and alarms
 
-### 🟡 Phase 4: Week 3, Surveillance (Henry and Clifford, in progress)
+### ✅ Phase 4: Week 3, Surveillance (Henry and Clifford)
 - [x] GHS officer dashboard: **anonymised** district totals, never names; small counts shown as "<5"; outbreak alerts; 8-week trend
-- [ ] Map of HIGH-risk cases by district
-- [ ] ML prediction: evaluate the XGBoost model on suitable data before wiring it in
-- [ ] DHIMS2 integration: **described**, not built (no real GHS access)
+- [x] Map of cases by district (OpenStreetMap bubble map at district capitals; HIGH risk or any condition; alert rings)
+- [x] ML prediction: XGBoost evaluated honestly; **not wired in** (55% duplicate rows, 57% HIGH-risk recall, °F vs °C, Bangladesh data). See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md)
+- [x] DHIMS2 integration: **designed** + simulated export in DHIS2 `dataValueSet` format (not sent). See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md)
 
 ### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
 - [ ] Admin screen: create / disable accounts (replaces `seed.py`)
@@ -585,10 +591,11 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Offline risk check and encrypted queue | **Built and working** (browser) |
 | Referral + appointment SMS | **Built**; works only with a valid Arkesel key and a registered sender ID. Without a key, the app still works and shows "SMS not delivered" |
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
-| `train_model.py` / XGBoost | **Experiment only, not used.** Trained on the Kaggle Maternal Health Risk dataset (1,013 rows, Bangladesh), which is not representative of Ghana |
+| `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
 | Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
 | Cloud hosting | **Not yet**: runs on a laptop with SQLite |
-| GHS / NHIS / DHIMS2 integration | **Not built**: described only; no access to real systems |
+| DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
+| NHIS integration | **Not built**: no access to real systems |
 | Patient data | **Fake test data only** |
 
 ---

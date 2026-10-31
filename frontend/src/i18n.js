@@ -101,6 +101,8 @@ const text = {
     ghsHoverHint: "Hover or tab to a cell for details.",
     ghsTrendHint: "Weekly cases, oldest on the left. This week in blue; dashed line = usual level.",
     ghsWeekNow: "This week",
+    ghsExport: "Export last week for DHIMS2",
+    ghsExportNote: "Simulated: DHIS2 format file, not sent to DHIMS2",
     ghsMapTitle: "Map: last 7 days by district",
     ghsMapHint: "Bubble area = number of cases, placed at the district capital (never patient locations). Click a bubble to see its trend.",
     ghsMapMeasure: "What to map",
