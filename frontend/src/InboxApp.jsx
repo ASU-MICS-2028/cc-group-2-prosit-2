@@ -78,7 +78,7 @@ export default function InboxApp(props) {
             </div>
           )}
           {shown.map((r) => (
-            <ReferralCard key={r.id} r={r} t={t} hospitals={isNurse ? hospitals : []} onChanged={load} />
+            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} />
           ))}
         </div>
 
@@ -88,7 +88,7 @@ export default function InboxApp(props) {
   );
 }
 
-function ReferralCard({ r, t, hospitals, onChanged }) {
+function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
   const [mode, setMode] = useState(null); // null | "outcome" | "escalate"
   const [outcome, setOutcome] = useState("");
   const [hospital, setHospital] = useState("");
@@ -111,8 +111,10 @@ function ReferralCard({ r, t, hospitals, onChanged }) {
   const update = (status) => send(`/referrals/${r.id}/status`, { status, outcome });
   const escalate = () => send(`/referrals/${r.id}/escalate`, { facility: hospital, reason });
 
-  // Only nurses get a hospital list, and only once the patient is physically here
-  const canEscalate = hospitals.length > 0 && r.status === "arrived";
+  // Team rule: every patient must reach a doctor. Nurses refer on (once the patient
+  // is physically here); only doctors record the final outcome.
+  const canEscalate = isNurse && r.status === "arrived";
+  const canComplete = !isNurse;
 
   return (
     <div
@@ -203,22 +205,25 @@ function ReferralCard({ r, t, hospitals, onChanged }) {
               {t.markArrived}
             </button>
           )}
-          <button
-            onClick={() => setMode("outcome")}
-            className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
-          >
-            {t.recordOutcome}
-          </button>
+          {canComplete && (
+            <button
+              onClick={() => setMode("outcome")}
+              className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+            >
+              {t.recordOutcome}
+            </button>
+          )}
           {canEscalate && (
             <button
               onClick={() => setMode("escalate")}
-              className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-100"
+              className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800"
             >
               {t.escalate}
             </button>
           )}
         </div>
       )}
+      {isNurse && r.status !== "completed" && !mode && <p className="mt-2 text-xs text-stone-500">{t.nurseMustRefer}</p>}
 
       {mode === "escalate" && (
         <div className="mt-4 space-y-2 rounded-xl border border-violet-200 bg-violet-50/50 p-3">

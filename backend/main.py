@@ -363,6 +363,10 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
 
 @app.post("/referrals/{referral_id}/status")
 def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require_role("nurse", "doctor"))):
+    # Team decision: every patient must be seen by a doctor, so only doctors close a case.
+    # A nurse finishes her part by referring the patient on (see escalate_referral).
+    if body.status == "completed" and user["role"] != "doctor":
+        raise HTTPException(status_code=403, detail="Only a doctor can close a case. Refer the patient to a doctor.")
     conn = get_db()
     referral = get_facility_referral(conn, referral_id, user)
     if body.status == "completed" and not (body.outcome or "").strip():
@@ -412,7 +416,7 @@ def escalate_referral(referral_id: int, body: EscalateIn, user=Depends(require_r
         (referral["observation_id"], referral["patient_id"], referral["chv_id"], user["id"],
          referral_id, body.facility, reason),
     )
-    # ...and this one is closed, saying where the patient went
+    # ...and this one is closed, recording the nurse's treatment and where the patient went
     conn.execute(
         "UPDATE referrals SET status = 'completed', outcome = ?, updated_by = ?, updated_at = datetime('now') "
         "WHERE id = ?",

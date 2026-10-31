@@ -116,14 +116,17 @@ All of this work is on the **`main`** branch.
 | Step | Who | To where | Rule |
 |---|---|---|---|
 | 1 | **CHV** | Their own health centre | HIGH: always. MEDIUM: only with a reason. LOW: never |
-| 2 | **Nurse** | A hospital with a doctor | Only after the patient has **arrived**; reason required. The first referral closes with "Referred on to …" |
+| 2 | **Nurse** | A hospital with a doctor | **Always** (team rule: every patient is seen by a doctor). Only after the patient has **arrived**; the nurse records the treatment given. The first referral closes with "Referred on to …" |
+| 3 | **Doctor** | – | Records the final outcome. **Only doctors can close a case** |
 
 This follows Ghana's referral tiers: community (CHV / CHPS) → health centre → district hospital.
+
+> **Design decision and trade-off:** the team chose that **every** referred patient must be reviewed by a doctor, so the doctor always knows the final outcome. The server enforces it (a nurse trying to close a case gets 403). The cost is doctor workload: in real Ghanaian health centres, nurses and physician assistants resolve many cases alone, so a real deployment might limit mandatory doctor review to urgent cases.
 
 ### For a facility nurse / midwife
 - **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed, **sorted by priority** (see below).
 - See whether it is a general or antenatal visit, the readings and symptoms that triggered it, the possible conditions (e.g. meningitis, so they can prepare), and which CHV sent it.
-- **Mark as arrived**, then either **record the outcome** or **Refer to doctor / hospital** (choose a hospital, give a reason). The CHV sees the result on their screen.
+- **Mark as arrived**, give treatment, then **Refer to doctor** (choose a hospital, record the treatment given and what the doctor should check). Nurses cannot close a case themselves.
 
 ### How the inbox is prioritised (`backend/priority.py`)
 
@@ -189,8 +192,8 @@ RBAC (role-based access control) means what you can see and do depends on your r
 | Role | Can do | Can see | Status |
 |---|---|---|---|
 | **CHV** | Register patients (with consent), record general visits and antenatal checks, refer | Only **their own** patients | ✅ Built |
-| **Facility nurse / midwife** | Mark referrals arrived, record outcomes, refer on to a hospital | Only referrals to **their facility** | ✅ Built |
-| **Doctor / specialist** | Receive referrals, record outcomes (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
+| **Facility nurse / midwife** | Mark referrals arrived, treat, refer every patient on to a doctor | Only referrals to **their facility** | ✅ Built |
+| **Doctor / specialist** | Receive referrals, record the **final** outcome (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
 | **GHS officer** | Surveillance dashboard | **Anonymised totals only, never names** | ⬜ Week 3 |
 | **System admin** | Manage accounts | No routine patient-data access | ⬜ Planned |
 
@@ -264,13 +267,9 @@ sequenceDiagram
     A-->>C: success (SMS sent or not)
     N->>A: GET /referrals (own facility only)
     N->>A: POST /referrals/{id}/status = arrived
-    alt Nurse can treat
-        N->>A: POST /referrals/{id}/status = completed + outcome
-    else Needs a doctor
-        N->>A: POST /referrals/{id}/escalate (hospital, reason)
-        D->>A: GET /referrals (own hospital only)
-        D->>A: POST /referrals/{id}/status = completed + outcome
-    end
+    N->>A: POST /referrals/{id}/escalate (hospital, treatment given)
+    D->>A: GET /referrals (own hospital only)
+    D->>A: POST /referrals/{id}/status = completed + outcome
     C->>A: GET /patients/{id}
     A-->>C: full chain + outcomes
 ```
@@ -373,16 +372,12 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 1. Log in as **`chv1`** → **Register patient** (fake name, tick consent).
 2. Tick **Currently pregnant** when registering, then enter HIGH-risk antenatal vitals: gestational age `26`, BP `150/95`, Hb `8`, weight `65`, temp `36.8`, heart rate `80`, previous complications ✔ → **Check risk** → HIGH.
 3. In visit history, click **Refer to facility**.
-4. Log out → log in as **`nurse1`** → the referral is in **Waiting** → **Mark as arrived** → **Record outcome**.
-5. Log in as **`chv1`** again → the visit shows **Completed** with the outcome.
+4. Log out → log in as **`nurse1`** → the referral is in **Waiting** → **Mark as arrived** → **Refer to doctor** (choose *Test District Hospital*, write the treatment given).
+5. Log in as **`doctor1`** → it is in **Specialist referrals**, sorted by urgency → **Mark as arrived** → **Record outcome**.
+6. Log in as **`chv1`** again → the visit shows the health centre step, "→ Referred on to Test District Hospital", and the doctor's outcome.
 
 **General visit**
 - Register a fake male patient → **General visit** → tick *Fever* and *Stiff neck*, temperature `39` → **Check visit** → HIGH, "Check for: Malaria, Meningitis".
-
-**Escalation to a doctor**
-1. As `nurse1`, on an **Arrived** referral → **Refer to doctor / hospital** → choose *Test District Hospital*, give a reason → **Send referral**.
-2. Log in as **`doctor1`** → it is in **Specialist referrals** → mark arrived → record outcome.
-3. As `chv1`, the visit shows the health centre step, then "→ Referred on to Test District Hospital" with the doctor's outcome.
 
 **Access control checks**
 - Log in as **`chv2`**: chv1's patient is not visible.
@@ -413,9 +408,9 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
 | POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
 | GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, sorted by priority score |
-| POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` or `completed` (+ outcome) |
+| POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
-| POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient on to a hospital (`facility`, `reason`) |
+| POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient to a doctor's hospital (`facility`, `reason` = treatment given) |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
 
