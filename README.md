@@ -1,0 +1,471 @@
+# HealthConnect Ghana
+
+**A cloud platform that connects rural patients and Community Health Volunteers (CHVs) with health facilities, specialists and the Ghana Health Service (GHS).**
+
+ICS 534 Cloud Computing · PROSIT 2 · Group 2, **Storm Surfers**
+Instructor: Prof. Robert A. Sowah
+
+> ⚠️ **Prototype, test data only.** This repository is public. Every patient, user and phone number in it is fake. HealthConnect is **not** connected to any real GHS, NHIS or DHIMS2 system.
+
+---
+
+## Contents
+
+1. [The problem](#1-the-problem)
+2. [Team](#2-team)
+3. [Where we are now](#3-where-we-are-now)
+4. [What the app does today](#4-what-the-app-does-today)
+5. [User roles (RBAC)](#5-user-roles-rbac)
+6. [Architecture](#6-architecture)
+7. [Security and data protection](#7-security-and-data-protection)
+8. [Running it locally](#8-running-it-locally)
+9. [Trying it out (demo walkthrough)](#9-trying-it-out-demo-walkthrough)
+10. [API reference](#10-api-reference)
+11. [Project structure](#11-project-structure)
+12. [Roadmap: the steps we will follow](#12-roadmap-the-steps-we-will-follow)
+13. [Built vs simulated (honest status)](#13-built-vs-simulated-honest-status)
+14. [Known limitations](#14-known-limitations)
+15. [Prior work](#15-prior-work)
+16. [Contributing](#16-contributing)
+
+---
+
+## 1. The problem
+
+In rural Ghana, a pregnant woman may live hours from the nearest facility. The first health worker she sees is often a **Community Health Volunteer (CHV)**. CHVs work on low-cost phones, often with weak or no mobile signal, and today their records are mostly on paper. When a CHV spots danger signs (for example very high blood pressure), there is no reliable way to tell the facility the patient is coming, and no way for the CHV to learn what happened next.
+
+HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one connected system, built in four parts (one per PROSIT week):
+
+| Week | Theme | Goal |
+|---|---|---|
+| 1 | Health records | Offline-first CHV app, vitals, multi-language, security (encryption, RBAC, audit log) |
+| 2 | Telemedicine | Low-bandwidth video, appointments, prescriptions, referral prioritisation |
+| 3 | Surveillance | Outbreak dashboard, maps, ML prediction, DHIMS2 integration (described) |
+| 4 | Sustainability | Insurance / mobile money, traditional medicine, community ownership, revenue model |
+
+---
+
+## 2. Team
+
+| Member | Role |
+|---|---|
+| Alice Iris Kare Acquah | Cloud / Infrastructure Lead |
+| Henry Kofi Brandoh | Application / PWA Lead |
+| Clifford Yeboah | Data Lead |
+| Isaac Ansah Amoah | Community & Documentation Lead |
+
+---
+
+## 3. Where we are now
+
+**Week 1 (health records) is done, and Week 2 has started: the facility referral inbox is built.**
+
+| Area | Status |
+|---|---|
+| Real login (username + password) | ✅ Done |
+| Role-based access control (RBAC) | ✅ Done for CHV and nurse; other roles see a "coming soon" screen |
+| Patient registration with consent | ✅ Done |
+| Vitals + antenatal risk check | ✅ Done |
+| Risk check works **offline** | ✅ Done |
+| Offline data **encrypted** on the phone | ✅ Done |
+| Audit log of every access | ✅ Done |
+| Referral to facility (record + SMS) | ✅ Done |
+| Nurse referral inbox + outcomes | ✅ Done |
+| English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
+| Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
+| Doctor / telemedicine | ⬜ Week 2, next |
+| GHS surveillance dashboard | ⬜ Week 3 |
+| Admin account management | ⬜ Planned |
+| Sustainability model | ⬜ Week 4 (report) |
+
+Work lives on the branch **`week1-security`** and will be merged into `main` after team review.
+
+---
+
+## 4. What the app does today
+
+### For a CHV
+- **Sign in** with a personal account.
+- **See "My patients"** with counts of high, medium and low risk, and search by name or reference.
+- **Register a patient**, but only after ticking that the patient has given consent (Data Protection Act, 2012).
+  Each patient gets a random reference such as `HC-1D28D0`.
+- **Record an antenatal check**: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
+- **Get a risk level** (LOW / MEDIUM / HIGH) with advice, **even with no signal**.
+  Offline checks are encrypted, saved on the phone, and synced automatically when signal returns.
+- **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
+- **Follow the referral**: waiting at facility → arrived → completed, with the nurse's outcome note.
+
+### For a facility nurse / midwife
+- **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed.
+- See the vitals that triggered each referral and which CHV sent it.
+- **Mark as arrived**, then **record the outcome**. The CHV sees the outcome on their screen.
+
+### How the risk check works
+It is a **rule-based score** (fixed if/else rules, not machine learning), from `backend/model.py`:
+
+| Condition | Points |
+|---|---|
+| BP ≥ 140/90 (hypertension) | +40 |
+| BP ≥ 130/80 (elevated) | +20 |
+| Haemoglobin < 7 (severe anaemia) | +30 |
+| Haemoglobin < 11 (mild anaemia) | +15 |
+| Age < 18 or > 35 | +10 |
+| Previous complications | +20 |
+| Gestational age < 28 weeks | +10 |
+
+**≥ 50 = HIGH, ≥ 25 = MEDIUM, otherwise LOW.**
+The same rules are copied into `frontend/src/riskModel.js` so the check works offline. The server always re-scores synced checks, so its result is the official one. The two copies were tested against each other on 10,080 input combinations with 0 differences.
+
+> The rules are a prototype for demonstration and have **not** been clinically validated.
+
+---
+
+## 5. User roles (RBAC)
+
+RBAC (role-based access control) means what you can see and do depends on your role. The backend checks the role on **every** request; the screens only hide what a role cannot use.
+
+| Role | Can do | Can see | Status |
+|---|---|---|---|
+| **CHV** | Register patients (with consent), record vitals, run risk check, refer | Only **their own** patients | ✅ Built |
+| **Facility nurse / midwife** | Mark referrals arrived, record outcomes | Only referrals to **their facility** | ✅ Built |
+| **Doctor / specialist** | Telemedicine, review high-risk cases | Referred patients only | ⬜ Week 2 |
+| **GHS officer** | Surveillance dashboard | **Anonymised totals only, never names** | ⬜ Week 3 |
+| **System admin** | Manage accounts | No routine patient-data access | ⬜ Planned |
+
+Not app users: the **patient** (receives care, gives consent), the **pharmacist** and the **traditional healer** (described in the report only).
+
+---
+
+## 6. Architecture
+
+```mermaid
+flowchart LR
+    subgraph Phone["CHV / nurse phone (browser, PWA)"]
+        UI["React app"]
+        RM["riskModel.js<br/>(offline scoring)"]
+        Q["Encrypted offline queue<br/>(localStorage, AES-GCM)"]
+    end
+
+    subgraph Server["Backend (FastAPI, Python)"]
+        API["REST API<br/>JWT + RBAC checks"]
+        M["model.py<br/>(official scoring)"]
+        DB[("SQLite<br/>users · patients · observations<br/>referrals · access_log")]
+    end
+
+    SMS["Arkesel SMS"]
+
+    UI -- "HTTP(S) + JSON<br/>Bearer token" --> API
+    UI --> RM
+    RM --> Q
+    Q -- "sync when online" --> API
+    API --> M
+    API --> DB
+    API -- "referral alert<br/>(reference only)" --> SMS
+```
+
+### Tech stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Frontend | React 19, Vite, Tailwind CSS | Component-based UI, fast dev server, mobile-first styling |
+| App type | PWA (vite-plugin-pwa / Workbox) | Installs like an app without an app store, and opens offline |
+| Backend | FastAPI (Python) | Small, readable API code with automatic input validation and docs at `/docs` |
+| Database | SQLite (local) | Zero setup for the prototype; planned move to AWS RDS |
+| Auth | bcrypt + JWT (PyJWT) | Industry-standard password hashing and signed role tokens |
+| Offline crypto | Web Crypto API, AES-GCM | Built into every browser; encrypts and detects tampering |
+| SMS | Arkesel | Ghanaian SMS provider |
+
+### Data model (FHIR-aligned)
+
+FHIR is the international standard for exchanging health data. Our tables follow Clifford's Lab 6 schema:
+
+| Table | FHIR resource | Holds |
+|---|---|---|
+| `users` | Practitioner (simplified) | Staff accounts, role, facility |
+| `patients` | Patient | Name, age, community, consent, CHV owner, random reference |
+| `observations` | Observation | One antenatal check: vitals + risk score |
+| `referrals` | ServiceRequest | CHV → facility request; status and outcome |
+| `access_log` | AuditEvent | Who did what to which record, and when |
+
+### Referral flow
+
+```mermaid
+sequenceDiagram
+    participant C as CHV
+    participant A as API
+    participant N as Nurse
+    C->>A: POST /patients/{id}/assess (vitals)
+    A-->>C: HIGH risk + advice
+    C->>A: POST /observations/{id}/referral
+    A->>A: Save referral (pending) + audit log
+    A-->>C: success (SMS sent or not)
+    N->>A: GET /referrals (own facility only)
+    N->>A: POST /referrals/{id}/status = arrived
+    N->>A: POST /referrals/{id}/status = completed + outcome
+    C->>A: GET /patients/{id}
+    A-->>C: referral completed + outcome
+```
+
+---
+
+## 7. Security and data protection
+
+Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data minimisation, purpose limitation and security safeguards.
+
+| Measure | How |
+|---|---|
+| **Passwords never stored** | Hashed with bcrypt (one-way, salted) |
+| **Login tokens** | JWT signed with a server secret, carrying user id + role; expires after 8 hours |
+| **Token storage** | `sessionStorage`, which is wiped when the tab closes (safer on shared phones) |
+| **RBAC** | Every route checks the role (`require_role`). Wrong role → 403 |
+| **Data scoping** | CHVs see only their patients; nurses see only their facility's referrals. Others' records → 404, so their existence is not revealed |
+| **Consent** | Registration refused without consent, enforced in the form, the API **and** a database constraint |
+| **Data minimisation** | Referral SMS contains only reference, age, risk, CHV; **no patient name**. Arkesel's reply is not passed back to the browser |
+| **Audit log** | Logins, failed logins, every view/create/update, and **blocked access attempts** (`access_denied`) |
+| **Offline encryption** | Queued checks are encrypted with AES-GCM. Per-user key issued at login, kept only in `sessionStorage` |
+| **CORS** | Only our own frontend origin may call the API from a browser |
+| **Secrets** | Kept in `backend/.env` (git-ignored), never printed or committed |
+| **No API caching** | The PWA caches the app itself, not API replies (which contain patient data) |
+
+---
+
+## 8. Running it locally
+
+### Prerequisites
+- **Python 3.11+**
+- **Node.js 20+** and npm
+- Git
+
+### 1. Clone and switch to the working branch
+```bash
+git clone https://github.com/ASU-MICS-2028/cc-group-2-prosit-2.git
+cd cc-group-2-prosit-2
+git checkout week1-security
+```
+
+### 2. Backend (Terminal 1)
+```bash
+cd backend
+python3 -m venv venv              # one time: private Python environment
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt   # one time
+```
+
+Create `backend/.env` (never commit this file):
+```bash
+# Required: any long random string. Generate one with:
+#   python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET=paste-a-long-random-string-here
+
+# Optional: only needed for real referral SMS
+# ARKESEL_API_KEY=your-arkesel-key
+# ARKESEL_SENDER=YourSenderID
+```
+
+Create the fake demo accounts (one time), then start the server:
+```bash
+python seed.py
+python -m uvicorn main:app --reload
+```
+The API runs at **http://127.0.0.1:8000**, with interactive docs at **http://127.0.0.1:8000/docs**.
+
+### 3. Frontend (Terminal 2)
+```bash
+cd frontend
+npm install        # one time
+npm run dev
+```
+Open **http://localhost:5173**.
+
+### Common problems
+
+| Error | Fix |
+|---|---|
+| `ModuleNotFoundError: No module named 'dotenv'` | The venv is not active. Run `source venv/bin/activate`, then use `python -m uvicorn ...` |
+| `Error connecting to server` / login fails | The backend is not running, or it is on a different port |
+| Asked to log in again after updating | Expected: sessions from before offline encryption have no key |
+| `WARNING: ARKESEL_API_KEY is not set` | Fine for testing; referrals still work, only the SMS is skipped |
+
+---
+
+## 9. Trying it out (demo walkthrough)
+
+All demo accounts use the password **`Demo@1234`** (fake, local testing only). In development mode the login page shows them as clickable buttons.
+
+| Username | Role | Facility |
+|---|---|---|
+| `chv1`, `chv2` | CHV | Test Health Centre |
+| `nurse1` | Nurse | Test Health Centre |
+| `nurse2` | Nurse | Other Test Clinic |
+| `doctor1` | Doctor | Test District Hospital |
+| `ghs1` | GHS officer | GHS District Office |
+| `admin1` | Admin | – |
+
+**Full referral loop**
+1. Log in as **`chv1`** → **Register patient** (fake name, tick consent).
+2. Enter HIGH-risk vitals: gestational age `26`, BP `150/95`, Hb `8`, weight `65`, temp `36.8`, heart rate `80`, previous complications ✔ → **Check risk** → HIGH.
+3. In visit history, click **Refer to facility**.
+4. Log out → log in as **`nurse1`** → the referral is in **Waiting** → **Mark as arrived** → **Record outcome**.
+5. Log in as **`chv1`** again → the visit shows **Completed** with the outcome.
+
+**Access control checks**
+- Log in as **`chv2`**: chv1's patient is not visible.
+- Log in as **`nurse2`**: the inbox is empty (different facility).
+
+**Offline check**
+1. As `chv1`, open a patient while online.
+2. Browser DevTools → **Network** → set to **Offline**.
+3. Run a check → you get an "Offline result" and an amber "waiting to sync" banner.
+4. Set the network back to online → the banner clears and the check appears in history.
+
+---
+
+## 10. API reference
+
+All routes except login need the header `Authorization: Bearer <token>`.
+
+| Method | Path | Role | Purpose |
+|---|---|---|---|
+| GET | `/` | – | Health check |
+| POST | `/auth/login` | – | Username + password → token, user info, offline key |
+| GET | `/auth/me` | any | Who am I (validates the token) |
+| GET | `/patients` | chv | List own patients with latest risk |
+| POST | `/patients` | chv | Register patient (consent required) |
+| GET | `/patients/{id}` | chv | Patient + check history + referral status |
+| POST | `/patients/{id}/assess` | chv | Record vitals, get risk (accepts `recorded_at` for offline syncs) |
+| POST | `/observations/{id}/referral` | chv | Refer a HIGH-risk check to the CHV's facility |
+| GET | `/referrals` | nurse | Referral inbox for the nurse's facility |
+| POST | `/referrals/{id}/status` | nurse | Set `arrived` or `completed` (+ outcome) |
+
+Status codes: **401** not logged in / bad token · **403** wrong role · **404** not found *or* not yours · **400** rule broken (no consent, not HIGH, already referred) · **422** invalid input.
+
+---
+
+## 11. Project structure
+
+```
+.
+├── backend/
+│   ├── main.py            # API routes (login, patients, referrals)
+│   ├── auth.py            # bcrypt hashing, JWT, require_role, offline key
+│   ├── database.py        # SQLite tables (FHIR-aligned) + audit log helper
+│   ├── schemas.py         # Request validation (Pydantic)
+│   ├── model.py           # Rule-based risk score (official copy)
+│   ├── seed.py            # Creates fake demo accounts
+│   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
+│   ├── requirements.txt
+│   └── data/              # Kaggle Maternal Health Risk dataset (public)
+└── frontend/
+    ├── vite.config.js     # Vite + PWA config
+    └── src/
+        ├── App.jsx            # Session + role-based routing
+        ├── Login.jsx          # Sign-in page
+        ├── Header.jsx         # Top bar: role, online/offline, language, logout
+        ├── ChvApp.jsx         # CHV workspace
+        ├── NurseApp.jsx       # Nurse referral inbox
+        ├── RolePlaceholder.jsx# "Coming soon" for other roles
+        ├── api.js             # Backend calls + token
+        ├── riskModel.js       # Offline copy of the risk rules
+        ├── offlineQueue.js    # Queue + sync for offline checks
+        ├── crypto.js          # AES-GCM encrypt/decrypt
+        ├── i18n.js            # English + Twi text
+        ├── styles.js, RiskBadge.jsx, Logo.jsx
+        └── main.jsx           # Entry point + service worker
+```
+
+---
+
+## 12. Roadmap: the steps we will follow
+
+### ✅ Phase 1: Foundations and Week 1 (done)
+- [x] Remove the API key from the logs; remove the patient name from the SMS
+- [x] Real login (bcrypt + JWT) and RBAC
+- [x] SQLite database with FHIR-aligned tables and consent enforcement
+- [x] Audit log, including blocked attempts
+- [x] Restrict CORS
+- [x] Redesign as HealthConnect Ghana (Storm Surfers)
+- [x] Offline risk check with automatic sync
+- [x] Encrypt the offline queue (AES-GCM)
+
+### 🟡 Phase 2: Week 2, Telemedicine and referrals (in progress)
+- [x] Referral records and nurse inbox with outcomes
+- [ ] **Referral prioritisation**: sort the inbox by urgency (risk score, waiting time)
+- [ ] Doctor workspace: review referred HIGH-risk cases
+- [ ] Appointments: nurse/doctor books a follow-up; patient gets an SMS reminder
+- [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
+- [ ] E-prescriptions (described in the report; pharmacist not an app user)
+
+### ⬜ Phase 3: Cloud deployment (Alice, with Henry)
+- [ ] Move the database from SQLite to **AWS RDS** (eu-north-1), encrypted at rest
+- [ ] Host the API (e.g. EC2 / App Runner / Lambda) behind **HTTPS (TLS)**
+- [ ] Host the PWA on S3 + CloudFront
+- [ ] Secrets in AWS Secrets Manager instead of `.env`
+- [ ] Least-privilege IAM role (from Clifford's Lab 6)
+- [ ] CloudWatch logs and alarms
+
+### ⬜ Phase 4: Week 3, Surveillance (Clifford, with Henry)
+- [ ] GHS officer dashboard: **anonymised** district totals, never names
+- [ ] Map of HIGH-risk cases by district
+- [ ] ML prediction: evaluate the XGBoost model on suitable data before wiring it in
+- [ ] DHIMS2 integration: **described**, not built (no real GHS access)
+
+### ⬜ Phase 5: Admin and hardening
+- [ ] Admin screen: create / disable accounts (replaces `seed.py`)
+- [ ] Force password change on first login; remove demo accounts before any real use
+- [ ] Cache patient lists on the phone (encrypted) for full offline use
+- [ ] Complete the Twi translation with a native speaker
+- [ ] Automated tests in the repo
+
+### ⬜ Phase 6: Week 4, Sustainability (Isaac, with the team)
+- [ ] Insurance (NHIS) and mobile money: described and costed
+- [ ] Role of traditional medicine and healers: referral pathways
+- [ ] Community ownership model for CHVs
+- [ ] Revenue model and cost estimate for AWS
+
+### Deadline
+Report and presentation are due **the Thursday after the mid-semester break**.
+
+---
+
+## 13. Built vs simulated (honest status)
+
+| Item | Status |
+|---|---|
+| Login, RBAC, audit log, consent, referrals, nurse inbox | **Built and working** (local) |
+| Offline risk check and encrypted queue | **Built and working** (browser) |
+| Referral SMS | **Built**; works only with a valid Arkesel key and a registered sender ID |
+| Risk scoring | **Rule-based**, not ML; not clinically validated |
+| `train_model.py` / XGBoost | **Experiment only, not used.** Trained on the Kaggle Maternal Health Risk dataset (1,013 rows, Bangladesh), which is not representative of Ghana |
+| Cloud hosting | **Not yet**: runs on a laptop with SQLite |
+| GHS / NHIS / DHIMS2 integration | **Not built**: described only; no access to real systems |
+| Patient data | **Fake test data only** |
+
+---
+
+## 14. Known limitations
+
+- **Local only**: SQLite on a laptop; the database file itself is not encrypted yet (planned: RDS with encryption at rest).
+- **Partial offline**: a patient must be opened while online before an offline check can be done for them. A full reload with no signal shows an empty list.
+- **Rules in two places**: the risk rules live in `model.py` and `riskModel.js`. Change both, and re-run the comparison test.
+- **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
+- **Twi** covers only some screens.
+- **Demo accounts** share one known password. They must be removed before any real deployment.
+
+---
+
+## 15. Prior work
+
+HealthConnect builds on **SafeArrive**, an antenatal risk-assessment PWA for CHVs that Henry Kofi Brandoh built at a hackathon in April 2026. SafeArrive provided the starting React/FastAPI code, the rule-based risk score and the English/Twi idea. It is declared here as prior work. Everything listed in §3 as done for PROSIT 2 (login, RBAC, database, audit log, offline mode, encryption, referrals, nurse inbox, redesign) was built for this project.
+
+---
+
+## 16. Contributing
+
+1. Create a branch from `week1-security` (or `main` once merged): `git checkout -b your-feature`
+2. Never commit `.env`, `*.db`, `venv/`, `node_modules/` or real data. `.gitignore` covers these, but check `git status` before committing.
+3. Use only fake patients and phone numbers like `0240000000`.
+4. Open a pull request and ask one teammate to review before merging.
+
+---
+
+*Built by Storm Surfers · Group 2 · ICS 534, Ashesi University*
