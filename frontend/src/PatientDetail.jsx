@@ -8,6 +8,7 @@ import { RISK_STYLE, REFERRAL_STYLE, inputClass } from "./styles";
 import { predictRisk } from "./riskModel";
 import { assessGeneral } from "./generalModel";
 import { addPending } from "./offlineQueue";
+import { ReminderNote } from "./AppointmentsPanel";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
   const [data, setData] = useState(null);
@@ -100,7 +101,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
   };
 
   if (!data) return error ? <p className="text-red-600">{error}</p> : null;
-  const { patient, observations } = data;
+  const { patient, observations, appointments = [] } = data;
   const canBePregnant = patient.sex === "female" && patient.age >= 10;
 
   return (
@@ -129,6 +130,18 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
         </div>
         <RiskBadge level={observations[0]?.risk_level} t={t} />
       </div>
+
+      {appointments.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">
+          <p className="text-sm font-semibold text-teal-900">📅 {t.upcomingAppointments}</p>
+          {appointments.map((a) => (
+            <p key={a.id} className="mt-1 text-sm text-teal-900">
+              {a.scheduled_at} · {a.facility}
+              {a.reason && ` · ${a.reason}`} · <ReminderNote a={{ ...a, has_phone: patient.phone ? 1 : 0 }} t={t} />
+            </p>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
         {/* New check */}

@@ -150,7 +150,7 @@ function PatientList({ t, patients, onOpen, onRegister }) {
 }
 
 function RegisterPatient({ t, onDone, onBack }) {
-  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, community: "", consent: false });
+  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, phone: "", community: "", consent: false });
   const canBePregnant = form.sex === "female" && Number(form.age) >= 10;
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -209,6 +209,18 @@ function RegisterPatient({ t, onDone, onBack }) {
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700">{t.community}</label>
           <input value={form.community} onChange={(e) => setForm({ ...form, community: e.target.value })} className={inputClass} />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-stone-700">{t.patientPhone}</label>
+          <input
+            type="tel"
+            inputMode="numeric"
+            placeholder="0240000000"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-stone-500">{t.patientPhoneHint}</p>
         </div>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-teal-50 p-4 text-sm text-teal-900">

@@ -1,7 +1,9 @@
+import asyncio
 import os
 import secrets
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
-import requests
 from dotenv import load_dotenv
 
 # Load .env BEFORE importing auth, so JWT_SECRET is available
@@ -15,16 +17,36 @@ from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
 from model import predict_risk
 from priority import priority
+from reminders import appointment_message, send_due_reminders
 from schemas import (LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
-                     PregnancyUpdate, ReferralCreate, EscalateIn)
+                     PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus)
+from sms import send_sms
 
 # Only report whether the key exists; never print the secret itself
 if not os.getenv("ARKESEL_API_KEY"):
-    print("WARNING: ARKESEL_API_KEY is not set; referral SMS will fail")
+    print("WARNING: ARKESEL_API_KEY is not set; referral and reminder SMS will fail")
 
 init_db()
 
-app = FastAPI(title="HealthConnect Ghana API")
+
+async def reminder_loop():
+    # Every 10 minutes: send reminders for appointments in the next 24 hours
+    while True:
+        try:
+            await asyncio.to_thread(send_due_reminders)
+        except Exception as err:  # keep the loop alive whatever happens
+            print("REMINDER JOB ERROR:", type(err).__name__)
+        await asyncio.sleep(600)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(reminder_loop())  # starts with the server
+    yield
+    task.cancel()  # stops with the server
+
+
+app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
 
 # Only our own frontend may call this API from a browser
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -124,9 +146,10 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
     conn = get_db()
     ref = "HC-" + secrets.token_hex(3).upper()  # random, not derived from the name
     cur = conn.execute(
-        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, community, consent) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
-        (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant), body.community.strip()),
+        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, consent) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant),
+         body.phone.strip() or None, body.community.strip()),
     )
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()
@@ -150,10 +173,17 @@ def get_patient(patient_id: int, user=Depends(require_role("chv"))):
         WHERE o.patient_id = ?
         ORDER BY o.id DESC
     """, (patient_id,)).fetchall()
+    # Upcoming appointments, so the CHV can remind patients who have no phone
+    appointments = conn.execute(
+        "SELECT id, facility, scheduled_at, reason, status, reminder_status FROM appointments "
+        "WHERE patient_id = ? AND status = 'booked' ORDER BY scheduled_at",
+        (patient_id,),
+    ).fetchall()
     log_access(conn, user["id"], "view_patient", patient["ref"])
     conn.commit()
     conn.close()
-    return {"patient": dict(patient), "observations": [dict(o) for o in observations]}
+    return {"patient": dict(patient), "observations": [dict(o) for o in observations],
+            "appointments": [dict(a) for a in appointments]}
 
 
 @app.post("/patients/{patient_id}/pregnancy")
@@ -269,14 +299,6 @@ def send_referral(observation_id: int, body: ReferralCreate | None = None, user=
 
 
 def send_referral_sms(user, patient, obs):
-    api_key = os.getenv("ARKESEL_API_KEY")
-    if not api_key:
-        return False
-
-    phone = (user["facility_phone"] or "").strip()
-    if phone.startswith("0"):
-        phone = "233" + phone[1:]
-
     # No patient name in the SMS: reference only (data minimisation)
     visit = "Antenatal" if obs["visit_type"] == "antenatal" else "General"
     watch = f"\nCheck for: {obs['possible_conditions'].replace(',', ', ')}" if obs["possible_conditions"] else ""
@@ -287,27 +309,7 @@ Visit: {visit}
 Risk: {obs['risk_level']}{watch}
 CHV: {user['full_name']}
 Please prepare to receive this patient."""
-
-    try:
-        response = requests.get(
-            "https://sms.arkesel.com/sms/api",
-            params={
-                "action": "send-sms",
-                "api_key": api_key,
-                "to": phone,
-                # Sender IDs must be registered with Arkesel before they work
-                "from": os.getenv("ARKESEL_SENDER", "SafeArriv"),
-                "sms": message,
-            },
-            timeout=15,
-        )
-        code = response.json().get("code")
-    except (requests.RequestException, ValueError):
-        code = "network_error"
-
-    # Log only the status code; the full reply has account details we don't need
-    print("ARKESEL STATUS:", code)
-    return code == "ok"
+    return send_sms(user["facility_phone"], message)
 
 
 # ---------- Referral inbox (nurse = health centre, doctor = hospital; own facility only) ----------
@@ -385,6 +387,73 @@ def referral_history(referral_id: int, user=Depends(require_role("nurse", "docto
     conn.commit()
     conn.close()
     return {"patient": dict(patient), "observations": [dict(o) for o in observations]}
+
+
+# ---------- Appointments (nurse/doctor, only for patients referred to their facility) ----------
+
+@app.post("/referrals/{referral_id}/appointments")
+def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(require_role("nurse", "doctor"))):
+    conn = get_db()
+    referral = get_facility_referral(conn, referral_id, user)  # need-to-know check
+    when = body.scheduled_at.strftime("%Y-%m-%d %H:%M")
+    if when <= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Choose a time in the future")
+
+    cur = conn.execute(
+        "INSERT INTO appointments (patient_id, referral_id, booked_by, facility, scheduled_at, reason) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (referral["patient_id"], referral_id, user["id"], user["facility"], when, body.reason.strip() or None),
+    )
+    patient = conn.execute("SELECT ref, phone FROM patients WHERE id = ?", (referral["patient_id"],)).fetchone()
+    # Confirmation SMS straight away (the 24-hour reminder comes later from the reminder job)
+    confirmed = bool(patient["phone"]) and send_sms(
+        patient["phone"], appointment_message("confirm", user["facility"], when, patient["ref"])
+    )
+    log_access(conn, user["id"], "book_appointment", f"{patient['ref']} {when}")
+    conn.commit()
+    conn.close()
+    return {"id": cur.lastrowid, "scheduled_at": when, "has_phone": bool(patient["phone"]), "sms_sent": confirmed}
+
+
+@app.get("/appointments")
+def list_appointments(user=Depends(require_role("nurse", "doctor"))):
+    # Booked appointments at this facility, soonest first
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT a.id, a.scheduled_at, a.reason, a.status, a.reminder_status,
+               p.ref, p.full_name, p.age, p.sex, (p.phone IS NOT NULL) AS has_phone,
+               u.full_name AS booked_by_name
+        FROM appointments a
+        JOIN patients p ON p.id = a.patient_id
+        JOIN users u ON u.id = a.booked_by
+        WHERE a.facility = ? AND a.status = 'booked'
+        ORDER BY a.scheduled_at
+    """, (user["facility"],)).fetchall()
+    log_access(conn, user["id"], "list_appointments", user["facility"])
+    conn.commit()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/appointments/{appointment_id}/status")
+def update_appointment(appointment_id: int, body: AppointmentStatus, user=Depends(require_role("nurse", "doctor"))):
+    conn = get_db()
+    appt = conn.execute(
+        "SELECT a.id, p.ref FROM appointments a JOIN patients p ON p.id = a.patient_id "
+        "WHERE a.id = ? AND a.facility = ?",
+        (appointment_id, user["facility"]),
+    ).fetchone()
+    if not appt:
+        log_access(conn, user["id"], "access_denied", f"appointment:{appointment_id}")
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    conn.execute("UPDATE appointments SET status = ? WHERE id = ?", (body.status, appointment_id))
+    log_access(conn, user["id"], f"appointment_{body.status}", appt["ref"])
+    conn.commit()
+    conn.close()
+    return {"success": True}
 
 
 @app.post("/referrals/{referral_id}/status")

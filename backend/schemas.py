@@ -14,6 +14,8 @@ class PatientCreate(BaseModel):
     age: int = Field(ge=0, le=120)
     sex: Literal["female", "male"]
     pregnant: bool = False
+    # Optional, only for appointment reminders. Ghana format: 0XXXXXXXXX or 233XXXXXXXXX
+    phone: str = Field("", pattern=r"^$|^(0\d{9}|\+?233\d{9})$")
     community: str = ""
     consent: bool
 
@@ -78,3 +80,12 @@ class ReferralCreate(BaseModel):
 class EscalateIn(BaseModel):
     facility: str
     reason: str = Field(min_length=3, max_length=300)
+
+
+class AppointmentCreate(BaseModel):
+    scheduled_at: datetime  # Ghana time = UTC
+    reason: str = Field("", max_length=200)
+
+
+class AppointmentStatus(BaseModel):
+    status: Literal["attended", "missed", "cancelled"]

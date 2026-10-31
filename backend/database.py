@@ -53,6 +53,7 @@ def init_db():
         age        INTEGER NOT NULL,
         sex        TEXT CHECK (sex IN ('female','male')),
         pregnant   INTEGER NOT NULL DEFAULT 0,
+        phone      TEXT,      -- optional; used ONLY for appointment reminders
         community  TEXT,
         consent    INTEGER NOT NULL CHECK (consent = 1),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -79,6 +80,20 @@ def init_db():
         risk_level             TEXT,
         referral_sent          INTEGER NOT NULL DEFAULT 0,
         created_at             TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- FHIR Appointment. Follow-up booked by a nurse/doctor; SMS reminder ~24h before
+    CREATE TABLE IF NOT EXISTS appointments (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        patient_id      INTEGER NOT NULL REFERENCES patients(id),
+        referral_id     INTEGER NOT NULL REFERENCES referrals(id),
+        booked_by       INTEGER NOT NULL REFERENCES users(id),
+        facility        TEXT NOT NULL,
+        scheduled_at    TEXT NOT NULL,   -- 'YYYY-MM-DD HH:MM' (Ghana time = UTC)
+        reason          TEXT,
+        status          TEXT NOT NULL DEFAULT 'booked' CHECK (status IN ('booked','attended','missed','cancelled')),
+        reminder_status TEXT,            -- NULL = not tried yet, then 'sent' / 'failed' / 'no_phone'
+        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     -- FHIR AuditEvent. Who did what to which record, and when
@@ -110,6 +125,7 @@ def migrate(conn):
     if add_column_if_missing(conn, "patients", "sex", "TEXT CHECK (sex IN ('female','male'))"):
         add_column_if_missing(conn, "patients", "pregnant", "INTEGER NOT NULL DEFAULT 0")
         conn.execute("UPDATE patients SET sex = 'female', pregnant = 1")
+    add_column_if_missing(conn, "patients", "phone", "TEXT")
     add_column_if_missing(conn, "observations", "visit_type", "TEXT NOT NULL DEFAULT 'antenatal'")
     add_column_if_missing(conn, "observations", "symptoms", "TEXT")
     add_column_if_missing(conn, "observations", "possible_conditions", "TEXT")

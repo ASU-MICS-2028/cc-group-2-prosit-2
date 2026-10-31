@@ -4,6 +4,7 @@ import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
 import PatientHistory from "./PatientHistory";
+import { AppointmentsPanel, BookAppointment } from "./AppointmentsPanel";
 import { REFERRAL_STYLE, inputClass } from "./styles";
 
 const PRIORITY_STYLE = {
@@ -25,6 +26,7 @@ export default function InboxApp(props) {
   const isNurse = user.role === "nurse";
   const [referrals, setReferrals] = useState([]);
   const [hospitals, setHospitals] = useState([]); // where a nurse can refer onward
+  const [apptKey, setApptKey] = useState(0); // bump to reload the appointments panel
   const [filter, setFilter] = useState("pending"); // all | pending | arrived | completed
   const [error, setError] = useState("");
 
@@ -70,6 +72,8 @@ export default function InboxApp(props) {
           ))}
         </div>
 
+        <AppointmentsPanel t={t} refreshKey={apptKey} />
+
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <div className="mt-5 space-y-3">
@@ -79,7 +83,7 @@ export default function InboxApp(props) {
             </div>
           )}
           {shown.map((r) => (
-            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} />
+            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} />
           ))}
         </div>
 
@@ -89,7 +93,7 @@ export default function InboxApp(props) {
   );
 }
 
-function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
+function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked }) {
   const [mode, setMode] = useState(null); // null | "outcome" (doctor writing the outcome)
   const [showHistory, setShowHistory] = useState(false);
   const [outcome, setOutcome] = useState("");
@@ -198,6 +202,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
         {showHistory ? `▾ ${t.hideHistory}` : `▸ ${t.viewHistory}`}
       </button>
       {showHistory && <PatientHistory referralId={r.id} t={t} />}
+      <BookAppointment referralId={r.id} t={t} onBooked={onBooked} />
 
       {r.outcome && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{r.outcome}</p>}
 

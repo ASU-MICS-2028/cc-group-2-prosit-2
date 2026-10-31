@@ -83,6 +83,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Nurse referral inbox + outcomes | ✅ Done |
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
 | Patient history for nurses/doctors (referred patients only) | ✅ Done |
+| Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
@@ -103,6 +104,7 @@ All of this work is on the **`main`** branch.
 - **See "My patients"** with counts of high, medium and low risk, and search by name or reference.
 - **Register any patient** (any age, female or male), but only after ticking that the patient has given consent (Data Protection Act, 2012).
   Each patient gets a random reference such as `HC-1D28D0`. Female patients aged 10+ can be marked **pregnant**.
+  An optional **phone number** can be added, used **only** for appointment reminders.
 - **Record a general visit** for anyone: a symptom checklist (fever, cough, diarrhoea, stiff neck, convulsions…) plus optional temperature, BP and pulse.
   The app gives a triage level and lists **possible conditions to test for** (malaria, cholera, meningitis, measles, pneumonia, hypertension).
 - **Record an antenatal check** for pregnant patients: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
@@ -110,6 +112,7 @@ All of this work is on the **`main`** branch.
   Offline checks are encrypted, saved on the phone, and synced automatically when signal returns.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
 - **Refer a MEDIUM-risk patient** if worried, but a **reason is required** (e.g. "fever not improving after 2 days"). LOW cannot be referred.
+- **See upcoming appointments** on the patient page, with a warning when the patient has no phone so the CHV can remind them in person.
 - **Follow the whole chain**: health centre (waiting → arrived → completed), and, if the nurse referred onward, the hospital step and the doctor's outcome.
 
 ### Who starts a referral?
@@ -140,9 +143,18 @@ This follows Ghana's referral tiers: community (CHV / CHPS) → health centre �
 **≥ 80 = Urgent, ≥ 50 = High, otherwise Routine.** Ties: whoever has waited longest first.
 The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, but never overtake a HIGH case with danger signs. Each card shows its badge, danger signs and waiting time, so staff can see why it is where it is.
 
+### Appointments and SMS reminders (`backend/reminders.py`)
+- A nurse or doctor books a follow-up from a referral card, so **only for patients referred to their facility** (need-to-know).
+- If the patient has a phone: a **confirmation SMS** at booking, and a **reminder ~24 hours before**. Each reminder is tried **once** (no spamming).
+- SMS text has **no name and no diagnosis** (shared phones): *"HealthConnect: Reminder: you have an appointment at Test Health Centre on Sun 01 Nov, 08:11. Ref HC-XXXXXX."*
+- No phone: the CHV sees the appointment on the patient page and reminds in person.
+- The reminder job runs **every 10 minutes inside the API** (FastAPI lifespan task). In the cloud this becomes an **EventBridge Scheduler rule calling a Lambda function**.
+- Ghana uses GMT all year, so local time = UTC (no time-zone conversion needed).
+
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
 - **View patient history**: every earlier visit, reading and referral outcome for that patient, as a timeline. Only for patients referred to their own hospital.
+- **Book a follow-up appointment** (nurse or doctor) and manage the **Upcoming appointments** list: Attended / Missed / Cancel.
 - **Mark as arrived** and **record the outcome**. Video consults come next (Week 2).
 
 ### How the checks work
@@ -249,8 +261,9 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | Table | FHIR resource | Holds |
 |---|---|---|
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
-| `patients` | Patient | Name, age, sex, pregnant flag, community, consent, CHV owner, random reference |
+| `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), community, consent, CHV owner, random reference |
 | `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
+| `appointments` | Appointment | Follow-up time, facility, reason, status, reminder result |
 | `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
 | `access_log` | AuditEvent | Who did what to which record, and when |
 
@@ -413,6 +426,9 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
 | GET | `/referrals/{id}/history` | nurse, doctor | All visits of the referred patient (only if the referral is to the user's facility) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
+| POST | `/referrals/{id}/appointments` | nurse, doctor | Book a follow-up for the referred patient (`scheduled_at`, `reason`); sends confirmation SMS |
+| GET | `/appointments` | nurse, doctor | Upcoming appointments at the user's facility, soonest first |
+| POST | `/appointments/{id}/status` | nurse, doctor | Mark `attended`, `missed` or `cancelled` |
 | POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient to a doctor's hospital (`facility`, `reason` = treatment given) |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
@@ -433,6 +449,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── model.py           # Antenatal risk score (official copy)
 │   ├── general_model.py   # General visit triage + possible conditions (official copy)
 │   ├── priority.py        # Inbox priority score (risk + danger signs + waiting time)
+│   ├── sms.py             # Arkesel SMS sender (referrals + reminders)
+│   ├── reminders.py       # Appointment confirmation + 24h reminder job
 │   ├── seed.py            # Creates fake demo accounts
 │   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
 │   ├── requirements.txt
@@ -446,6 +464,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── ChvApp.jsx         # CHV workspace
         ├── InboxApp.jsx       # Referral inbox (nurse and doctor), escalation
         ├── PatientHistory.jsx # Visit timeline for a referred patient
+        ├── AppointmentsPanel.jsx # Book follow-up, upcoming list, reminder status
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -480,7 +499,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Nurse escalation to a hospital; doctor inbox with outcomes
 - [x] Prioritisation: risk + danger signs + waiting time (capped), with reasons shown on each card
 - [x] Doctor workspace: patient history view for referred cases (need-to-know: only via a referral to their facility)
-- [ ] Appointments: nurse/doctor books a follow-up; patient gets an SMS reminder
+- [x] Appointments: nurse/doctor books a follow-up; patient gets a confirmation SMS and a reminder ~24h before
 - [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
 - [ ] E-prescriptions (described in the report; pharmacist not an app user)
 
@@ -527,7 +546,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 |---|---|
 | Login, RBAC, audit log, consent, referrals, nurse inbox | **Built and working** (local) |
 | Offline risk check and encrypted queue | **Built and working** (browser) |
-| Referral SMS | **Built**; works only with a valid Arkesel key and a registered sender ID |
+| Referral + appointment SMS | **Built**; works only with a valid Arkesel key and a registered sender ID. Without a key, the app still works and shows "SMS not delivered" |
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Experiment only, not used.** Trained on the Kaggle Maternal Health Risk dataset (1,013 rows, Bangladesh), which is not representative of Ghana |
 | Cloud hosting | **Not yet**: runs on a laptop with SQLite |
