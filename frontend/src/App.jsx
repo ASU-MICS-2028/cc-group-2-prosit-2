@@ -5,6 +5,9 @@ import Login from "./Login";
 import ChvApp from "./ChvApp";
 import RolePlaceholder from "./RolePlaceholder";
 
+// Sessions from before offline encryption have no key: make them log in again
+if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
+
 export default function App() {
   const [lang, setLang] = useState("en");
   const [user, setUser] = useState(null);
@@ -26,9 +29,10 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
-  const handleLogin = (token, userInfo) => {
+  const handleLogin = (token, userInfo, offlineKey) => {
     // sessionStorage is wiped when the tab closes (safer on shared phones)
     sessionStorage.setItem("hc_token", token);
+    sessionStorage.setItem("hc_key", offlineKey);
     sessionStorage.setItem("hc_user", JSON.stringify(userInfo));
     setUser(userInfo);
   };

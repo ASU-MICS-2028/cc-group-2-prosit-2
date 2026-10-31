@@ -249,14 +249,13 @@ function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
   }, [patientId, syncTick]);
 
   // No signal: score on the phone and queue the check for the server
-  const assessOffline = (body) => {
+  const assessOffline = async (body) => {
     const local = predictRisk(data.patient.age, body);
-    addPending({
-      id: crypto.randomUUID(),
-      userId: user.id,
-      patientId,
-      body: { ...body, recorded_at: new Date().toISOString() },
-    });
+    try {
+      await addPending(user.id, { patientId, body: { ...body, recorded_at: new Date().toISOString() } });
+    } catch (err) {
+      return setError(err.message);
+    }
     onQueued();
     setLatest({ observation: { risk_level: local.risk_level }, advice: local.advice, offline: true });
     setVitals({ previous_complications: false });
@@ -270,7 +269,7 @@ function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
     VITALS.forEach(([name]) => (body[name] = Number(vitals[name])));
 
     if (!navigator.onLine) {
-      assessOffline(body);
+      await assessOffline(body);
     } else {
       try {
         const result = await api(`/patients/${patientId}/assess`, { method: "POST", body });
@@ -279,7 +278,7 @@ function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
         load();
       } catch (err) {
         // TypeError = the request never reached the server (weak signal)
-        if (err instanceof TypeError) assessOffline(body);
+        if (err instanceof TypeError) await assessOffline(body);
         else setError(err.message);
       }
     }

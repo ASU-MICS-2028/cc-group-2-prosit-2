@@ -16,7 +16,7 @@ export default function Login({ onLogin, t, lang, setLang }) {
     setLoading(true);
     try {
       const data = await api("/auth/login", { method: "POST", body: { username, password } });
-      onLogin(data.token, data.user);
+      onLogin(data.token, data.user, data.offline_key);
     } catch (err) {
       setError(err.message);
     }

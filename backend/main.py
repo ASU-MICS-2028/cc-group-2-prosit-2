@@ -10,7 +10,7 @@ load_dotenv()
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from auth import verify_password, create_token, get_current_user, require_role
+from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
 from database import get_db, init_db, log_access
 from model import predict_risk
 from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn
@@ -57,6 +57,7 @@ def login(body: LoginRequest):
     conn.close()
     return {
         "token": create_token(user),
+        "offline_key": offline_key_for(user["id"]),  # encrypts checks queued on the phone
         "user": {
             "id": user["id"],
             "username": user["username"],

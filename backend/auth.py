@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import hmac
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -27,6 +30,13 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
+
+
+def offline_key_for(user_id: int) -> str:
+    # Same user always gets the same key, so their queued checks can be read
+    # after they log in again. Derived from the server secret; never stored.
+    digest = hmac.new(JWT_SECRET.encode(), f"offline-key:{user_id}".encode(), hashlib.sha256).digest()
+    return base64.b64encode(digest).decode()  # 32 bytes = AES-256 key
 
 
 def create_token(user) -> str:
