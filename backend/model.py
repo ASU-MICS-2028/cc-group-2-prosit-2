@@ -1,19 +1,6 @@
-import xgboost as xgb
-import numpy as np
 from schemas import PatientData
 
 def predict_risk(patient: PatientData):
-    # Feature array
-    features = np.array([[
-        patient.age,
-        patient.gestational_age,
-        patient.systolic_bp,
-        patient.diastolic_bp,
-        patient.weight,
-        patient.hemoglobin,
-        int(patient.previous_complications)
-    ]])
-
     # Rule-based risk scoring (we'll replace with trained model later)
     score = 0
 
