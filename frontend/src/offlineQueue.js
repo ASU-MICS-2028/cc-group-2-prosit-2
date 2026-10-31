@@ -16,7 +16,7 @@ export function getPending(userId) {
 }
 
 export async function addPending(userId, check) {
-  // Only id and userId stay readable; patient id + vitals are encrypted
+  // Only id and userId stay readable; the route + vitals are encrypted
   const item = { id: crypto.randomUUID(), userId, enc: await encrypt(check) };
   localStorage.setItem(KEY, JSON.stringify([...readAll(), item]));
 }
@@ -27,8 +27,10 @@ export async function syncPending(userId) {
   const sent = new Set();
   for (const item of getPending(userId)) {
     try {
-      const { patientId, body } = await decrypt(item.enc);
-      await api(`/patients/${patientId}/assess`, { method: "POST", body });
+      const check = await decrypt(item.enc);
+      // Older queued items only had patientId (antenatal checks)
+      const path = check.path || `/patients/${check.patientId}/assess`;
+      await api(path, { method: "POST", body: check.body });
       sent.add(item.id);
     } catch {
       // still offline, server error, or no key yet: keep it and try again later

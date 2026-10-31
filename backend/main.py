@@ -12,8 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
 from database import get_db, init_db, log_access
+from general_model import assess_general, advice_for
 from model import predict_risk
-from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate
+from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn, PregnancyUpdate
 
 # Only report whether the key exists; never print the secret itself
 if not os.getenv("ARKESEL_API_KEY"):
@@ -89,11 +90,15 @@ def get_own_patient(conn, patient_id, user):
     return patient
 
 
+def can_be_pregnant(sex, age):
+    return sex == "female" and age >= 10
+
+
 @app.get("/patients")
 def list_patients(user=Depends(require_role("chv"))):
     conn = get_db()
     rows = conn.execute("""
-        SELECT p.id, p.ref, p.full_name, p.age, p.community, p.created_at,
+        SELECT p.id, p.ref, p.full_name, p.age, p.sex, p.pregnant, p.community, p.created_at,
                (SELECT risk_level FROM observations o
                  WHERE o.patient_id = p.id ORDER BY o.id DESC LIMIT 1) AS latest_risk
         FROM patients p
@@ -111,12 +116,15 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
     # Act 843: no consent, no record
     if not body.consent:
         raise HTTPException(status_code=400, detail="Patient consent is required")
+    if body.pregnant and not can_be_pregnant(body.sex, body.age):
+        raise HTTPException(status_code=400, detail="Only female patients aged 10 or over can be marked pregnant")
 
     conn = get_db()
     ref = "HC-" + secrets.token_hex(3).upper()  # random, not derived from the name
     cur = conn.execute(
-        "INSERT INTO patients (ref, chv_id, full_name, age, community, consent) VALUES (?, ?, ?, ?, ?, 1)",
-        (ref, user["id"], body.full_name.strip(), body.age, body.community.strip()),
+        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, community, consent) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant), body.community.strip()),
     )
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()
@@ -143,10 +151,57 @@ def get_patient(patient_id: int, user=Depends(require_role("chv"))):
     return {"patient": dict(patient), "observations": [dict(o) for o in observations]}
 
 
+@app.post("/patients/{patient_id}/pregnancy")
+def set_pregnancy(patient_id: int, body: PregnancyUpdate, user=Depends(require_role("chv"))):
+    conn = get_db()
+    patient = get_own_patient(conn, patient_id, user)
+    if body.pregnant and not can_be_pregnant(patient["sex"], patient["age"]):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Only female patients aged 10 or over can be marked pregnant")
+    conn.execute("UPDATE patients SET pregnant = ? WHERE id = ?", (int(body.pregnant), patient_id))
+    log_access(conn, user["id"], "set_pregnancy", patient["ref"])
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+def to_db_time(recorded_at):
+    # Offline checks carry the time they were really done; online ones use "now"
+    return recorded_at.strftime("%Y-%m-%d %H:%M:%S") if recorded_at else None
+
+
+@app.post("/patients/{patient_id}/visit")
+def general_visit(patient_id: int, visit: VisitIn, user=Depends(require_role("chv"))):
+    vitals = [visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate]
+    if not visit.symptoms and all(v is None for v in vitals):
+        raise HTTPException(status_code=400, detail="Enter at least one symptom or vital sign")
+    conn = get_db()
+    patient = get_own_patient(conn, patient_id, user)
+
+    risk_level, conditions = assess_general(
+        visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate, visit.symptoms
+    )
+    cur = conn.execute("""
+        INSERT INTO observations (patient_id, recorded_by, visit_type, body_temp, systolic_bp, diastolic_bp,
+            heart_rate, symptoms, possible_conditions, notes, risk_level, created_at)
+        VALUES (?, ?, 'general', ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
+    """, (patient_id, user["id"], visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate,
+          ",".join(visit.symptoms), ",".join(conditions), visit.notes.strip(), risk_level,
+          to_db_time(visit.recorded_at)))
+    log_access(conn, user["id"], "sync_offline_visit" if visit.recorded_at else "general_visit", patient["ref"])
+    conn.commit()
+    observation = conn.execute("SELECT * FROM observations WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return {"observation": dict(observation), "advice": advice_for(risk_level)}
+
+
 @app.post("/patients/{patient_id}/assess")
 def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv"))):
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
+    if not (patient["sex"] == "female" and patient["pregnant"]):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Antenatal checks are only for pregnant patients")
 
     # The server always re-scores, even for offline checks: its result is the official one
     risk_score, risk_level = predict_risk(PatientData(age=patient["age"], **vitals.model_dump()))
@@ -159,7 +214,7 @@ def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv")))
     """, (patient_id, user["id"], vitals.gestational_age, vitals.systolic_bp, vitals.diastolic_bp,
           vitals.weight, vitals.hemoglobin, vitals.body_temp, vitals.heart_rate,
           int(vitals.previous_complications), risk_score, risk_level,
-          vitals.recorded_at.strftime("%Y-%m-%d %H:%M:%S") if vitals.recorded_at else None))
+          to_db_time(vitals.recorded_at)))
     log_access(conn, user["id"], "sync_offline_check" if vitals.recorded_at else "assess_patient", patient["ref"])
     conn.commit()
     observation = conn.execute("SELECT * FROM observations WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -211,10 +266,13 @@ def send_referral_sms(user, patient, obs):
         phone = "233" + phone[1:]
 
     # No patient name in the SMS: reference only (data minimisation)
+    visit = "Antenatal" if obs["visit_type"] == "antenatal" else "General"
+    watch = f"\nCheck for: {obs['possible_conditions'].replace(',', ', ')}" if obs["possible_conditions"] else ""
     message = f"""HealthConnect Referral
 Ref: {patient['ref']}
-Age: {patient['age']}
-Risk: {obs['risk_level']}
+Age: {patient['age']} ({patient['sex'] or '-'})
+Visit: {visit}
+Risk: {obs['risk_level']}{watch}
 CHV: {user['full_name']}
 Please prepare to receive this patient."""
 
@@ -248,6 +306,7 @@ def list_referrals(user=Depends(require_role("nurse"))):
     rows = conn.execute("""
         SELECT r.id, r.status, r.outcome, r.created_at, r.updated_at,
                p.ref, p.full_name, p.age, p.community,
+               p.sex, o.visit_type, o.symptoms, o.possible_conditions, o.body_temp, o.heart_rate,
                o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
                o.previous_complications,
                u.full_name AS chv_name

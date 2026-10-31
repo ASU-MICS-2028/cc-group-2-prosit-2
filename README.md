@@ -67,14 +67,15 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 
 ## 3. Where we are now
 
-**Week 1 (health records) is done, and Week 2 has started: the facility referral inbox is built.**
+**Week 1 (health records) is done, and Week 2 has started: the facility referral inbox is built. HealthConnect now covers general visits for any patient, not just antenatal care.**
 
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
 | Role-based access control (RBAC) | ✅ Done for CHV and nurse; other roles see a "coming soon" screen |
 | Patient registration with consent | ✅ Done |
-| Vitals + antenatal risk check | ✅ Done |
+| General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
+| Antenatal risk check (pregnant patients) | ✅ Done |
 | Risk check works **offline** | ✅ Done |
 | Offline data **encrypted** on the phone | ✅ Done |
 | Audit log of every access | ✅ Done |
@@ -96,21 +97,45 @@ All of this work is on the **`main`** branch.
 ### For a CHV
 - **Sign in** with a personal account.
 - **See "My patients"** with counts of high, medium and low risk, and search by name or reference.
-- **Register a patient**, but only after ticking that the patient has given consent (Data Protection Act, 2012).
-  Each patient gets a random reference such as `HC-1D28D0`.
-- **Record an antenatal check**: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
-- **Get a risk level** (LOW / MEDIUM / HIGH) with advice, **even with no signal**.
+- **Register any patient** (any age, female or male), but only after ticking that the patient has given consent (Data Protection Act, 2012).
+  Each patient gets a random reference such as `HC-1D28D0`. Female patients aged 10+ can be marked **pregnant**.
+- **Record a general visit** for anyone: a symptom checklist (fever, cough, diarrhoea, stiff neck, convulsions…) plus optional temperature, BP and pulse.
+  The app gives a triage level and lists **possible conditions to test for** (malaria, cholera, meningitis, measles, pneumonia, hypertension).
+- **Record an antenatal check** for pregnant patients: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
+- **Get a risk level** (LOW / MEDIUM / HIGH) with advice for either check, **even with no signal**.
   Offline checks are encrypted, saved on the phone, and synced automatically when signal returns.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
 - **Follow the referral**: waiting at facility → arrived → completed, with the nurse's outcome note.
 
 ### For a facility nurse / midwife
 - **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed.
-- See the vitals that triggered each referral and which CHV sent it.
+- See whether it is a general or antenatal visit, the readings and symptoms that triggered it, the possible conditions (e.g. meningitis, so they can prepare), and which CHV sent it.
 - **Mark as arrived**, then **record the outcome**. The CHV sees the outcome on their screen.
 
-### How the risk check works
-It is a **rule-based score** (fixed if/else rules, not machine learning), from `backend/model.py`:
+### How the checks work
+Both checks are **rule-based** (fixed if/else rules, not machine learning). Each check exists twice: on the server (official) and in the browser (for offline use). The server always re-checks synced data.
+
+#### General visit (any patient): `backend/general_model.py`
+| Result | When |
+|---|---|
+| **HIGH** | Any **danger sign** (difficulty breathing, stiff neck, convulsions, unconscious, heavy bleeding, unable to drink), or temperature ≥ 39.5 / < 35 °C, BP ≥ 160 / 110 or systolic < 90, or pulse > 120 |
+| **MEDIUM** | Temperature ≥ 38 °C, diarrhoea + vomiting, BP ≥ 140 / 90, pulse > 100, or 3+ symptoms |
+| **LOW** | Everything else |
+
+**Possible conditions** (symptom patterns to test for, *not* diagnoses):
+
+| Pattern | Flag |
+|---|---|
+| Fever | Malaria (do RDT) |
+| Fever + stiff neck | Meningitis |
+| Fever + rash | Measles |
+| Diarrhoea + vomiting / unable to drink | Cholera / severe diarrhoea |
+| Cough + difficulty breathing or fever | Pneumonia |
+| BP ≥ 140 / 90 | Hypertension |
+
+These flags are also the raw data for the Week 3 outbreak dashboard (syndromic surveillance: watching symptom patterns before lab confirmation). The browser copy (`generalModel.js`) was tested against the server on 20,000 random visits with 0 differences.
+
+#### Antenatal check (pregnant patients): `backend/model.py`
 
 | Condition | Points |
 |---|---|
@@ -123,9 +148,9 @@ It is a **rule-based score** (fixed if/else rules, not machine learning), from `
 | Gestational age < 28 weeks | +10 |
 
 **≥ 50 = HIGH, ≥ 25 = MEDIUM, otherwise LOW.**
-The same rules are copied into `frontend/src/riskModel.js` so the check works offline. The server always re-scores synced checks, so its result is the official one. The two copies were tested against each other on 10,080 input combinations with 0 differences.
+The browser copy (`frontend/src/riskModel.js`) was tested against the server on 10,080 input combinations with 0 differences.
 
-> The rules are a prototype for demonstration and have **not** been clinically validated.
+> All rules are a prototype for demonstration, loosely based on WHO danger signs, and have **not** been clinically validated.
 
 ---
 
@@ -135,7 +160,7 @@ RBAC (role-based access control) means what you can see and do depends on your r
 
 | Role | Can do | Can see | Status |
 |---|---|---|---|
-| **CHV** | Register patients (with consent), record vitals, run risk check, refer | Only **their own** patients | ✅ Built |
+| **CHV** | Register patients (with consent), record general visits and antenatal checks, refer | Only **their own** patients | ✅ Built |
 | **Facility nurse / midwife** | Mark referrals arrived, record outcomes | Only referrals to **their facility** | ✅ Built |
 | **Doctor / specialist** | Telemedicine, review high-risk cases | Referred patients only | ⬜ Week 2 |
 | **GHS officer** | Surveillance dashboard | **Anonymised totals only, never names** | ⬜ Week 3 |
@@ -191,8 +216,8 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | Table | FHIR resource | Holds |
 |---|---|---|
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
-| `patients` | Patient | Name, age, community, consent, CHV owner, random reference |
-| `observations` | Observation | One antenatal check: vitals + risk score |
+| `patients` | Patient | Name, age, sex, pregnant flag, community, consent, CHV owner, random reference |
+| `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
 | `referrals` | ServiceRequest | CHV → facility request; status and outcome |
 | `access_log` | AuditEvent | Who did what to which record, and when |
 
@@ -203,7 +228,7 @@ sequenceDiagram
     participant C as CHV
     participant A as API
     participant N as Nurse
-    C->>A: POST /patients/{id}/assess (vitals)
+    C->>A: POST /patients/{id}/visit or /assess
     A-->>C: HIGH risk + advice
     C->>A: POST /observations/{id}/referral
     A->>A: Save referral (pending) + audit log
@@ -311,10 +336,13 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 
 **Full referral loop**
 1. Log in as **`chv1`** → **Register patient** (fake name, tick consent).
-2. Enter HIGH-risk vitals: gestational age `26`, BP `150/95`, Hb `8`, weight `65`, temp `36.8`, heart rate `80`, previous complications ✔ → **Check risk** → HIGH.
+2. Tick **Currently pregnant** when registering, then enter HIGH-risk antenatal vitals: gestational age `26`, BP `150/95`, Hb `8`, weight `65`, temp `36.8`, heart rate `80`, previous complications ✔ → **Check risk** → HIGH.
 3. In visit history, click **Refer to facility**.
 4. Log out → log in as **`nurse1`** → the referral is in **Waiting** → **Mark as arrived** → **Record outcome**.
 5. Log in as **`chv1`** again → the visit shows **Completed** with the outcome.
+
+**General visit**
+- Register a fake male patient → **General visit** → tick *Fever* and *Stiff neck*, temperature `39` → **Check visit** → HIGH, "Check for: Malaria, Meningitis".
 
 **Access control checks**
 - Log in as **`chv2`**: chv1's patient is not visible.
@@ -340,10 +368,14 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET | `/patients` | chv | List own patients with latest risk |
 | POST | `/patients` | chv | Register patient (consent required) |
 | GET | `/patients/{id}` | chv | Patient + check history + referral status |
-| POST | `/patients/{id}/assess` | chv | Record vitals, get risk (accepts `recorded_at` for offline syncs) |
+| POST | `/patients/{id}/visit` | chv | General visit: symptoms + optional vitals → triage + possible conditions |
+| POST | `/patients/{id}/assess` | chv | Antenatal check (pregnant patients only) → risk score |
+| POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
 | POST | `/observations/{id}/referral` | chv | Refer a HIGH-risk check to the CHV's facility |
 | GET | `/referrals` | nurse | Referral inbox for the nurse's facility |
 | POST | `/referrals/{id}/status` | nurse | Set `arrived` or `completed` (+ outcome) |
+
+Both check routes accept `recorded_at` for checks done offline and synced later.
 
 Status codes: **401** not logged in / bad token · **403** wrong role · **404** not found *or* not yours · **400** rule broken (no consent, not HIGH, already referred) · **422** invalid input.
 
@@ -358,7 +390,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── auth.py            # bcrypt hashing, JWT, require_role, offline key
 │   ├── database.py        # SQLite tables (FHIR-aligned) + audit log helper
 │   ├── schemas.py         # Request validation (Pydantic)
-│   ├── model.py           # Rule-based risk score (official copy)
+│   ├── model.py           # Antenatal risk score (official copy)
+│   ├── general_model.py   # General visit triage + possible conditions (official copy)
 │   ├── seed.py            # Creates fake demo accounts
 │   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
 │   ├── requirements.txt
@@ -373,7 +406,10 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── NurseApp.jsx       # Nurse referral inbox
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
-        ├── riskModel.js       # Offline copy of the risk rules
+        ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
+        ├── GeneralVisitForm.jsx, AntenatalForm.jsx
+        ├── riskModel.js       # Offline copy of the antenatal rules
+        ├── generalModel.js    # Offline copy of the general visit rules
         ├── offlineQueue.js    # Queue + sync for offline checks
         ├── crypto.js          # AES-GCM encrypt/decrypt
         ├── i18n.js            # English + Twi text
@@ -394,6 +430,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Redesign as HealthConnect Ghana (Storm Surfers)
 - [x] Offline risk check with automatic sync
 - [x] Encrypt the offline queue (AES-GCM)
+- [x] General visits for any patient (symptoms, triage, possible conditions); antenatal kept as a module
 
 ### 🟡 Phase 2: Week 2, Telemedicine and referrals (Henry and Clifford, in progress)
 - [x] Referral records and nurse inbox with outcomes
@@ -447,7 +484,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Login, RBAC, audit log, consent, referrals, nurse inbox | **Built and working** (local) |
 | Offline risk check and encrypted queue | **Built and working** (browser) |
 | Referral SMS | **Built**; works only with a valid Arkesel key and a registered sender ID |
-| Risk scoring | **Rule-based**, not ML; not clinically validated |
+| Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Experiment only, not used.** Trained on the Kaggle Maternal Health Risk dataset (1,013 rows, Bangladesh), which is not representative of Ghana |
 | Cloud hosting | **Not yet**: runs on a laptop with SQLite |
 | GHS / NHIS / DHIMS2 integration | **Not built**: described only; no access to real systems |
@@ -468,7 +505,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 
 ## 15. Prior work
 
-HealthConnect builds on **SafeArrive**, an antenatal risk-assessment PWA for CHVs that Henry Kofi Brandoh built at a hackathon in April 2026. SafeArrive provided the starting React/FastAPI code, the rule-based risk score and the English/Twi idea. It is declared here as prior work. Everything listed in §3 as done for PROSIT 2 (login, RBAC, database, audit log, offline mode, encryption, referrals, nurse inbox, redesign) was built for this project.
+HealthConnect builds on **SafeArrive**, an antenatal risk-assessment PWA for CHVs that Henry Kofi Brandoh built at a hackathon in April 2026. SafeArrive provided the starting React/FastAPI code, the rule-based risk score and the English/Twi idea. It is declared here as prior work. Everything listed in §3 as done for PROSIT 2 (login, RBAC, database, audit log, offline mode, encryption, referrals, nurse inbox, general visits for all patients, redesign) was built for this project.
 
 ---
 

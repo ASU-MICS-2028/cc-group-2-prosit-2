@@ -1,0 +1,252 @@
+import { useState, useEffect, useRef } from "react";
+import { api } from "./api";
+import RiskBadge from "./RiskBadge";
+import ConditionChips from "./ConditionChips";
+import AntenatalForm from "./AntenatalForm";
+import GeneralVisitForm from "./GeneralVisitForm";
+import { RISK_STYLE, REFERRAL_STYLE } from "./styles";
+import { predictRisk } from "./riskModel";
+import { assessGeneral } from "./generalModel";
+import { addPending } from "./offlineQueue";
+
+export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
+  const [data, setData] = useState(null);
+  const [kind, setKind] = useState("general"); // general | antenatal
+  const [latest, setLatest] = useState(null);
+  const [formKey, setFormKey] = useState(0); // changing it clears the form
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [smsState, setSmsState] = useState({}); // observation id -> "sending" | "failed" | "noSms"
+  const opened = useRef(false);
+
+  const load = () => api(`/patients/${patientId}`).then(setData).catch((err) => setError(err.message));
+
+  useEffect(() => {
+    api(`/patients/${patientId}`)
+      .then((d) => {
+        setData(d);
+        // Pregnant patients open on the antenatal check (first load only, not after each sync)
+        if (!opened.current) {
+          opened.current = true;
+          if (d.patient.pregnant) setKind("antenatal");
+        }
+      })
+      .catch((err) => setError(err.message));
+  }, [patientId, syncTick]);
+
+  const finish = (result) => {
+    setLatest(result);
+    setFormKey((k) => k + 1);
+  };
+
+  // No signal: check on the phone and queue it (encrypted) for the server
+  const saveOffline = async (path, body) => {
+    const local = kind === "general" ? assessGeneral(body) : predictRisk(data.patient.age, body);
+    try {
+      await addPending(user.id, { path, body: { ...body, recorded_at: new Date().toISOString() } });
+    } catch (err) {
+      return setError(err.message);
+    }
+    onQueued();
+    finish({ ...local, offline: true });
+  };
+
+  const handleSubmit = async (body) => {
+    setError("");
+    setLoading(true);
+    const path = kind === "general" ? `/patients/${patientId}/visit` : `/patients/${patientId}/assess`;
+
+    if (!navigator.onLine) {
+      await saveOffline(path, body);
+    } else {
+      try {
+        const res = await api(path, { method: "POST", body });
+        finish({
+          risk_level: res.observation.risk_level,
+          possible_conditions: res.observation.possible_conditions,
+          advice: res.advice,
+        });
+        load();
+      } catch (err) {
+        // TypeError = the request never reached the server (weak signal)
+        if (err instanceof TypeError) await saveOffline(path, body);
+        else setError(err.message);
+      }
+    }
+    setLoading(false);
+  };
+
+  const togglePregnancy = async () => {
+    setError("");
+    try {
+      await api(`/patients/${patientId}/pregnancy`, { method: "POST", body: { pregnant: !data.patient.pregnant } });
+      setKind(data.patient.pregnant ? "general" : "antenatal");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleReferral = async (obsId) => {
+    setSmsState({ ...smsState, [obsId]: "sending" });
+    try {
+      // The referral is saved even if the SMS fails; the facility sees it in its inbox
+      const res = await api(`/observations/${obsId}/referral`, { method: "POST" });
+      setSmsState({ ...smsState, [obsId]: res.sms_sent ? undefined : "noSms" });
+      load();
+    } catch {
+      setSmsState({ ...smsState, [obsId]: "failed" });
+    }
+  };
+
+  if (!data) return error ? <p className="text-red-600">{error}</p> : null;
+  const { patient, observations } = data;
+  const canBePregnant = patient.sex === "female" && patient.age >= 10;
+
+  return (
+    <>
+      <button onClick={onBack} className="text-sm text-teal-700 hover:underline">← {t.back}</button>
+
+      {/* Patient summary */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-teal-800 to-teal-600 p-6 text-white">
+        <div>
+          <p className="font-mono text-sm text-amber-300">{patient.ref}</p>
+          <h1 className="text-2xl font-bold">{patient.full_name}</h1>
+          <p className="text-sm text-teal-100">
+            {t[patient.sex] || ""} · {t.age} {patient.age}
+            {patient.community && ` · ${patient.community}`}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {patient.pregnant ? (
+              <span className="rounded-full bg-pink-200 px-2.5 py-0.5 text-xs font-semibold text-pink-900">{t.pregnantTag}</span>
+            ) : null}
+            {canBePregnant && (
+              <button onClick={togglePregnancy} className="rounded-full border border-white/40 px-2.5 py-0.5 text-xs hover:bg-white/10">
+                {patient.pregnant ? t.markNotPregnant : t.markPregnant}
+              </button>
+            )}
+          </div>
+        </div>
+        <RiskBadge level={observations[0]?.risk_level} t={t} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-5">
+        {/* New check */}
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 lg:col-span-3">
+          <div className="flex gap-1 rounded-xl bg-stone-100 p-1">
+            {[
+              ["general", t.generalVisit],
+              ["antenatal", t.antenatalCheck],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setKind(key);
+                  setLatest(null);
+                }}
+                disabled={key === "antenatal" && !patient.pregnant}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  kind === key ? "bg-white text-teal-800 shadow" : "text-stone-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {!patient.pregnant && <p className="mt-2 text-xs text-stone-500">{t.antenatalHint}</p>}
+
+          <div className="mt-5">
+            {kind === "general" ? (
+              <GeneralVisitForm key={`g${formKey}`} t={t} loading={loading} onSubmit={handleSubmit} />
+            ) : (
+              <AntenatalForm key={`a${formKey}`} t={t} loading={loading} onSubmit={handleSubmit} />
+            )}
+          </div>
+
+          {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+          {latest && (
+            <div className={`mt-5 rounded-xl p-4 ring-1 ${RISK_STYLE[latest.risk_level]}`}>
+              <p className="text-lg font-bold">
+                {t.riskLevel}: {latest.risk_level}
+              </p>
+              <p className="mt-1 text-sm">{latest.advice}</p>
+              <ConditionChips conditions={latest.possible_conditions} t={t} />
+              {latest.possible_conditions?.length > 0 && <p className="mt-1 text-xs opacity-80">{t.possibleNote}</p>}
+              {latest.offline && <p className="mt-2 text-xs font-medium">{t.offlineResult}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* History */}
+        <div className="lg:col-span-2">
+          <h2 className="text-lg font-semibold text-stone-800">{t.history}</h2>
+          <div className="mt-4 space-y-3">
+            {observations.length === 0 && <p className="text-sm text-stone-500">{t.noHistory}</p>}
+            {observations.map((o) => (
+              <div key={o.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold text-stone-700">
+                      {o.visit_type === "general" ? t.generalVisit : t.antenatalCheck}
+                    </p>
+                    <p className="text-xs text-stone-500">{o.created_at}</p>
+                  </div>
+                  <RiskBadge level={o.risk_level} t={t} />
+                </div>
+                <VisitSummary o={o} t={t} />
+
+                {o.risk_level === "HIGH" &&
+                  (o.referral_sent ? (
+                    <div className="mt-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
+                        {t["referral_" + o.referral_status]}
+                      </span>
+                      {o.referral_outcome && <p className="mt-2 text-sm text-stone-700">{o.referral_outcome}</p>}
+                      {smsState[o.id] === "noSms" && <p className="mt-2 text-xs text-amber-700">{t.smsNotDelivered}</p>}
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleReferral(o.id)}
+                        disabled={smsState[o.id] === "sending"}
+                        className="mt-3 w-full rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {smsState[o.id] === "sending" ? t.sending : t.sendReferral}
+                      </button>
+                      {smsState[o.id] === "failed" && <p className="mt-2 text-xs text-red-600">{t.referralFailed}</p>}
+                    </>
+                  ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// One line of key readings, different for each kind of check
+export function VisitSummary({ o, t }) {
+  if (o.visit_type !== "general") {
+    return (
+      <p className="mt-2 text-sm text-stone-700">
+        BP {o.systolic_bp}/{o.diastolic_bp} · Hb {o.hemoglobin} · {o.gestational_age} wks
+      </p>
+    );
+  }
+  const readings = [
+    o.body_temp != null && `${o.body_temp}°C`,
+    o.systolic_bp != null && `BP ${o.systolic_bp}/${o.diastolic_bp ?? "?"}`,
+    o.heart_rate != null && `${o.heart_rate} bpm`,
+  ].filter(Boolean);
+  const symptoms = (o.symptoms || "").split(",").filter(Boolean).map((s) => t["sym_" + s] || s);
+  return (
+    <>
+      {readings.length > 0 && <p className="mt-2 text-sm text-stone-700">{readings.join(" · ")}</p>}
+      {symptoms.length > 0 && <p className="mt-1 text-sm text-stone-600">{symptoms.join(", ")}</p>}
+      <ConditionChips conditions={o.possible_conditions} t={t} />
+      {o.notes && <p className="mt-1 text-xs italic text-stone-500">{o.notes}</p>}
+    </>
+  );
+}

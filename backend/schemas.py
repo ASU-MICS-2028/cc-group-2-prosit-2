@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
@@ -10,10 +10,33 @@ class LoginRequest(BaseModel):
 
 
 class PatientCreate(BaseModel):
-    full_name: str
-    age: int
+    full_name: str = Field(min_length=1, max_length=100)
+    age: int = Field(ge=0, le=120)
+    sex: Literal["female", "male"]
+    pregnant: bool = False
     community: str = ""
     consent: bool
+
+
+class PregnancyUpdate(BaseModel):
+    pregnant: bool
+
+
+Symptom = Literal[
+    "fever", "cough", "difficulty_breathing", "diarrhoea", "vomiting", "rash",
+    "severe_headache", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink",
+]
+
+
+class VisitIn(BaseModel):
+    # General visit: every vital is optional (not every CHV has a BP cuff)
+    temperature: float | None = Field(None, ge=30, le=45)
+    systolic_bp: int | None = Field(None, ge=50, le=260)
+    diastolic_bp: int | None = Field(None, ge=30, le=160)
+    heart_rate: int | None = Field(None, ge=20, le=250)
+    symptoms: list[Symptom] = []
+    notes: str = Field("", max_length=500)
+    recorded_at: datetime | None = None
 
 
 class PatientData(BaseModel):

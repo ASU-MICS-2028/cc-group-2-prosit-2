@@ -32,16 +32,22 @@ def init_db():
         chv_id     INTEGER NOT NULL REFERENCES users(id),
         full_name  TEXT NOT NULL,
         age        INTEGER NOT NULL,
+        sex        TEXT CHECK (sex IN ('female','male')),
+        pregnant   INTEGER NOT NULL DEFAULT 0,
         community  TEXT,
         consent    INTEGER NOT NULL CHECK (consent = 1),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- FHIR Observation. One row per vitals check + its risk result
+    -- FHIR Observation. One row per check: 'antenatal' or 'general' visit
     CREATE TABLE IF NOT EXISTS observations (
         id                     INTEGER PRIMARY KEY AUTOINCREMENT,
         patient_id             INTEGER NOT NULL REFERENCES patients(id),
         recorded_by            INTEGER NOT NULL REFERENCES users(id),
+        visit_type             TEXT NOT NULL DEFAULT 'antenatal' CHECK (visit_type IN ('antenatal','general')),
+        symptoms               TEXT,      -- general visit: comma-separated symptom codes
+        possible_conditions    TEXT,      -- general visit: e.g. 'malaria,meningitis' (not a diagnosis)
+        notes                  TEXT,
         gestational_age        INTEGER,
         systolic_bp            INTEGER,
         diastolic_bp           INTEGER,
@@ -79,8 +85,29 @@ def init_db():
         timestamp TEXT NOT NULL DEFAULT (datetime('now'))
     );
     """)
+    migrate(conn)
     conn.commit()
     conn.close()
+
+
+def add_column_if_missing(conn, table, column, definition):
+    columns = [row["name"] for row in conn.execute(f"PRAGMA table_info({table})")]
+    if column in columns:
+        return False
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    return True
+
+
+def migrate(conn):
+    # Databases created before general visits existed get the new columns.
+    # Their patients were all antenatal, so they are marked female + pregnant.
+    if add_column_if_missing(conn, "patients", "sex", "TEXT CHECK (sex IN ('female','male'))"):
+        add_column_if_missing(conn, "patients", "pregnant", "INTEGER NOT NULL DEFAULT 0")
+        conn.execute("UPDATE patients SET sex = 'female', pregnant = 1")
+    add_column_if_missing(conn, "observations", "visit_type", "TEXT NOT NULL DEFAULT 'antenatal'")
+    add_column_if_missing(conn, "observations", "symptoms", "TEXT")
+    add_column_if_missing(conn, "observations", "possible_conditions", "TEXT")
+    add_column_if_missing(conn, "observations", "notes", "TEXT")
 
 
 def log_access(conn, user_id, action, resource=None):

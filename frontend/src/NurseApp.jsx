@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
+import { VisitSummary } from "./PatientDetail";
 import { REFERRAL_STYLE, inputClass } from "./styles";
 
 export default function NurseApp(props) {
@@ -98,8 +99,11 @@ function ReferralCard({ r, t, onChanged }) {
             <RiskBadge level={r.risk_level} t={t} />
           </div>
           <p className="text-sm text-stone-500">
-            <span className="font-mono">{r.ref}</span> · {t.age} {r.age}
+            <span className="font-mono">{r.ref}</span> · {t[r.sex] || ""} · {t.age} {r.age}
             {r.community && ` · ${r.community}`}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-stone-600">
+            {r.visit_type === "general" ? t.generalVisit : t.antenatalCheck}
           </p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[r.status]}`}>
@@ -107,20 +111,26 @@ function ReferralCard({ r, t, onChanged }) {
         </span>
       </div>
 
-      {/* The vitals that triggered the referral */}
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-        {[
-          ["BP", `${r.systolic_bp}/${r.diastolic_bp}`],
-          ["Hb", `${r.hemoglobin} g/dL`],
-          [t.gestational_age, `${r.gestational_age} wks`],
-          [t.previousComplicationsShort, r.previous_complications ? "Yes" : "No"],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-xl bg-stone-50 px-3 py-2">
-            <p className="text-xs text-stone-500">{label}</p>
-            <p className="font-medium text-stone-800">{value}</p>
-          </div>
-        ))}
-      </div>
+      {/* The readings that triggered the referral */}
+      {r.visit_type === "general" ? (
+        <div className="mt-3 rounded-xl bg-stone-50 px-3 py-2">
+          <VisitSummary o={r} t={t} />
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          {[
+            ["BP", `${r.systolic_bp}/${r.diastolic_bp}`],
+            ["Hb", `${r.hemoglobin} g/dL`],
+            [t.gestational_age, `${r.gestational_age} wks`],
+            [t.previousComplicationsShort, r.previous_complications ? "Yes" : "No"],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-stone-50 px-3 py-2">
+              <p className="text-xs text-stone-500">{label}</p>
+              <p className="font-medium text-stone-800">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="mt-3 text-xs text-stone-500">
         {t.referredBy} {r.chv_name} · {r.created_at}

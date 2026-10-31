@@ -2,20 +2,9 @@ import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
-import { RISK_STYLE, REFERRAL_STYLE, inputClass } from "./styles";
-import { predictRisk } from "./riskModel";
-import { addPending, getPending, syncPending } from "./offlineQueue";
-
-// field name, unit, example value (shown as placeholder)
-const VITALS = [
-  ["gestational_age", "weeks", "28"],
-  ["systolic_bp", "mmHg", "120"],
-  ["diastolic_bp", "mmHg", "80"],
-  ["weight", "kg", "65"],
-  ["hemoglobin", "g/dL", "11.5"],
-  ["body_temp", "°C", "36.8"],
-  ["heart_rate", "bpm", "80"],
-];
+import PatientDetail from "./PatientDetail";
+import { inputClass } from "./styles";
+import { getPending, syncPending } from "./offlineQueue";
 
 export default function ChvApp(props) {
   const { t, user } = props;
@@ -66,6 +55,7 @@ export default function ChvApp(props) {
         {view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
         {view === "patient" && (
           <PatientDetail
+            key={selectedId}
             t={t}
             user={user}
             patientId={selectedId}
@@ -139,9 +129,14 @@ function PatientList({ t, patients, onOpen, onRegister }) {
                 {p.full_name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="font-semibold text-stone-800">{p.full_name}</p>
+                <p className="font-semibold text-stone-800">
+                  {p.full_name}
+                  {p.pregnant ? (
+                    <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 align-middle text-xs font-medium text-pink-800">{t.pregnantTag}</span>
+                  ) : null}
+                </p>
                 <p className="text-xs text-stone-500">
-                  <span className="font-mono">{p.ref}</span> · {t.age} {p.age}
+                  <span className="font-mono">{p.ref}</span> · {t[p.sex] || ""} · {t.age} {p.age}
                   {p.community && ` · ${p.community}`}
                 </p>
               </div>
@@ -155,7 +150,8 @@ function PatientList({ t, patients, onOpen, onRegister }) {
 }
 
 function RegisterPatient({ t, onDone, onBack }) {
-  const [form, setForm] = useState({ full_name: "", age: "", community: "", consent: false });
+  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, community: "", consent: false });
+  const canBePregnant = form.sex === "female" && Number(form.age) >= 10;
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -166,7 +162,7 @@ function RegisterPatient({ t, onDone, onBack }) {
     try {
       const patient = await api("/patients", {
         method: "POST",
-        body: { ...form, age: Number(form.age) },
+        body: { ...form, age: Number(form.age), pregnant: canBePregnant && form.pregnant },
       });
       onDone(patient.id);
     } catch (err) {
@@ -188,12 +184,31 @@ function RegisterPatient({ t, onDone, onBack }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">{t.age}</label>
-            <input required type="number" min="10" max="60" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className={inputClass} />
+            <input required type="number" min="0" max="120" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className={inputClass} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">{t.community}</label>
-            <input value={form.community} onChange={(e) => setForm({ ...form, community: e.target.value })} className={inputClass} />
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t.sex}</label>
+            <select required value={form.sex} onChange={(e) => setForm({ ...form, sex: e.target.value })} className={inputClass}>
+              <option value="" disabled>–</option>
+              <option value="female">{t.female}</option>
+              <option value="male">{t.male}</option>
+            </select>
           </div>
+        </div>
+        {canBePregnant && (
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-pink-200 bg-pink-50 p-3 text-sm text-pink-900">
+            <input
+              type="checkbox"
+              checked={form.pregnant}
+              onChange={(e) => setForm({ ...form, pregnant: e.target.checked })}
+              className="h-5 w-5 accent-pink-600"
+            />
+            {t.pregnantNow}
+          </label>
+        )}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-stone-700">{t.community}</label>
+          <input value={form.community} onChange={(e) => setForm({ ...form, community: e.target.value })} className={inputClass} />
         </div>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-teal-50 p-4 text-sm text-teal-900">
@@ -217,185 +232,5 @@ function RegisterPatient({ t, onDone, onBack }) {
         </button>
       </form>
     </div>
-  );
-}
-
-function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
-  const [data, setData] = useState(null);
-  const [vitals, setVitals] = useState({ previous_complications: false });
-  const [latest, setLatest] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [smsState, setSmsState] = useState({}); // observation id -> "sending" | "failed"
-
-  const load = () => api(`/patients/${patientId}`).then(setData).catch((err) => setError(err.message));
-
-  useEffect(() => {
-    api(`/patients/${patientId}`).then(setData).catch((err) => setError(err.message));
-  }, [patientId, syncTick]);
-
-  // No signal: score on the phone and queue the check for the server
-  const assessOffline = async (body) => {
-    const local = predictRisk(data.patient.age, body);
-    try {
-      await addPending(user.id, { patientId, body: { ...body, recorded_at: new Date().toISOString() } });
-    } catch (err) {
-      return setError(err.message);
-    }
-    onQueued();
-    setLatest({ observation: { risk_level: local.risk_level }, advice: local.advice, offline: true });
-    setVitals({ previous_complications: false });
-  };
-
-  const handleAssess = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    const body = { previous_complications: vitals.previous_complications };
-    VITALS.forEach(([name]) => (body[name] = Number(vitals[name])));
-
-    if (!navigator.onLine) {
-      await assessOffline(body);
-    } else {
-      try {
-        const result = await api(`/patients/${patientId}/assess`, { method: "POST", body });
-        setLatest(result);
-        setVitals({ previous_complications: false });
-        load();
-      } catch (err) {
-        // TypeError = the request never reached the server (weak signal)
-        if (err instanceof TypeError) await assessOffline(body);
-        else setError(err.message);
-      }
-    }
-    setLoading(false);
-  };
-
-  const handleReferral = async (obsId) => {
-    setSmsState({ ...smsState, [obsId]: "sending" });
-    try {
-      // The referral is saved even if the SMS fails; the facility sees it in its inbox
-      const res = await api(`/observations/${obsId}/referral`, { method: "POST" });
-      setSmsState({ ...smsState, [obsId]: res.sms_sent ? undefined : "noSms" });
-      load();
-    } catch {
-      setSmsState({ ...smsState, [obsId]: "failed" });
-    }
-  };
-
-  if (!data) return error ? <p className="text-red-600">{error}</p> : null;
-  const { patient, observations } = data;
-
-  return (
-    <>
-      <button onClick={onBack} className="text-sm text-teal-700 hover:underline">← {t.back}</button>
-
-      {/* Patient summary */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-teal-800 to-teal-600 p-6 text-white">
-        <div>
-          <p className="font-mono text-sm text-amber-300">{patient.ref}</p>
-          <h1 className="text-2xl font-bold">{patient.full_name}</h1>
-          <p className="text-sm text-teal-100">
-            {t.age} {patient.age}{patient.community && ` · ${patient.community}`}
-          </p>
-        </div>
-        <RiskBadge level={observations[0]?.risk_level} t={t} />
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        {/* New check */}
-        <form onSubmit={handleAssess} className="rounded-2xl border border-stone-200 bg-white p-6 lg:col-span-3">
-          <h2 className="text-lg font-semibold text-stone-800">{t.newCheck}</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {VITALS.map(([name, unit, example]) => (
-              <div key={name}>
-                <label className="mb-1 block text-xs font-medium text-stone-600">{t[name]}</label>
-                <div className="relative">
-                  <input
-                    required
-                    type="number"
-                    step="any"
-                    placeholder={example}
-                    value={vitals[name] ?? ""}
-                    onChange={(e) => setVitals({ ...vitals, [name]: e.target.value })}
-                    className={`${inputClass} pr-14`}
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">{unit}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <label className="mt-4 flex cursor-pointer items-center gap-3 text-sm text-stone-700">
-            <input
-              type="checkbox"
-              checked={vitals.previous_complications}
-              onChange={(e) => setVitals({ ...vitals, previous_complications: e.target.checked })}
-              className="h-5 w-5 accent-teal-700"
-            />
-            {t.previous_complications}
-          </label>
-
-          {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-5 w-full rounded-xl bg-teal-700 py-3 font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
-          >
-            {loading ? t.assessing : t.assess}
-          </button>
-
-          {latest && (
-            <div className={`mt-5 rounded-xl p-4 ring-1 ${RISK_STYLE[latest.observation.risk_level]}`}>
-              <p className="text-lg font-bold">
-                {t.riskLevel}: {latest.observation.risk_level}
-              </p>
-              <p className="mt-1 text-sm">{latest.advice}</p>
-              {latest.offline && <p className="mt-2 text-xs font-medium">{t.offlineResult}</p>}
-            </div>
-          )}
-        </form>
-
-        {/* History */}
-        <div className="lg:col-span-2">
-          <h2 className="text-lg font-semibold text-stone-800">{t.history}</h2>
-          <div className="mt-4 space-y-3">
-            {observations.length === 0 && <p className="text-sm text-stone-500">{t.noHistory}</p>}
-            {observations.map((o) => (
-              <div key={o.id} className="rounded-2xl border border-stone-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-stone-500">{o.created_at}</p>
-                  <RiskBadge level={o.risk_level} t={t} />
-                </div>
-                <p className="mt-2 text-sm text-stone-700">
-                  BP {o.systolic_bp}/{o.diastolic_bp} · Hb {o.hemoglobin} · {o.gestational_age} wks
-                </p>
-                {o.risk_level === "HIGH" &&
-                  (o.referral_sent ? (
-                    <div className="mt-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
-                        {t["referral_" + o.referral_status]}
-                      </span>
-                      {o.referral_outcome && <p className="mt-2 text-sm text-stone-700">{o.referral_outcome}</p>}
-                      {smsState[o.id] === "noSms" && <p className="mt-2 text-xs text-amber-700">{t.smsNotDelivered}</p>}
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleReferral(o.id)}
-                        disabled={smsState[o.id] === "sending"}
-                        className="mt-3 w-full rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                      >
-                        {smsState[o.id] === "sending" ? t.sending : t.sendReferral}
-                      </button>
-                      {smsState[o.id] === "failed" && <p className="mt-2 text-xs text-red-600">{t.referralFailed}</p>}
-                    </>
-                  ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
   );
 }
