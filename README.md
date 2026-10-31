@@ -54,6 +54,15 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Clifford Yeboah | Data Lead |
 | Isaac Ansah Amoah | Community & Documentation Lead |
 
+### Who is working on what
+
+| Workstream | Who | Roadmap phase |
+|---|---|---|
+| Cloud migration (AWS) | **Alice** | Phase 3 |
+| App development (Week 2 and Week 3 features, hardening) | **Henry and Clifford** | Phases 2, 4, 5 |
+| Language translation APIs (Twi and other Ghanaian languages) | **Isaac** | Phase 6 |
+| Sustainability (Week 4) | **Whole team** | Phase 7 |
+
 ---
 
 ## 3. Where we are now
@@ -386,7 +395,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Offline risk check with automatic sync
 - [x] Encrypt the offline queue (AES-GCM)
 
-### 🟡 Phase 2: Week 2, Telemedicine and referrals (in progress)
+### 🟡 Phase 2: Week 2, Telemedicine and referrals (Henry and Clifford, in progress)
 - [x] Referral records and nurse inbox with outcomes
 - [ ] **Referral prioritisation**: sort the inbox by urgency (risk score, waiting time)
 - [ ] Doctor workspace: review referred HIGH-risk cases
@@ -394,7 +403,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
 - [ ] E-prescriptions (described in the report; pharmacist not an app user)
 
-### ⬜ Phase 3: Cloud deployment (Alice, with Henry)
+### ⬜ Phase 3: Cloud migration (Alice)
 - [ ] Move the database from SQLite to **AWS RDS** (eu-north-1), encrypted at rest
 - [ ] Host the API (e.g. EC2 / App Runner / Lambda) behind **HTTPS (TLS)**
 - [ ] Host the PWA on S3 + CloudFront
@@ -402,20 +411,25 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Least-privilege IAM role (from Clifford's Lab 6)
 - [ ] CloudWatch logs and alarms
 
-### ⬜ Phase 4: Week 3, Surveillance (Clifford, with Henry)
+### ⬜ Phase 4: Week 3, Surveillance (Henry and Clifford)
 - [ ] GHS officer dashboard: **anonymised** district totals, never names
 - [ ] Map of HIGH-risk cases by district
 - [ ] ML prediction: evaluate the XGBoost model on suitable data before wiring it in
 - [ ] DHIMS2 integration: **described**, not built (no real GHS access)
 
-### ⬜ Phase 5: Admin and hardening
+### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
 - [ ] Admin screen: create / disable accounts (replaces `seed.py`)
 - [ ] Force password change on first login; remove demo accounts before any real use
 - [ ] Cache patient lists on the phone (encrypted) for full offline use
-- [ ] Complete the Twi translation with a native speaker
 - [ ] Automated tests in the repo
 
-### ⬜ Phase 6: Week 4, Sustainability (Isaac, with the team)
+### ⬜ Phase 6: Languages and translation (Isaac)
+- [ ] Research translation APIs for Twi and other Ghanaian languages (e.g. Ewe, Ga, Dagbani)
+- [ ] Compare them on language coverage, accuracy, cost, offline use and health-data privacy
+- [ ] Recommend one, and decide what to translate live vs. fix in `i18n.js`
+- [ ] Get the app's Twi text reviewed by a native speaker
+
+### ⬜ Phase 7: Week 4, Sustainability (whole team)
 - [ ] Insurance (NHIS) and mobile money: described and costed
 - [ ] Role of traditional medicine and healers: referral pathways
 - [ ] Community ownership model for CHVs
