@@ -146,6 +146,8 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 ### Appointments and SMS reminders (`backend/reminders.py`)
 - A nurse or doctor books a follow-up from a referral card, so **only for patients referred to their facility** (need-to-know).
 - If the patient has a phone: a **confirmation SMS** at booking, and a **reminder ~24 hours before**. Each reminder is tried **once** (no spamming).
+- Booked for **less than a day away**? The confirmation counts as the reminder, so the patient gets one SMS, not two.
+- Appointments whose time has passed but are still "booked" are **highlighted in red** so staff mark them Attended or Missed.
 - SMS text has **no name and no diagnosis** (shared phones): *"HealthConnect: Reminder: you have an appointment at Test Health Centre on Sun 01 Nov, 08:11. Ref HC-XXXXXX."*
 - No phone: the CHV sees the appointment on the patient page and reminds in person.
 - The reminder job runs **every 10 minutes inside the API** (FastAPI lifespan task). In the cloud this becomes an **EventBridge Scheduler rule calling a Lambda function**.

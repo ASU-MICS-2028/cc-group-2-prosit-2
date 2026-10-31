@@ -83,6 +83,7 @@ const text = {
     viewHistory: "View patient history",
     upcomingAppointments: "Upcoming appointments",
     noAppointments: "No upcoming appointments.",
+    overdue: "Time passed: attended or missed?",
     bookFollowUp: "Book follow-up",
     book: "Book",
     bookedFor: "Booked for",

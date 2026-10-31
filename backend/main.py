@@ -17,7 +17,7 @@ from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
 from model import predict_risk
 from priority import priority
-from reminders import appointment_message, send_due_reminders
+from reminders import REMIND_HOURS_BEFORE, appointment_message, send_due_reminders
 from schemas import (LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
                      PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus)
 from sms import send_sms
@@ -410,6 +410,11 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
     confirmed = bool(patient["phone"]) and send_sms(
         patient["phone"], appointment_message("confirm", user["facility"], when, patient["ref"])
     )
+    # Appointment less than a day away? The confirmation already serves as the reminder,
+    # so mark it done and the patient doesn't get two SMS minutes apart.
+    soon = (body.scheduled_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).total_seconds() < REMIND_HOURS_BEFORE * 3600
+    if confirmed and soon:
+        conn.execute("UPDATE appointments SET reminder_status = 'sent' WHERE id = ?", (cur.lastrowid,))
     log_access(conn, user["id"], "book_appointment", f"{patient['ref']} {when}")
     conn.commit()
     conn.close()

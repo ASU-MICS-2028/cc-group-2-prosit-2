@@ -22,6 +22,9 @@ export function AppointmentsPanel({ t, refreshKey }) {
     }
   };
 
+  // Ghana time = UTC, same format as the server: "YYYY-MM-DD HH:MM"
+  const nowText = new Date().toISOString().slice(0, 16).replace("T", " ");
+
   return (
     <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-5">
       <h2 className="text-lg font-semibold text-stone-800">
@@ -31,8 +34,13 @@ export function AppointmentsPanel({ t, refreshKey }) {
       {appointments.length === 0 && <p className="mt-2 text-sm text-stone-500">{t.noAppointments}</p>}
       <div className="mt-3 divide-y divide-stone-100">
         {appointments.map((a) => (
-          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+          <div
+            key={a.id}
+            className={`flex flex-wrap items-center justify-between gap-2 py-3 ${a.scheduled_at < nowText ? "-mx-2 rounded-lg bg-red-50 px-2" : ""}`}
+          >
             <div>
+              {/* Time has passed but nobody updated it: nudge staff to mark attended or missed */}
+              {a.scheduled_at < nowText && <p className="text-xs font-semibold text-red-700">⏰ {t.overdue}</p>}
               <p className="font-medium text-stone-800">
                 {a.scheduled_at} · {a.full_name} <span className="font-mono text-xs text-stone-500">{a.ref}</span>
               </p>
