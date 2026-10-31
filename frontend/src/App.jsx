@@ -17,13 +17,19 @@ export default function App() {
     if (!sessionStorage.getItem("hc_token")) return;
     api("/auth/me")
       .then(setUser)
-      .catch(() => sessionStorage.clear())
+      .catch((err) => {
+        // No signal (fetch fails with TypeError): stay logged in with the saved details.
+        // Any other error means the token is bad: log out.
+        if (err instanceof TypeError) setUser(JSON.parse(sessionStorage.getItem("hc_user")));
+        else sessionStorage.clear();
+      })
       .finally(() => setChecking(false));
   }, []);
 
   const handleLogin = (token, userInfo) => {
     // sessionStorage is wiped when the tab closes (safer on shared phones)
     sessionStorage.setItem("hc_token", token);
+    sessionStorage.setItem("hc_user", JSON.stringify(userInfo));
     setUser(userInfo);
   };
 

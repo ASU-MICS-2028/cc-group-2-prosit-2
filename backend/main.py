@@ -142,16 +142,19 @@ def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv")))
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
 
+    # The server always re-scores, even for offline checks: its result is the official one
     risk_score, risk_level = predict_risk(PatientData(age=patient["age"], **vitals.model_dump()))
 
     cur = conn.execute("""
         INSERT INTO observations (patient_id, recorded_by, gestational_age, systolic_bp, diastolic_bp,
-            weight, hemoglobin, body_temp, heart_rate, previous_complications, risk_score, risk_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            weight, hemoglobin, body_temp, heart_rate, previous_complications, risk_score, risk_level,
+            created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
     """, (patient_id, user["id"], vitals.gestational_age, vitals.systolic_bp, vitals.diastolic_bp,
           vitals.weight, vitals.hemoglobin, vitals.body_temp, vitals.heart_rate,
-          int(vitals.previous_complications), risk_score, risk_level))
-    log_access(conn, user["id"], "assess_patient", patient["ref"])
+          int(vitals.previous_complications), risk_score, risk_level,
+          vitals.recorded_at.strftime("%Y-%m-%d %H:%M:%S") if vitals.recorded_at else None))
+    log_access(conn, user["id"], "sync_offline_check" if vitals.recorded_at else "assess_patient", patient["ref"])
     conn.commit()
     observation = conn.execute("SELECT * FROM observations WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.close()

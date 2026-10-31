@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -35,3 +37,5 @@ class VitalsIn(BaseModel):
     body_temp: float
     heart_rate: int
     previous_complications: bool
+    # Set by the phone when the check was done offline and synced later (UTC)
+    recorded_at: datetime | None = None

@@ -54,6 +54,8 @@ const text = {
     referralSent: "Referral sent",
     referralFailed: "SMS failed. Check the Arkesel key on the server.",
     comingSoon: "Your workspace is coming soon",
+    pendingSync: "check(s) saved on this phone, waiting for signal to sync.",
+    offlineResult: "Offline result, calculated on this phone. It will sync when you have signal.",
   },
   tw: {
     login: "Hyɛ Ase",

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
+import { predictRisk } from "./riskModel";
+import { addPending, getPending, syncPending } from "./offlineQueue";
 
 const RISK_STYLE = {
   HIGH: "bg-red-100 text-red-700 ring-red-200",
@@ -30,16 +32,27 @@ function RiskBadge({ level, t }) {
 }
 
 export default function ChvApp(props) {
-  const { t } = props;
+  const { t, user } = props;
   const [view, setView] = useState("list"); // list | register | patient
   const [patients, setPatients] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [pendingCount, setPendingCount] = useState(() => getPending(user.id).length);
+  const [syncTick, setSyncTick] = useState(0); // bumps after a sync so screens reload
 
   const loadPatients = () => api("/patients").then(setPatients).catch(() => {});
 
   useEffect(() => {
-    loadPatients();
-  }, []);
+    // Send any offline checks now, and again whenever signal comes back
+    const sync = () =>
+      syncPending(user.id).then(() => {
+        setPendingCount(getPending(user.id).length);
+        setSyncTick((n) => n + 1);
+        loadPatients();
+      });
+    sync();
+    window.addEventListener("online", sync);
+    return () => window.removeEventListener("online", sync);
+  }, [user.id]);
 
   const openPatient = (id) => {
     setSelectedId(id);
@@ -55,11 +68,26 @@ export default function ChvApp(props) {
     <div className="min-h-screen bg-stone-50">
       <Header {...props} />
       <main className="mx-auto max-w-5xl px-4 py-6">
+        {pendingCount > 0 && (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            {pendingCount} {t.pendingSync}
+          </div>
+        )}
         {view === "list" && (
           <PatientList t={t} patients={patients} onOpen={openPatient} onRegister={() => setView("register")} />
         )}
         {view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
-        {view === "patient" && <PatientDetail t={t} patientId={selectedId} onBack={goToList} />}
+        {view === "patient" && (
+          <PatientDetail
+            t={t}
+            user={user}
+            patientId={selectedId}
+            syncTick={syncTick}
+            onQueued={() => setPendingCount(getPending(user.id).length)}
+            onBack={goToList}
+          />
+        )}
         <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
       </main>
     </div>
@@ -206,7 +234,7 @@ function RegisterPatient({ t, onDone, onBack }) {
   );
 }
 
-function PatientDetail({ t, patientId, onBack }) {
+function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
   const [data, setData] = useState(null);
   const [vitals, setVitals] = useState({ previous_complications: false });
   const [latest, setLatest] = useState(null);
@@ -218,21 +246,42 @@ function PatientDetail({ t, patientId, onBack }) {
 
   useEffect(() => {
     api(`/patients/${patientId}`).then(setData).catch((err) => setError(err.message));
-  }, [patientId]);
+  }, [patientId, syncTick]);
+
+  // No signal: score on the phone and queue the check for the server
+  const assessOffline = (body) => {
+    const local = predictRisk(data.patient.age, body);
+    addPending({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      patientId,
+      body: { ...body, recorded_at: new Date().toISOString() },
+    });
+    onQueued();
+    setLatest({ observation: { risk_level: local.risk_level }, advice: local.advice, offline: true });
+    setVitals({ previous_complications: false });
+  };
 
   const handleAssess = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const body = { previous_complications: vitals.previous_complications };
-      VITALS.forEach(([name]) => (body[name] = Number(vitals[name])));
-      const result = await api(`/patients/${patientId}/assess`, { method: "POST", body });
-      setLatest(result);
-      setVitals({ previous_complications: false });
-      load();
-    } catch (err) {
-      setError(err.message);
+    const body = { previous_complications: vitals.previous_complications };
+    VITALS.forEach(([name]) => (body[name] = Number(vitals[name])));
+
+    if (!navigator.onLine) {
+      assessOffline(body);
+    } else {
+      try {
+        const result = await api(`/patients/${patientId}/assess`, { method: "POST", body });
+        setLatest(result);
+        setVitals({ previous_complications: false });
+        load();
+      } catch (err) {
+        // TypeError = the request never reached the server (weak signal)
+        if (err instanceof TypeError) assessOffline(body);
+        else setError(err.message);
+      }
     }
     setLoading(false);
   };
@@ -316,6 +365,7 @@ function PatientDetail({ t, patientId, onBack }) {
                 {t.riskLevel}: {latest.observation.risk_level}
               </p>
               <p className="mt-1 text-sm">{latest.advice}</p>
+              {latest.offline && <p className="mt-2 text-xs font-medium">{t.offlineResult}</p>}
             </div>
           )}
         </form>
