@@ -47,7 +47,7 @@ def send_sms(data: dict):
         phone = "233" + phone[1:]
     
     message = f"""SafeArrive Alert 🚨
-Patient: {data['patient_name']}
+Ref: {data['patient_ref']}
 Age: {data['age']}
 Risk: {data['risk_level']}
 CHW: {data['chw_name']}
@@ -66,5 +66,6 @@ Please prepare to receive this patient immediately."""
     )
     
     result = response.json()
-    print("ARKESEL RESPONSE:", result)
-    return {"success": result.get("code") == "ok", "debug": result}
+    # Log only the status code; the full reply has account details we don't need
+    print("ARKESEL STATUS:", result.get("code"))
+    return {"success": result.get("code") == "ok"}

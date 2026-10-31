@@ -127,6 +127,9 @@ export default function App() {
     setLoading(false);
   };
 
+  // Short reference sent instead of the patient's name (data minimisation, Act 843)
+  const patientRef = (id) => "HC-" + String(id).slice(-6);
+
   const handleSendSMS = async (patientId) => {
     const patient = patients.find((p) => p.id === patientId);
     if (!patient) return;
@@ -135,7 +138,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient_name: patient.name,
+          patient_ref: patientRef(patient.id),
           age: patient.age,
           risk_level: patient.risk_level,
           chw_name: chw.name,
@@ -381,6 +384,7 @@ export default function App() {
                   <span className="text-2xl">{riskIcon[result.risk_level]}</span>
                   <h2 className="text-lg font-bold">{t.risk}: {result.risk_level}</h2>
                 </div>
+                <p className="text-xs mb-2">Ref: {patientRef(result.id)}</p>
                 <p className="text-sm mb-3 leading-relaxed">{result.explanation}</p>
                 {result.risk_level === "HIGH" && (
                   <button
@@ -431,7 +435,7 @@ export default function App() {
                 >
                   <div>
                     <p className="font-semibold text-gray-800 text-sm">{p.name}</p>
-                    <p className="text-xs text-gray-400">Age {p.age} · {p.time}</p>
+                    <p className="text-xs text-gray-400">{patientRef(p.id)} · Age {p.age} · {p.time}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {p.risk_level === "HIGH" && !p.smsSent && (
