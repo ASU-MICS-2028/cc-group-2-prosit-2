@@ -12,6 +12,7 @@ load_dotenv()
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from calls import router as calls_router
 from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
 from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
@@ -47,6 +48,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
+app.include_router(calls_router)  # video consult signalling (calls.py)
 
 # Only our own frontend may call this API from a browser
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -165,7 +167,8 @@ def get_patient(patient_id: int, user=Depends(require_role("chv"))):
     # Each check comes with its referral chain: health centre (r), then hospital if escalated (e)
     observations = conn.execute("""
         SELECT o.*,
-               r.status AS referral_status, r.outcome AS referral_outcome, r.reason AS referral_reason,
+               r.id AS referral_id, r.status AS referral_status, r.outcome AS referral_outcome,
+               r.reason AS referral_reason,
                e.facility AS escalated_to, e.status AS escalated_status, e.outcome AS escalated_outcome
         FROM observations o
         LEFT JOIN referrals r ON r.observation_id = o.id AND r.parent_id IS NULL

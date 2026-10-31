@@ -3,6 +3,8 @@ import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import PatientDetail from "./PatientDetail";
+import VideoCall from "./VideoCall";
+import IncomingCalls from "./IncomingCalls";
 import { inputClass } from "./styles";
 import { getPending, syncPending } from "./offlineQueue";
 
@@ -13,6 +15,7 @@ export default function ChvApp(props) {
   const [selectedId, setSelectedId] = useState(null);
   const [pendingCount, setPendingCount] = useState(() => getPending(user.id).length);
   const [syncTick, setSyncTick] = useState(0); // bumps after a sync so screens reload
+  const [call, setCall] = useState(null); // { referralId, title } while a video call is open
 
   const loadPatients = () => api("/patients").then(setPatients).catch(() => {});
 
@@ -42,7 +45,9 @@ export default function ChvApp(props) {
   return (
     <div className="min-h-screen bg-stone-50">
       <Header {...props} />
+      {call && <VideoCall referralId={call.referralId} title={call.title} t={t} onClose={() => setCall(null)} />}
       <main className="mx-auto max-w-5xl px-4 py-6">
+        <IncomingCalls t={t} onJoin={(referralId, title) => setCall({ referralId, title })} />
         {pendingCount > 0 && (
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
@@ -61,6 +66,7 @@ export default function ChvApp(props) {
             patientId={selectedId}
             syncTick={syncTick}
             onQueued={() => setPendingCount(getPending(user.id).length)}
+            onCall={(referralId, title) => setCall({ referralId, title })}
             onBack={goToList}
           />
         )}

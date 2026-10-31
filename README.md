@@ -88,7 +88,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
-| Doctor video consults (telemedicine) | ⬜ Week 2, next |
+| Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard | ⬜ Week 3 |
 | Admin account management | ⬜ Planned |
 | Sustainability model | ⬜ Week 4 (report) |
@@ -152,6 +152,15 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - No phone: the CHV sees the appointment on the patient page and reminds in person.
 - The reminder job runs **every 10 minutes inside the API** (FastAPI lifespan task). In the cloud this becomes an **EventBridge Scheduler rule calling a Lambda function**.
 - Ghana uses GMT all year, so local time = UTC (no time-zone conversion needed).
+
+### Video consults (`backend/calls.py`, `frontend/src/VideoCall.jsx`)
+**Why:** the patient may be hours from the hospital. A live call lets the doctor (or nurse) see and hear the patient and decide "treat there" or "send now", so fewer sick patients travel and doctors can review many cases remotely.
+
+- **Who:** anyone on the same referral chain: the patient's **CHV**, the **nurse** at the health centre, the **doctor** at the hospital. Calls are **1-to-1**; a third person sees "Call busy".
+- **Start:** tap **📹 Video call** on the referral (inbox card or CHV visit history). The other side gets a banner: *"📞 Test CHV One is calling about Yaw: Join call"*.
+- **Low bandwidth:** 320×240 video at 15 fps, capped at ~150 kbps, plus an **Audio only** button for very weak signal.
+- **How it works:** **WebRTC** sends video **directly between the two browsers**. Our server is only the *introducer* (**signalling**): it passes the setup messages (offer, answer, network addresses) and nothing else. A public **STUN** server helps each side find its public address.
+- **Limits (honest):** no **TURN** relay, so some strict mobile networks may fail to connect; call rooms live in server memory (one server only; in the cloud use Redis or API Gateway WebSockets); real phones need **HTTPS** for camera access (comes with the cloud deployment). Calls are not recorded.
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
@@ -396,6 +405,11 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 **General visit**
 - Register a fake male patient → **General visit** → tick *Fever* and *Stiff neck*, temperature `39` → **Check visit** → HIGH, "Check for: Malaria, Meningitis".
 
+**Video call (two browser windows)**
+1. Window 1: log in as **`chv1`** → open a referred patient → **📹 Video call about this patient** → allow camera.
+2. Window 2 (a *new* window, not a duplicated tab): log in as **`nurse1`** → the green **"📞 Test CHV One is calling about …"** banner → **Join call**.
+3. Try **Audio only**, **Mute**, and **Hang up** (the other side sees "The other person hung up").
+
 **Access control checks**
 - Log in as **`chv2`**: chv1's patient is not visible.
 - Log in as **`nurse2`**: the inbox is empty (different facility).
@@ -428,6 +442,9 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
 | GET | `/referrals/{id}/history` | nurse, doctor | All visits of the referred patient (only if the referral is to the user's facility) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
+| GET | `/calls/active` | any | Calls waiting for this user (incoming-call banner) |
+| POST | `/calls/{referral_id}/join` · `/leave` | chv, nurse, doctor on that referral | Enter / leave the 1-to-1 call room |
+| POST/GET | `/calls/{referral_id}/signal` | same | Send / collect WebRTC setup messages (offer, answer, ice, bye) |
 | POST | `/referrals/{id}/appointments` | nurse, doctor | Book a follow-up for the referred patient (`scheduled_at`, `reason`); sends confirmation SMS |
 | GET | `/appointments` | nurse, doctor | Upcoming appointments at the user's facility, soonest first |
 | POST | `/appointments/{id}/status` | nurse, doctor | Mark `attended`, `missed` or `cancelled` |
@@ -453,6 +470,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── priority.py        # Inbox priority score (risk + danger signs + waiting time)
 │   ├── sms.py             # Arkesel SMS sender (referrals + reminders)
 │   ├── reminders.py       # Appointment confirmation + 24h reminder job
+│   ├── calls.py           # Video call signalling (WebRTC introducer)
 │   ├── seed.py            # Creates fake demo accounts
 │   ├── train_model.py     # XGBoost experiment (NOT wired in, see §13)
 │   ├── requirements.txt
@@ -467,6 +485,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── InboxApp.jsx       # Referral inbox (nurse and doctor), escalation
         ├── PatientHistory.jsx # Visit timeline for a referred patient
         ├── AppointmentsPanel.jsx # Book follow-up, upcoming list, reminder status
+        ├── VideoCall.jsx      # 1-to-1 WebRTC call screen (mute, audio only, hang up)
+        ├── IncomingCalls.jsx  # "X is calling about Y: Join" banner
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -502,7 +522,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Prioritisation: risk + danger signs + waiting time (capped), with reasons shown on each card
 - [x] Doctor workspace: patient history view for referred cases (need-to-know: only via a referral to their facility)
 - [x] Appointments: nurse/doctor books a follow-up; patient gets a confirmation SMS and a reminder ~24h before
-- [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
+- [x] Low-bandwidth video consults (WebRTC, 1-to-1) for CHV, nurse and doctor on the same referral, with audio-only mode
 - [ ] E-prescriptions (described in the report; pharmacist not an app user)
 
 ### ⬜ Phase 3: Cloud migration (Alice)
@@ -551,6 +571,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Referral + appointment SMS | **Built**; works only with a valid Arkesel key and a registered sender ID. Without a key, the app still works and shows "SMS not delivered" |
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Experiment only, not used.** Trained on the Kaggle Maternal Health Risk dataset (1,013 rows, Bangladesh), which is not representative of Ghana |
+| Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
 | Cloud hosting | **Not yet**: runs on a laptop with SQLite |
 | GHS / NHIS / DHIMS2 integration | **Not built**: described only; no access to real systems |
 | Patient data | **Fake test data only** |

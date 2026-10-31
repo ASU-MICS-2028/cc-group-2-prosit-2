@@ -5,6 +5,8 @@ import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
 import PatientHistory from "./PatientHistory";
 import { AppointmentsPanel, BookAppointment } from "./AppointmentsPanel";
+import VideoCall from "./VideoCall";
+import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
 
 const PRIORITY_STYLE = {
@@ -27,6 +29,7 @@ export default function InboxApp(props) {
   const [referrals, setReferrals] = useState([]);
   const [hospitals, setHospitals] = useState([]); // where a nurse can refer onward
   const [apptKey, setApptKey] = useState(0); // bump to reload the appointments panel
+  const [call, setCall] = useState(null); // { referralId, title } while a video call is open
   const [filter, setFilter] = useState("pending"); // all | pending | arrived | completed
   const [error, setError] = useState("");
 
@@ -50,7 +53,9 @@ export default function InboxApp(props) {
   return (
     <div className="min-h-screen bg-stone-50">
       <Header {...props} />
+      {call && <VideoCall referralId={call.referralId} title={call.title} t={t} onClose={() => setCall(null)} />}
       <main className="mx-auto max-w-5xl px-4 py-6">
+        <IncomingCalls t={t} onJoin={(referralId, title) => setCall({ referralId, title })} />
         <h1 className="text-2xl font-bold text-stone-800">{isNurse ? t.inbox : t.doctorInbox}</h1>
         <p className="mt-1 text-sm text-stone-500">
           {isNurse ? t.inboxHint : t.doctorInboxHint} <span className="font-medium text-stone-700">{user.facility}</span>
@@ -83,7 +88,7 @@ export default function InboxApp(props) {
             </div>
           )}
           {shown.map((r) => (
-            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} />
+            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} onCall={() => setCall({ referralId: r.id, title: r.full_name })} />
           ))}
         </div>
 
@@ -93,7 +98,7 @@ export default function InboxApp(props) {
   );
 }
 
-function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked }) {
+function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall }) {
   const [mode, setMode] = useState(null); // null | "outcome" (doctor writing the outcome)
   const [showHistory, setShowHistory] = useState(false);
   const [outcome, setOutcome] = useState("");
@@ -203,6 +208,9 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked }) {
       </button>
       {showHistory && <PatientHistory referralId={r.id} t={t} />}
       <BookAppointment referralId={r.id} t={t} onBooked={onBooked} />
+      <button onClick={onCall} className="mt-2 block text-sm font-medium text-teal-700 hover:underline">
+        📹 {t.videoCall}
+      </button>
 
       {r.outcome && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{r.outcome}</p>}
 

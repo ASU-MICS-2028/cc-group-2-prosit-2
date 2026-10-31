@@ -10,7 +10,7 @@ import { assessGeneral } from "./generalModel";
 import { addPending } from "./offlineQueue";
 import { ReminderNote } from "./AppointmentsPanel";
 
-export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
+export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
   const [data, setData] = useState(null);
   const [kind, setKind] = useState("general"); // general | antenatal
   const [latest, setLatest] = useState(null);
@@ -210,7 +210,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
                 <VisitSummary o={o} t={t} />
 
                 {o.referral_sent ? (
-                  <ReferralChain o={o} t={t} noSms={smsState[o.id] === "noSms"} />
+                  <ReferralChain o={o} t={t} noSms={smsState[o.id] === "noSms"} onCall={() => onCall(o.referral_id, patient.full_name)} />
                 ) : (
                   (o.risk_level === "HIGH" || o.risk_level === "MEDIUM") && (
                     <ReferButton
@@ -272,7 +272,7 @@ function ReferButton({ o, t, sending, failed, onRefer }) {
 }
 
 // Health centre status, then the hospital step if the nurse referred onward
-function ReferralChain({ o, t, noSms }) {
+function ReferralChain({ o, t, noSms, onCall }) {
   return (
     <div className="mt-3 space-y-2">
       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
@@ -296,6 +296,11 @@ function ReferralChain({ o, t, noSms }) {
         </div>
       )}
       {noSms && <p className="text-xs text-amber-700">{t.smsNotDelivered}</p>}
+      {o.referral_id && (
+        <button onClick={onCall} className="block text-sm font-medium text-teal-700 hover:underline">
+          📹 {t.videoCall}
+        </button>
+      )}
     </div>
   );
 }
