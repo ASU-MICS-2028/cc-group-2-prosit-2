@@ -78,7 +78,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Admin account management | ⬜ Planned |
 | Sustainability model | ⬜ Week 4 (report) |
 
-Work lives on the branch **`week1-security`** and will be merged into `main` after team review.
+All of this work is on the **`main`** branch.
 
 ---
 
@@ -236,11 +236,10 @@ Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data
 - **Node.js 20+** and npm
 - Git
 
-### 1. Clone and switch to the working branch
+### 1. Clone the repository
 ```bash
 git clone https://github.com/ASU-MICS-2028/cc-group-2-prosit-2.git
 cd cc-group-2-prosit-2
-git checkout week1-security
 ```
 
 ### 2. Backend (Terminal 1)
@@ -461,10 +460,10 @@ HealthConnect builds on **SafeArrive**, an antenatal risk-assessment PWA for CHV
 
 ## 16. Contributing
 
-1. Create a branch from `week1-security` (or `main` once merged): `git checkout -b your-feature`
+1. Pull the latest `main` first: `git pull origin main`
 2. Never commit `.env`, `*.db`, `venv/`, `node_modules/` or real data. `.gitignore` covers these, but check `git status` before committing.
 3. Use only fake patients and phone numbers like `0240000000`.
-4. Open a pull request and ask one teammate to review before merging.
+4. Commit with a clear message and push to `main` (open a pull request if you want a teammate to review first).
 
 ---
 
