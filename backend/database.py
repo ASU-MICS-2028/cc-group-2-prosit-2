@@ -56,6 +56,20 @@ def init_db():
         created_at             TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- FHIR ServiceRequest. A CHV asks a facility to receive a HIGH-risk patient
+    CREATE TABLE IF NOT EXISTS referrals (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        observation_id INTEGER UNIQUE NOT NULL REFERENCES observations(id),
+        patient_id     INTEGER NOT NULL REFERENCES patients(id),
+        chv_id         INTEGER NOT NULL REFERENCES users(id),
+        facility       TEXT NOT NULL,
+        status         TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','arrived','completed')),
+        outcome        TEXT,
+        updated_by     INTEGER REFERENCES users(id),
+        created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at     TEXT
+    );
+
     -- FHIR AuditEvent. Who did what to which record, and when
     CREATE TABLE IF NOT EXISTS access_log (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,

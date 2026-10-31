@@ -3,6 +3,7 @@ import { api } from "./api";
 import { getText } from "./i18n";
 import Login from "./Login";
 import ChvApp from "./ChvApp";
+import NurseApp from "./NurseApp";
 import RolePlaceholder from "./RolePlaceholder";
 
 // Sessions from before offline encryption have no key: make them log in again
@@ -50,5 +51,6 @@ export default function App() {
   // The backend still checks the role on every request.
   const shared = { user, t, lang, setLang, onLogout: handleLogout };
   if (user.role === "chv") return <ChvApp {...shared} />;
+  if (user.role === "nurse") return <NurseApp {...shared} />;
   return <RolePlaceholder {...shared} />;
 }

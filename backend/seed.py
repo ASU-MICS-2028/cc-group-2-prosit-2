@@ -19,6 +19,7 @@ USERS = [
     ("chv1",    "chv",    "Test CHV One",     "Test Health Centre",        "0240000000"),
     ("chv2",    "chv",    "Test CHV Two",     "Test Health Centre",        "0240000000"),
     ("nurse1",  "nurse",  "Test Nurse",       "Test Health Centre",        None),
+    ("nurse2",  "nurse",  "Test Nurse Two",   "Other Test Clinic",         None),
     ("doctor1", "doctor", "Test Doctor",      "Test District Hospital",    None),
     ("ghs1",    "ghs",    "Test GHS Officer", "GHS District Office",       None),
     ("admin1",  "admin",  "Test Admin",       None,                        None),

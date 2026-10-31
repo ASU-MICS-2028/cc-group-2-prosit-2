@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
 from database import get_db, init_db, log_access
 from model import predict_risk
-from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn
+from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate
 
 # Only report whether the key exists; never print the secret itself
 if not os.getenv("ARKESEL_API_KEY"):
@@ -129,9 +129,14 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
 def get_patient(patient_id: int, user=Depends(require_role("chv"))):
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
-    observations = conn.execute(
-        "SELECT * FROM observations WHERE patient_id = ? ORDER BY id DESC", (patient_id,)
-    ).fetchall()
+    # Each check comes with its referral status, so the CHV sees what the facility did
+    observations = conn.execute("""
+        SELECT o.*, r.status AS referral_status, r.outcome AS referral_outcome
+        FROM observations o
+        LEFT JOIN referrals r ON r.observation_id = o.id
+        WHERE o.patient_id = ?
+        ORDER BY o.id DESC
+    """, (patient_id,)).fetchall()
     log_access(conn, user["id"], "view_patient", patient["ref"])
     conn.commit()
     conn.close()
@@ -176,7 +181,30 @@ def send_referral(observation_id: int, user=Depends(require_role("chv"))):
     patient = get_own_patient(conn, obs["patient_id"], user)
     if obs["risk_level"] != "HIGH":
         conn.close()
-        raise HTTPException(status_code=400, detail="Referral SMS is only for HIGH risk")
+        raise HTTPException(status_code=400, detail="Referrals are only for HIGH risk")
+    if obs["referral_sent"]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="This check was already referred")
+
+    # 1. The referral record: this is what the facility's inbox reads
+    conn.execute(
+        "INSERT INTO referrals (observation_id, patient_id, chv_id, facility) VALUES (?, ?, ?, ?)",
+        (observation_id, patient["id"], user["id"], user["facility"]),
+    )
+    conn.execute("UPDATE observations SET referral_sent = 1 WHERE id = ?", (observation_id,))
+
+    # 2. The SMS: only a heads-up. If it fails, the referral still exists.
+    sms_sent = send_referral_sms(user, patient, obs)
+    log_access(conn, user["id"], "create_referral", f"{patient['ref']} sms={'ok' if sms_sent else 'failed'}")
+    conn.commit()
+    conn.close()
+    return {"success": True, "sms_sent": sms_sent}
+
+
+def send_referral_sms(user, patient, obs):
+    api_key = os.getenv("ARKESEL_API_KEY")
+    if not api_key:
+        return False
 
     phone = (user["facility_phone"] or "").strip()
     if phone.startswith("0"):
@@ -195,7 +223,7 @@ Please prepare to receive this patient."""
             "https://sms.arkesel.com/sms/api",
             params={
                 "action": "send-sms",
-                "api_key": os.getenv("ARKESEL_API_KEY"),
+                "api_key": api_key,
                 "to": phone,
                 # Sender IDs must be registered with Arkesel before they work
                 "from": os.getenv("ARKESEL_SENDER", "SafeArriv"),
@@ -209,10 +237,56 @@ Please prepare to receive this patient."""
 
     # Log only the status code; the full reply has account details we don't need
     print("ARKESEL STATUS:", code)
-    success = code == "ok"
-    if success:
-        conn.execute("UPDATE observations SET referral_sent = 1 WHERE id = ?", (observation_id,))
-    log_access(conn, user["id"], "send_referral" if success else "send_referral_failed", patient["ref"])
+    return code == "ok"
+
+
+# ---------- Referral inbox (nurse only, own facility only) ----------
+
+@app.get("/referrals")
+def list_referrals(user=Depends(require_role("nurse"))):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT r.id, r.status, r.outcome, r.created_at, r.updated_at,
+               p.ref, p.full_name, p.age, p.community,
+               o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
+               o.previous_complications,
+               u.full_name AS chv_name
+        FROM referrals r
+        JOIN patients p ON p.id = r.patient_id
+        JOIN observations o ON o.id = r.observation_id
+        JOIN users u ON u.id = r.chv_id
+        WHERE r.facility = ?
+        ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'arrived' THEN 1 ELSE 2 END, r.id DESC
+    """, (user["facility"],)).fetchall()
+    log_access(conn, user["id"], "list_referrals", user["facility"])
     conn.commit()
     conn.close()
-    return {"success": success}
+    return [dict(r) for r in rows]
+
+
+@app.post("/referrals/{referral_id}/status")
+def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require_role("nurse"))):
+    conn = get_db()
+    referral = conn.execute(
+        "SELECT r.*, p.ref FROM referrals r JOIN patients p ON p.id = r.patient_id "
+        "WHERE r.id = ? AND r.facility = ?",
+        (referral_id, user["facility"]),
+    ).fetchone()
+    if not referral:
+        # Another facility's referral: record the attempt, reveal nothing
+        log_access(conn, user["id"], "access_denied", f"referral:{referral_id}")
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Referral not found")
+    if body.status == "completed" and not (body.outcome or "").strip():
+        conn.close()
+        raise HTTPException(status_code=400, detail="Please record the outcome")
+
+    conn.execute(
+        "UPDATE referrals SET status = ?, outcome = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?",
+        (body.status, (body.outcome or "").strip() or referral["outcome"], user["id"], referral_id),
+    )
+    log_access(conn, user["id"], f"referral_{body.status}", referral["ref"])
+    conn.commit()
+    conn.close()
+    return {"success": True}

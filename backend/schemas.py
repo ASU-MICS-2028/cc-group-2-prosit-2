@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -39,3 +40,8 @@ class VitalsIn(BaseModel):
     previous_complications: bool
     # Set by the phone when the check was done offline and synced later (UTC)
     recorded_at: datetime | None = None
+
+
+class ReferralUpdate(BaseModel):
+    status: Literal["arrived", "completed"]
+    outcome: str | None = None

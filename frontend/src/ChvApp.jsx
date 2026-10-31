@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
+import RiskBadge from "./RiskBadge";
+import { RISK_STYLE, REFERRAL_STYLE, inputClass } from "./styles";
 import { predictRisk } from "./riskModel";
 import { addPending, getPending, syncPending } from "./offlineQueue";
-
-const RISK_STYLE = {
-  HIGH: "bg-red-100 text-red-700 ring-red-200",
-  MEDIUM: "bg-amber-100 text-amber-800 ring-amber-200",
-  LOW: "bg-emerald-100 text-emerald-700 ring-emerald-200",
-};
 
 // field name, unit, example value (shown as placeholder)
 const VITALS = [
@@ -20,16 +16,6 @@ const VITALS = [
   ["body_temp", "°C", "36.8"],
   ["heart_rate", "bpm", "80"],
 ];
-
-const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100";
-
-function RiskBadge({ level, t }) {
-  if (!level) return <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-500">{t.notAssessed}</span>;
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${RISK_STYLE[level]}`}>{level}</span>
-  );
-}
 
 export default function ChvApp(props) {
   const { t, user } = props;
@@ -288,9 +274,10 @@ function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
   const handleReferral = async (obsId) => {
     setSmsState({ ...smsState, [obsId]: "sending" });
     try {
+      // The referral is saved even if the SMS fails; the facility sees it in its inbox
       const res = await api(`/observations/${obsId}/referral`, { method: "POST" });
-      setSmsState({ ...smsState, [obsId]: res.success ? undefined : "failed" });
-      if (res.success) load();
+      setSmsState({ ...smsState, [obsId]: res.sms_sent ? undefined : "noSms" });
+      load();
     } catch {
       setSmsState({ ...smsState, [obsId]: "failed" });
     }
@@ -385,7 +372,13 @@ function PatientDetail({ t, user, patientId, syncTick, onQueued, onBack }) {
                 </p>
                 {o.risk_level === "HIGH" &&
                   (o.referral_sent ? (
-                    <p className="mt-3 text-sm font-medium text-emerald-700">✓ {t.referralSent}</p>
+                    <div className="mt-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
+                        {t["referral_" + o.referral_status]}
+                      </span>
+                      {o.referral_outcome && <p className="mt-2 text-sm text-stone-700">{o.referral_outcome}</p>}
+                      {smsState[o.id] === "noSms" && <p className="mt-2 text-xs text-amber-700">{t.smsNotDelivered}</p>}
+                    </div>
                   ) : (
                     <>
                       <button
