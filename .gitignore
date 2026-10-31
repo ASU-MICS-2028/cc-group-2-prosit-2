@@ -4,3 +4,4 @@ node_modules/
 __pycache__/
 *.pkl
 .DS_Store
+CLAUDE.md
