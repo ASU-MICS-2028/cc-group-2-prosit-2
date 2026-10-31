@@ -7,7 +7,9 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-print("API KEY LOADED:", os.getenv("ARKESEL_API_KEY"))
+# Only report whether the key exists; never print the secret itself
+if not os.getenv("ARKESEL_API_KEY"):
+    print("WARNING: ARKESEL_API_KEY is not set; /send-sms will fail")
 
 app = FastAPI()
 
