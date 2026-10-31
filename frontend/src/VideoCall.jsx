@@ -112,6 +112,13 @@ export default function VideoCall({ referralId, title, t, onClose }) {
     };
   }, [referralId, t.cameraError]);
 
+  // Esc key = hang up
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const toggleMic = () => {
     streamRef.current?.getAudioTracks().forEach((tr) => (tr.enabled = !micOn));
     setMicOn(!micOn);
@@ -133,18 +140,24 @@ export default function VideoCall({ referralId, title, t, onClose }) {
   }[status];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-stone-900 text-white">
-      <div className="flex items-center justify-between px-4 py-3">
+    <div className="fixed inset-0 z-50 flex h-dvh flex-col bg-stone-900 text-white">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <div>
           <p className="font-semibold">📹 {title}</p>
           <p className={`text-sm ${status === "error" ? "text-red-300" : "text-stone-300"}`}>{statusText}</p>
         </div>
-        {status === "connected" && <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-semibold">LIVE</span>}
+        <div className="flex items-center gap-2">
+          {status === "connected" && <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-semibold">LIVE</span>}
+          <button onClick={onClose} className="rounded-full bg-red-600 px-3 py-1.5 text-sm font-semibold hover:bg-red-700">
+            ✕ {t.hangUp}
+          </button>
+        </div>
       </div>
 
-      <div className="relative flex-1 bg-black">
+      {/* min-h-0 + absolute video: the video can never push the buttons off the screen */}
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
         {/* The other person (big) */}
-        <video ref={remoteVideo} autoPlay playsInline className="h-full w-full object-contain" />
+        <video ref={remoteVideo} autoPlay playsInline className="absolute inset-0 h-full w-full object-contain" />
         {status !== "connected" && (
           <div className="absolute inset-0 flex items-center justify-center text-stone-400">{statusText}</div>
         )}
@@ -158,7 +171,7 @@ export default function VideoCall({ referralId, title, t, onClose }) {
         />
       </div>
 
-      <div className="flex justify-center gap-3 px-4 py-4">
+      <div className="flex shrink-0 justify-center gap-3 px-4 py-4">
         <button onClick={toggleMic} className={`rounded-full px-4 py-3 text-sm font-semibold ${micOn ? "bg-stone-700" : "bg-amber-600"}`}>
           {micOn ? `🎙 ${t.mute}` : `🔇 ${t.unmute}`}
         </button>
