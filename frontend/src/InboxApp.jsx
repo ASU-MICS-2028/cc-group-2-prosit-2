@@ -89,7 +89,7 @@ export default function InboxApp(props) {
 }
 
 function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
-  const [mode, setMode] = useState(null); // null | "outcome" | "escalate"
+  const [mode, setMode] = useState(null); // null | "outcome" (doctor writing the outcome)
   const [outcome, setOutcome] = useState("");
   const [hospital, setHospital] = useState("");
   const [reason, setReason] = useState("");
@@ -109,7 +109,9 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
     setSaving(false);
   };
   const update = (status) => send(`/referrals/${r.id}/status`, { status, outcome });
-  const escalate = () => send(`/referrals/${r.id}/escalate`, { facility: hospital, reason });
+  // If there is only one hospital, choose it for the nurse
+  const chosenHospital = hospital || (hospitals.length === 1 ? hospitals[0] : "");
+  const escalate = () => send(`/referrals/${r.id}/escalate`, { facility: chosenHospital, reason });
 
   // Team rule: every patient must reach a doctor. Nurses refer on (once the patient
   // is physically here); only doctors record the final outcome.
@@ -213,50 +215,44 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
               {t.recordOutcome}
             </button>
           )}
-          {canEscalate && (
-            <button
-              onClick={() => setMode("escalate")}
-              className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800"
-            >
-              {t.escalate}
-            </button>
-          )}
         </div>
       )}
       {isNurse && r.status !== "completed" && !mode && <p className="mt-2 text-xs text-stone-500">{t.nurseMustRefer}</p>}
 
-      {mode === "escalate" && (
-        <div className="mt-4 space-y-2 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
-          <select value={hospital} onChange={(e) => setHospital(e.target.value)} className={inputClass}>
-            <option value="" disabled>
-              {t.chooseHospital}
-            </option>
-            {hospitals.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={2}
-            maxLength={300}
-            placeholder={t.escalateReasonPlaceholder}
-            className={inputClass}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={escalate}
-              disabled={saving || !hospital || reason.trim().length < 3}
-              className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
-            >
-              {t.sendEscalation}
-            </button>
-            <button onClick={() => setMode(null)} className="rounded-xl px-4 py-2 text-sm text-stone-600 hover:bg-stone-100">
-              {t.cancel}
-            </button>
+      {/* Nurse: treatment notes + referral to doctor, always visible once the patient has arrived */}
+      {canEscalate && (
+        <div className="mt-4 space-y-3 rounded-xl border border-violet-200 bg-violet-50/50 p-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-violet-900">{t.treatmentNotes}</label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              maxLength={300}
+              placeholder={t.escalateReasonPlaceholder}
+              className={inputClass}
+            />
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-violet-900">{t.sendTo}</label>
+            <select value={chosenHospital} onChange={(e) => setHospital(e.target.value)} className={inputClass}>
+              <option value="" disabled>
+                {t.chooseHospital}
+              </option>
+              {hospitals.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={escalate}
+            disabled={saving || !chosenHospital || reason.trim().length < 3}
+            className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
+          >
+            {saving ? t.sending : t.escalate}
+          </button>
         </div>
       )}
 
