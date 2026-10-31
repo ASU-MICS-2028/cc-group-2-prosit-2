@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import Header from "./Header";
+import DistrictMap from "./DistrictMap";
 
 const CONDITIONS = ["malaria", "cholera", "meningitis", "measles", "pneumonia", "hypertension"];
 
@@ -20,6 +21,7 @@ export default function GhsApp(props) {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null); // { district, condition } shown in the trend chart
   const [hover, setHover] = useState(null); // text for the hover readout under the heatmap
+  const selectFromMap = useCallback((sel) => setSelected(sel), []);
 
   useEffect(() => {
     api("/surveillance/summary?weeks=8")
@@ -90,6 +92,8 @@ export default function GhsApp(props) {
             </button>
           ))}
         </div>
+
+        <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
 
         {/* Heatmap table: districts x conditions, last 7 days */}
         <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">

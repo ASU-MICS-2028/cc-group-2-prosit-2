@@ -21,6 +21,15 @@ ALERT_MIN_CASES = 5  # an alert needs at least this many cases this week...
 ALERT_FACTOR = 2  # ...and at least double the usual weekly level
 BASELINE_WEEKS = 4  # "usual" = average of the 4 weeks before this one
 
+# Map position = the district capital (approximate). We never map where patients live.
+DISTRICT_CENTRES = {
+    "Bolgatanga Municipal": (10.7856, -0.8514),
+    "Tamale Metropolitan": (9.4008, -0.8393),
+    "Wa Municipal": (10.0601, -2.5099),
+    "Kumasi Metropolitan": (6.6885, -1.6244),
+    "Cape Coast Metropolitan": (5.1053, -1.2466),
+}
+
 
 def hide_small(count):
     return f"<{SMALL_COUNT}" if 0 < count < SMALL_COUNT else count
@@ -90,6 +99,7 @@ def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs")
         "districts": [
             {
                 "district": d,
+                "centre": DISTRICT_CENTRES.get(d),  # [lat, lng] or None if unknown
                 "visits_this_week": hide_small(visits[d][0]),
                 "high_risk_this_week": hide_small(high[d][0]),
                 "referrals_this_week": hide_small(referrals_by_district.get(d, 0)),

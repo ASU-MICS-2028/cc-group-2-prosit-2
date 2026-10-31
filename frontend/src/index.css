@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* "Outbreak alert" label beside a map bubble: critical status = icon + label */
+.hc-alert-label {
+  background: #ffffff;
+  border: 1px solid #d03b3b;
+  color: #0b0b0b;
+  font-weight: 600;
+  box-shadow: none;
+}
