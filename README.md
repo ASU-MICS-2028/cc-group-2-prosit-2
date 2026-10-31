@@ -72,7 +72,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
-| Role-based access control (RBAC) | ✅ Done for CHV and nurse; other roles see a "coming soon" screen |
+| Role-based access control (RBAC) | ✅ Done for CHV, nurse and doctor; GHS officer and admin see a "coming soon" screen |
 | Patient registration with consent | ✅ Done |
 | General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
 | Antenatal risk check (pregnant patients) | ✅ Done |
@@ -81,9 +81,12 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Audit log of every access | ✅ Done |
 | Referral to facility (record + SMS) | ✅ Done |
 | Nurse referral inbox + outcomes | ✅ Done |
+| Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
+| CHV can refer MEDIUM cases with a reason | ✅ Done |
+| Inbox shows most urgent (HIGH) first | ✅ Done |
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
-| Doctor / telemedicine | ⬜ Week 2, next |
+| Doctor video consults (telemedicine) | ⬜ Week 2, next |
 | GHS surveillance dashboard | ⬜ Week 3 |
 | Admin account management | ⬜ Planned |
 | Sustainability model | ⬜ Week 4 (report) |
@@ -105,12 +108,26 @@ All of this work is on the **`main`** branch.
 - **Get a risk level** (LOW / MEDIUM / HIGH) with advice for either check, **even with no signal**.
   Offline checks are encrypted, saved on the phone, and synced automatically when signal returns.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
-- **Follow the referral**: waiting at facility → arrived → completed, with the nurse's outcome note.
+- **Refer a MEDIUM-risk patient** if worried, but a **reason is required** (e.g. "fever not improving after 2 days"). LOW cannot be referred.
+- **Follow the whole chain**: health centre (waiting → arrived → completed), and, if the nurse referred onward, the hospital step and the doctor's outcome.
+
+### Who starts a referral?
+
+| Step | Who | To where | Rule |
+|---|---|---|---|
+| 1 | **CHV** | Their own health centre | HIGH: always. MEDIUM: only with a reason. LOW: never |
+| 2 | **Nurse** | A hospital with a doctor | Only after the patient has **arrived**; reason required. The first referral closes with "Referred on to …" |
+
+This follows Ghana's referral tiers: community (CHV / CHPS) → health centre → district hospital.
 
 ### For a facility nurse / midwife
-- **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed.
+- **Referral inbox** for their own facility only, with tabs for Waiting / Arrived / Completed. **HIGH-risk cases are listed first.**
 - See whether it is a general or antenatal visit, the readings and symptoms that triggered it, the possible conditions (e.g. meningitis, so they can prepare), and which CHV sent it.
-- **Mark as arrived**, then **record the outcome**. The CHV sees the outcome on their screen.
+- **Mark as arrived**, then either **record the outcome** or **Refer to doctor / hospital** (choose a hospital, give a reason). The CHV sees the result on their screen.
+
+### For a doctor / specialist
+- **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
+- **Mark as arrived** and **record the outcome**. Video consults come next (Week 2).
 
 ### How the checks work
 Both checks are **rule-based** (fixed if/else rules, not machine learning). Each check exists twice: on the server (official) and in the browser (for offline use). The server always re-checks synced data.
@@ -161,8 +178,8 @@ RBAC (role-based access control) means what you can see and do depends on your r
 | Role | Can do | Can see | Status |
 |---|---|---|---|
 | **CHV** | Register patients (with consent), record general visits and antenatal checks, refer | Only **their own** patients | ✅ Built |
-| **Facility nurse / midwife** | Mark referrals arrived, record outcomes | Only referrals to **their facility** | ✅ Built |
-| **Doctor / specialist** | Telemedicine, review high-risk cases | Referred patients only | ⬜ Week 2 |
+| **Facility nurse / midwife** | Mark referrals arrived, record outcomes, refer on to a hospital | Only referrals to **their facility** | ✅ Built |
+| **Doctor / specialist** | Receive referrals, record outcomes (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
 | **GHS officer** | Surveillance dashboard | **Anonymised totals only, never names** | ⬜ Week 3 |
 | **System admin** | Manage accounts | No routine patient-data access | ⬜ Planned |
 
@@ -218,7 +235,7 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
 | `patients` | Patient | Name, age, sex, pregnant flag, community, consent, CHV owner, random reference |
 | `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
-| `referrals` | ServiceRequest | CHV → facility request; status and outcome |
+| `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
 | `access_log` | AuditEvent | Who did what to which record, and when |
 
 ### Referral flow
@@ -228,6 +245,7 @@ sequenceDiagram
     participant C as CHV
     participant A as API
     participant N as Nurse
+    participant D as Doctor
     C->>A: POST /patients/{id}/visit or /assess
     A-->>C: HIGH risk + advice
     C->>A: POST /observations/{id}/referral
@@ -235,9 +253,15 @@ sequenceDiagram
     A-->>C: success (SMS sent or not)
     N->>A: GET /referrals (own facility only)
     N->>A: POST /referrals/{id}/status = arrived
-    N->>A: POST /referrals/{id}/status = completed + outcome
+    alt Nurse can treat
+        N->>A: POST /referrals/{id}/status = completed + outcome
+    else Needs a doctor
+        N->>A: POST /referrals/{id}/escalate (hospital, reason)
+        D->>A: GET /referrals (own hospital only)
+        D->>A: POST /referrals/{id}/status = completed + outcome
+    end
     C->>A: GET /patients/{id}
-    A-->>C: referral completed + outcome
+    A-->>C: full chain + outcomes
 ```
 
 ---
@@ -344,6 +368,11 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 **General visit**
 - Register a fake male patient → **General visit** → tick *Fever* and *Stiff neck*, temperature `39` → **Check visit** → HIGH, "Check for: Malaria, Meningitis".
 
+**Escalation to a doctor**
+1. As `nurse1`, on an **Arrived** referral → **Refer to doctor / hospital** → choose *Test District Hospital*, give a reason → **Send referral**.
+2. Log in as **`doctor1`** → it is in **Specialist referrals** → mark arrived → record outcome.
+3. As `chv1`, the visit shows the health centre step, then "→ Referred on to Test District Hospital" with the doctor's outcome.
+
 **Access control checks**
 - Log in as **`chv2`**: chv1's patient is not visible.
 - Log in as **`nurse2`**: the inbox is empty (different facility).
@@ -371,9 +400,11 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/patients/{id}/visit` | chv | General visit: symptoms + optional vitals → triage + possible conditions |
 | POST | `/patients/{id}/assess` | chv | Antenatal check (pregnant patients only) → risk score |
 | POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
-| POST | `/observations/{id}/referral` | chv | Refer a HIGH-risk check to the CHV's facility |
-| GET | `/referrals` | nurse | Referral inbox for the nurse's facility |
-| POST | `/referrals/{id}/status` | nurse | Set `arrived` or `completed` (+ outcome) |
+| POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
+| GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, most urgent first |
+| POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` or `completed` (+ outcome) |
+| GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
+| POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient on to a hospital (`facility`, `reason`) |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
 
@@ -403,7 +434,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── Login.jsx          # Sign-in page
         ├── Header.jsx         # Top bar: role, online/offline, language, logout
         ├── ChvApp.jsx         # CHV workspace
-        ├── NurseApp.jsx       # Nurse referral inbox
+        ├── InboxApp.jsx       # Referral inbox (nurse and doctor), escalation
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -434,8 +465,11 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 
 ### 🟡 Phase 2: Week 2, Telemedicine and referrals (Henry and Clifford, in progress)
 - [x] Referral records and nurse inbox with outcomes
-- [ ] **Referral prioritisation**: sort the inbox by urgency (risk score, waiting time)
-- [ ] Doctor workspace: review referred HIGH-risk cases
+- [x] CHV can refer MEDIUM cases with a required reason
+- [x] Nurse escalation to a hospital; doctor inbox with outcomes
+- [x] Basic prioritisation: HIGH listed before MEDIUM
+- [ ] Fuller prioritisation: also weigh waiting time and danger signs
+- [ ] Doctor workspace: patient history view for referred cases
 - [ ] Appointments: nurse/doctor books a follow-up; patient gets an SMS reminder
 - [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
 - [ ] E-prescriptions (described in the report; pharmacist not an app user)

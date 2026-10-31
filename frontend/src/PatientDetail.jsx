@@ -4,7 +4,7 @@ import RiskBadge from "./RiskBadge";
 import ConditionChips from "./ConditionChips";
 import AntenatalForm from "./AntenatalForm";
 import GeneralVisitForm from "./GeneralVisitForm";
-import { RISK_STYLE, REFERRAL_STYLE } from "./styles";
+import { RISK_STYLE, REFERRAL_STYLE, inputClass } from "./styles";
 import { predictRisk } from "./riskModel";
 import { assessGeneral } from "./generalModel";
 import { addPending } from "./offlineQueue";
@@ -87,11 +87,11 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
     }
   };
 
-  const handleReferral = async (obsId) => {
+  const handleReferral = async (obsId, reason = "") => {
     setSmsState({ ...smsState, [obsId]: "sending" });
     try {
       // The referral is saved even if the SMS fails; the facility sees it in its inbox
-      const res = await api(`/observations/${obsId}/referral`, { method: "POST" });
+      const res = await api(`/observations/${obsId}/referral`, { method: "POST", body: { reason } });
       setSmsState({ ...smsState, [obsId]: res.sms_sent ? undefined : "noSms" });
       load();
     } catch {
@@ -196,33 +196,94 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
                 </div>
                 <VisitSummary o={o} t={t} />
 
-                {o.risk_level === "HIGH" &&
-                  (o.referral_sent ? (
-                    <div className="mt-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
-                        {t["referral_" + o.referral_status]}
-                      </span>
-                      {o.referral_outcome && <p className="mt-2 text-sm text-stone-700">{o.referral_outcome}</p>}
-                      {smsState[o.id] === "noSms" && <p className="mt-2 text-xs text-amber-700">{t.smsNotDelivered}</p>}
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleReferral(o.id)}
-                        disabled={smsState[o.id] === "sending"}
-                        className="mt-3 w-full rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                      >
-                        {smsState[o.id] === "sending" ? t.sending : t.sendReferral}
-                      </button>
-                      {smsState[o.id] === "failed" && <p className="mt-2 text-xs text-red-600">{t.referralFailed}</p>}
-                    </>
-                  ))}
+                {o.referral_sent ? (
+                  <ReferralChain o={o} t={t} noSms={smsState[o.id] === "noSms"} />
+                ) : (
+                  (o.risk_level === "HIGH" || o.risk_level === "MEDIUM") && (
+                    <ReferButton
+                      o={o}
+                      t={t}
+                      sending={smsState[o.id] === "sending"}
+                      failed={smsState[o.id] === "failed"}
+                      onRefer={(reason) => handleReferral(o.id, reason)}
+                    />
+                  )
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+// HIGH: refer straight away. MEDIUM: the CHV may refer, but must say why.
+function ReferButton({ o, t, sending, failed, onRefer }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const isHigh = o.risk_level === "HIGH";
+
+  if (!isHigh && !open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full rounded-xl border border-amber-300 bg-amber-50 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+      >
+        {t.referMedium}
+      </button>
+    );
+  }
+  return (
+    <>
+      {!isHigh && (
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={2}
+          maxLength={300}
+          placeholder={t.mediumReasonPlaceholder}
+          className={`${inputClass} mt-3`}
+        />
+      )}
+      <button
+        onClick={() => onRefer(reason)}
+        disabled={sending || (!isHigh && !reason.trim())}
+        className="mt-3 w-full rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+      >
+        {sending ? t.sending : t.sendReferral}
+      </button>
+      {failed && <p className="mt-2 text-xs text-red-600">{t.referralFailed}</p>}
+    </>
+  );
+}
+
+// Health centre status, then the hospital step if the nurse referred onward
+function ReferralChain({ o, t, noSms }) {
+  return (
+    <div className="mt-3 space-y-2">
+      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.referral_status]}`}>
+        {t["referral_" + o.referral_status]}
+      </span>
+      {o.referral_reason && (
+        <p className="text-xs text-stone-600">
+          {t.reason}: {o.referral_reason}
+        </p>
+      )}
+      {o.referral_outcome && <p className="text-sm text-stone-700">{o.referral_outcome}</p>}
+      {o.escalated_to && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-2">
+          <p className="text-xs font-semibold text-violet-800">
+            → {t.referredOnTo} {o.escalated_to}
+          </p>
+          <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${REFERRAL_STYLE[o.escalated_status]}`}>
+            {t["referral_" + o.escalated_status]}
+          </span>
+          {o.escalated_outcome && <p className="mt-1 text-sm text-stone-700">{o.escalated_outcome}</p>}
+        </div>
+      )}
+      {noSms && <p className="text-xs text-amber-700">{t.smsNotDelivered}</p>}
+    </div>
   );
 }
 

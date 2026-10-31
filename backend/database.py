@@ -2,6 +2,25 @@ import sqlite3
 
 DB_PATH = "healthconnect.db"
 
+# FHIR ServiceRequest. CHV -> health centre, or nurse -> hospital (parent_id links the chain)
+REFERRALS_TABLE = """
+CREATE TABLE IF NOT EXISTS referrals (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    patient_id     INTEGER NOT NULL REFERENCES patients(id),
+    chv_id         INTEGER NOT NULL REFERENCES users(id),   -- CHV who owns the patient
+    referred_by    INTEGER REFERENCES users(id),            -- who made this referral (CHV or nurse)
+    parent_id      INTEGER REFERENCES referrals(id),        -- set when a nurse escalates
+    facility       TEXT NOT NULL,                           -- where the patient is sent
+    reason         TEXT,
+    status         TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','arrived','completed')),
+    outcome        TEXT,
+    updated_by     INTEGER REFERENCES users(id),
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at     TEXT
+)
+"""
+
 
 def get_db():
     # One connection per request; rows behave like dicts (row["name"])
@@ -62,20 +81,6 @@ def init_db():
         created_at             TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- FHIR ServiceRequest. A CHV asks a facility to receive a HIGH-risk patient
-    CREATE TABLE IF NOT EXISTS referrals (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        observation_id INTEGER UNIQUE NOT NULL REFERENCES observations(id),
-        patient_id     INTEGER NOT NULL REFERENCES patients(id),
-        chv_id         INTEGER NOT NULL REFERENCES users(id),
-        facility       TEXT NOT NULL,
-        status         TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','arrived','completed')),
-        outcome        TEXT,
-        updated_by     INTEGER REFERENCES users(id),
-        created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at     TEXT
-    );
-
     -- FHIR AuditEvent. Who did what to which record, and when
     CREATE TABLE IF NOT EXISTS access_log (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,6 +90,7 @@ def init_db():
         timestamp TEXT NOT NULL DEFAULT (datetime('now'))
     );
     """)
+    conn.execute(REFERRALS_TABLE)
     migrate(conn)
     conn.commit()
     conn.close()
@@ -108,6 +114,21 @@ def migrate(conn):
     add_column_if_missing(conn, "observations", "symptoms", "TEXT")
     add_column_if_missing(conn, "observations", "possible_conditions", "TEXT")
     add_column_if_missing(conn, "observations", "notes", "TEXT")
+
+    # Old referrals table allowed only one referral per check (UNIQUE observation_id).
+    # Escalation needs two, so rebuild the table and copy the rows across.
+    old_sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'referrals'").fetchone()["sql"]
+    if "observation_id INTEGER UNIQUE" in old_sql:
+        conn.execute("ALTER TABLE referrals RENAME TO referrals_old")
+        conn.execute(REFERRALS_TABLE)
+        conn.execute("""
+            INSERT INTO referrals (id, observation_id, patient_id, chv_id, referred_by, facility,
+                                   status, outcome, updated_by, created_at, updated_at)
+            SELECT id, observation_id, patient_id, chv_id, chv_id, facility,
+                   status, outcome, updated_by, created_at, updated_at
+            FROM referrals_old
+        """)
+        conn.execute("DROP TABLE referrals_old")
 
 
 def log_access(conn, user_id, action, resource=None):

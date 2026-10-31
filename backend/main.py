@@ -14,7 +14,8 @@ from auth import verify_password, create_token, get_current_user, require_role, 
 from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
 from model import predict_risk
-from schemas import LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn, PregnancyUpdate
+from schemas import (LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
+                     PregnancyUpdate, ReferralCreate, EscalateIn)
 
 # Only report whether the key exists; never print the secret itself
 if not os.getenv("ARKESEL_API_KEY"):
@@ -137,11 +138,14 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
 def get_patient(patient_id: int, user=Depends(require_role("chv"))):
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
-    # Each check comes with its referral status, so the CHV sees what the facility did
+    # Each check comes with its referral chain: health centre (r), then hospital if escalated (e)
     observations = conn.execute("""
-        SELECT o.*, r.status AS referral_status, r.outcome AS referral_outcome
+        SELECT o.*,
+               r.status AS referral_status, r.outcome AS referral_outcome, r.reason AS referral_reason,
+               e.facility AS escalated_to, e.status AS escalated_status, e.outcome AS escalated_outcome
         FROM observations o
-        LEFT JOIN referrals r ON r.observation_id = o.id
+        LEFT JOIN referrals r ON r.observation_id = o.id AND r.parent_id IS NULL
+        LEFT JOIN referrals e ON e.parent_id = r.id
         WHERE o.patient_id = ?
         ORDER BY o.id DESC
     """, (patient_id,)).fetchall()
@@ -227,24 +231,31 @@ def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv")))
 
 
 @app.post("/observations/{observation_id}/referral")
-def send_referral(observation_id: int, user=Depends(require_role("chv"))):
+def send_referral(observation_id: int, body: ReferralCreate | None = None, user=Depends(require_role("chv"))):
     conn = get_db()
     obs = conn.execute("SELECT * FROM observations WHERE id = ?", (observation_id,)).fetchone()
     if not obs:
         conn.close()
         raise HTTPException(status_code=404, detail="Observation not found")
     patient = get_own_patient(conn, obs["patient_id"], user)
-    if obs["risk_level"] != "HIGH":
+    reason = body.reason.strip() if body else ""  # body is optional: HIGH needs no reason
+
+    # HIGH: always allowed. MEDIUM: allowed if the CHV explains why. LOW: no.
+    if obs["risk_level"] == "LOW":
         conn.close()
-        raise HTTPException(status_code=400, detail="Referrals are only for HIGH risk")
+        raise HTTPException(status_code=400, detail="LOW risk checks cannot be referred")
+    if obs["risk_level"] == "MEDIUM" and not reason:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Please give a reason for referring a MEDIUM risk patient")
     if obs["referral_sent"]:
         conn.close()
         raise HTTPException(status_code=400, detail="This check was already referred")
 
     # 1. The referral record: this is what the facility's inbox reads
     conn.execute(
-        "INSERT INTO referrals (observation_id, patient_id, chv_id, facility) VALUES (?, ?, ?, ?)",
-        (observation_id, patient["id"], user["id"], user["facility"]),
+        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, facility, reason) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (observation_id, patient["id"], user["id"], user["id"], user["facility"], reason or None),
     )
     conn.execute("UPDATE observations SET referral_sent = 1 WHERE id = ?", (observation_id,))
 
@@ -298,34 +309,9 @@ Please prepare to receive this patient."""
     return code == "ok"
 
 
-# ---------- Referral inbox (nurse only, own facility only) ----------
+# ---------- Referral inbox (nurse = health centre, doctor = hospital; own facility only) ----------
 
-@app.get("/referrals")
-def list_referrals(user=Depends(require_role("nurse"))):
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT r.id, r.status, r.outcome, r.created_at, r.updated_at,
-               p.ref, p.full_name, p.age, p.community,
-               p.sex, o.visit_type, o.symptoms, o.possible_conditions, o.body_temp, o.heart_rate,
-               o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
-               o.previous_complications,
-               u.full_name AS chv_name
-        FROM referrals r
-        JOIN patients p ON p.id = r.patient_id
-        JOIN observations o ON o.id = r.observation_id
-        JOIN users u ON u.id = r.chv_id
-        WHERE r.facility = ?
-        ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'arrived' THEN 1 ELSE 2 END, r.id DESC
-    """, (user["facility"],)).fetchall()
-    log_access(conn, user["id"], "list_referrals", user["facility"])
-    conn.commit()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-@app.post("/referrals/{referral_id}/status")
-def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require_role("nurse"))):
-    conn = get_db()
+def get_facility_referral(conn, referral_id, user):
     referral = conn.execute(
         "SELECT r.*, p.ref FROM referrals r JOIN patients p ON p.id = r.patient_id "
         "WHERE r.id = ? AND r.facility = ?",
@@ -337,6 +323,44 @@ def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require
         conn.commit()
         conn.close()
         raise HTTPException(status_code=404, detail="Referral not found")
+    return referral
+
+
+@app.get("/referrals")
+def list_referrals(user=Depends(require_role("nurse", "doctor"))):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT r.id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
+               p.ref, p.full_name, p.age, p.community,
+               p.sex, o.visit_type, o.symptoms, o.possible_conditions, o.body_temp, o.heart_rate,
+               o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
+               o.previous_complications, o.notes,
+               u.full_name AS chv_name,
+               rb.full_name AS referred_by_name, rb.role AS referred_by_role,
+               parent.facility AS from_facility,
+               esc.facility AS escalated_to
+        FROM referrals r
+        JOIN patients p ON p.id = r.patient_id
+        JOIN observations o ON o.id = r.observation_id
+        JOIN users u ON u.id = r.chv_id
+        LEFT JOIN users rb ON rb.id = COALESCE(r.referred_by, r.chv_id)
+        LEFT JOIN referrals parent ON parent.id = r.parent_id
+        LEFT JOIN referrals esc ON esc.parent_id = r.id
+        WHERE r.facility = ?
+        ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'arrived' THEN 1 ELSE 2 END,
+                 CASE o.risk_level WHEN 'HIGH' THEN 0 ELSE 1 END,  -- most urgent first
+                 r.id DESC
+    """, (user["facility"],)).fetchall()
+    log_access(conn, user["id"], "list_referrals", user["facility"])
+    conn.commit()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/referrals/{referral_id}/status")
+def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require_role("nurse", "doctor"))):
+    conn = get_db()
+    referral = get_facility_referral(conn, referral_id, user)
     if body.status == "completed" and not (body.outcome or "").strip():
         conn.close()
         raise HTTPException(status_code=400, detail="Please record the outcome")
@@ -346,6 +370,51 @@ def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require
         (body.status, (body.outcome or "").strip() or referral["outcome"], user["id"], referral_id),
     )
     log_access(conn, user["id"], f"referral_{body.status}", referral["ref"])
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.get("/facilities/hospitals")
+def list_hospitals(user=Depends(require_role("nurse"))):
+    # Facilities that have at least one doctor = places a nurse can escalate to
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT facility FROM users WHERE role = 'doctor' AND facility IS NOT NULL ORDER BY facility"
+    ).fetchall()
+    conn.close()
+    return [r["facility"] for r in rows]
+
+
+@app.post("/referrals/{referral_id}/escalate")
+def escalate_referral(referral_id: int, body: EscalateIn, user=Depends(require_role("nurse"))):
+    conn = get_db()
+    referral = get_facility_referral(conn, referral_id, user)
+    if referral["status"] != "arrived":
+        conn.close()
+        raise HTTPException(status_code=400, detail="Mark the patient as arrived before referring onward")
+    doctor_here = conn.execute(
+        "SELECT 1 FROM users WHERE role = 'doctor' AND facility = ?", (body.facility,)
+    ).fetchone()
+    if not doctor_here:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Choose a hospital from the list")
+
+    reason = body.reason.strip()
+    # New referral to the hospital, linked to this one...
+    conn.execute(
+        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, parent_id, facility, reason) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (referral["observation_id"], referral["patient_id"], referral["chv_id"], user["id"],
+         referral_id, body.facility, reason),
+    )
+    # ...and this one is closed, saying where the patient went
+    conn.execute(
+        "UPDATE referrals SET status = 'completed', outcome = ?, updated_by = ?, updated_at = datetime('now') "
+        "WHERE id = ?",
+        (f"Referred on to {body.facility}: {reason}", user["id"], referral_id),
+    )
+    log_access(conn, user["id"], "escalate_referral", f"{referral['ref']} -> {body.facility}")
     conn.commit()
     conn.close()
     return {"success": True}

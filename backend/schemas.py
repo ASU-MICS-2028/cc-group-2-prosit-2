@@ -68,3 +68,13 @@ class VitalsIn(BaseModel):
 class ReferralUpdate(BaseModel):
     status: Literal["arrived", "completed"]
     outcome: str | None = None
+
+
+class ReferralCreate(BaseModel):
+    # Optional for HIGH risk; required for MEDIUM (the CHV's judgement must be explained)
+    reason: str = Field("", max_length=300)
+
+
+class EscalateIn(BaseModel):
+    facility: str
+    reason: str = Field(min_length=3, max_length=300)
