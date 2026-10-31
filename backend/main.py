@@ -361,6 +361,32 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
     return referrals
 
 
+@app.get("/referrals/{referral_id}/history")
+def referral_history(referral_id: int, user=Depends(require_role("nurse", "doctor"))):
+    # Need-to-know: staff can only open the history of a patient referred to THEIR facility.
+    # The referral is the "permission slip"; there is no way to browse other patients.
+    conn = get_db()
+    referral = get_facility_referral(conn, referral_id, user)
+    patient = conn.execute(
+        "SELECT ref, full_name, age, sex, pregnant, community, created_at FROM patients WHERE id = ?",
+        (referral["patient_id"],),
+    ).fetchone()
+    observations = conn.execute("""
+        SELECT o.*,
+               r.facility AS referral_facility, r.status AS referral_status, r.outcome AS referral_outcome,
+               e.facility AS escalated_to, e.status AS escalated_status, e.outcome AS escalated_outcome
+        FROM observations o
+        LEFT JOIN referrals r ON r.observation_id = o.id AND r.parent_id IS NULL
+        LEFT JOIN referrals e ON e.parent_id = r.id
+        WHERE o.patient_id = ?
+        ORDER BY o.id DESC
+    """, (referral["patient_id"],)).fetchall()
+    log_access(conn, user["id"], "view_history_via_referral", referral["ref"])
+    conn.commit()
+    conn.close()
+    return {"patient": dict(patient), "observations": [dict(o) for o in observations]}
+
+
 @app.post("/referrals/{referral_id}/status")
 def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require_role("nurse", "doctor"))):
     # Team decision: every patient must be seen by a doctor, so only doctors close a case.

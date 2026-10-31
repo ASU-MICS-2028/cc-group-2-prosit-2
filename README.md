@@ -82,6 +82,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Referral to facility (record + SMS) | ✅ Done |
 | Nurse referral inbox + outcomes | ✅ Done |
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
+| Patient history for nurses/doctors (referred patients only) | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
@@ -141,6 +142,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
+- **View patient history**: every earlier visit, reading and referral outcome for that patient, as a timeline. Only for patients referred to their own hospital.
 - **Mark as arrived** and **record the outcome**. Video consults come next (Week 2).
 
 ### How the checks work
@@ -409,6 +411,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
 | GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, sorted by priority score |
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
+| GET | `/referrals/{id}/history` | nurse, doctor | All visits of the referred patient (only if the referral is to the user's facility) |
 | GET | `/facilities/hospitals` | nurse | Hospitals a nurse can refer on to |
 | POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient to a doctor's hospital (`facility`, `reason` = treatment given) |
 
@@ -442,6 +445,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── Header.jsx         # Top bar: role, online/offline, language, logout
         ├── ChvApp.jsx         # CHV workspace
         ├── InboxApp.jsx       # Referral inbox (nurse and doctor), escalation
+        ├── PatientHistory.jsx # Visit timeline for a referred patient
         ├── RolePlaceholder.jsx# "Coming soon" for other roles
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -475,7 +479,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] CHV can refer MEDIUM cases with a required reason
 - [x] Nurse escalation to a hospital; doctor inbox with outcomes
 - [x] Prioritisation: risk + danger signs + waiting time (capped), with reasons shown on each card
-- [ ] Doctor workspace: patient history view for referred cases
+- [x] Doctor workspace: patient history view for referred cases (need-to-know: only via a referral to their facility)
 - [ ] Appointments: nurse/doctor books a follow-up; patient gets an SMS reminder
 - [ ] Low-bandwidth video consults (WebRTC), with audio-only fallback
 - [ ] E-prescriptions (described in the report; pharmacist not an app user)

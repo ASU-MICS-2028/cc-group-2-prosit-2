@@ -3,6 +3,7 @@ import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
+import PatientHistory from "./PatientHistory";
 import { REFERRAL_STYLE, inputClass } from "./styles";
 
 const PRIORITY_STYLE = {
@@ -90,6 +91,7 @@ export default function InboxApp(props) {
 
 function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
   const [mode, setMode] = useState(null); // null | "outcome" (doctor writing the outcome)
+  const [showHistory, setShowHistory] = useState(false);
   const [outcome, setOutcome] = useState("");
   const [hospital, setHospital] = useState("");
   const [reason, setReason] = useState("");
@@ -191,6 +193,11 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged }) {
         {r.from_facility && ` (${r.from_facility})`}
         {r.parent_id && ` · ${t.chvLabel}: ${r.chv_name}`} · {r.created_at}
       </p>
+
+      <button onClick={() => setShowHistory(!showHistory)} className="mt-3 text-sm font-medium text-teal-700 hover:underline">
+        {showHistory ? `▾ ${t.hideHistory}` : `▸ ${t.viewHistory}`}
+      </button>
+      {showHistory && <PatientHistory referralId={r.id} t={t} />}
 
       {r.outcome && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{r.outcome}</p>}
 
