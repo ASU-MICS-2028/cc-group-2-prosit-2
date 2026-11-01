@@ -405,6 +405,18 @@ npm run dev
 ```
 Open **http://localhost:5173**.
 
+### 4. Automated tests
+Each test builds its own temporary database with fake accounts, so your `healthconnect.db` is never touched.
+```bash
+# Backend (venv active, inside backend/)
+pip install -r requirements-dev.txt
+pytest                 # 22 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
+                       # surveillance privacy, DHIMS2 export, and Python rules = browser rules
+# Frontend (inside frontend/)
+npm test               # 11 tests: AES-GCM encryption and the encrypted patient cache
+```
+GitHub runs both automatically after every push (**Actions** tab, `.github/workflows/tests.yml`).
+
 ### Common problems
 
 | Error | Fix |
@@ -508,6 +520,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 
 ```
 .
+├── .github/workflows/tests.yml  # Runs all tests on GitHub after every push
 ├── backend/
 │   ├── main.py            # API routes (login, patients, referrals)
 │   ├── auth.py            # bcrypt hashing, JWT, require_role, offline key
@@ -527,10 +540,12 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── prepare_real_use.py # Run once before real use: first real admin + disable demo accounts
 │   ├── train_model.py     # Old XGBoost predictor (NOT wired in; evaluated in docs/ML_EVALUATION.md)
 │   ├── requirements.txt
+│   ├── tests/             # pytest: API, security and rules tests (fresh fake database per test)
 │   └── data/              # Kaggle Maternal Health Risk dataset (public)
 └── frontend/
     ├── vite.config.js     # Vite + PWA config
     └── src/
+        ├── tests/             # Vitest: encryption + offline cache tests
         ├── App.jsx            # Session + role-based routing
         ├── Login.jsx          # Sign-in page
         ├── Header.jsx         # Top bar: role, online/offline, language, logout
@@ -596,11 +611,11 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] ML prediction: XGBoost evaluated honestly; **not wired in** (55% duplicate rows, 57% HIGH-risk recall, °F vs °C, Bangladesh data). See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md)
 - [x] DHIMS2 integration: **designed** + simulated export in DHIS2 `dataValueSet` format (not sent). See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md)
 
-### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
+### ✅ Phase 5: Admin and hardening (Henry and Clifford)
 - [x] Admin screen: create / disable accounts (replaces `seed.py`)
 - [x] Force password change on first login; remove demo accounts before any real use
 - [x] Cache patient lists on the phone (encrypted) for full offline use
-- [ ] Automated tests in the repo
+- [x] Automated tests in the repo
 
 ### ⬜ Phase 6: Languages and translation (Isaac)
 - [ ] Research translation APIs for Twi and other Ghanaian languages (e.g. Ewe, Ga, Dagbani)
@@ -640,7 +655,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 
 - **Local only**: SQLite on a laptop; the database file itself is not encrypted yet (planned: RDS with encryption at rest).
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
-- **Rules in two places**: the risk rules live in `model.py` and `riskModel.js`. Change both, and re-run the comparison test.
+- **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
 - **Twi** covers only some screens.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
