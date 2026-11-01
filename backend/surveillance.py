@@ -5,6 +5,7 @@ What GHS never gets: names, references, patient ids, phone numbers, notes.
 
 Weeks are counted back from now: week 0 = last 7 days, week 1 = 8-14 days ago, ...
 """
+import math
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +13,7 @@ from fastapi import APIRouter, Depends, Query
 
 from auth import require_role
 from database import get_db, log_access
+from forecast import forecast
 
 router = APIRouter()
 
@@ -20,6 +22,8 @@ SMALL_COUNT = 5  # 1-4 shown as "<5": tiny numbers in a village can identify a p
 ALERT_MIN_CASES = 5  # an alert needs at least this many cases this week...
 ALERT_FACTOR = 2  # ...and at least double the usual weekly level
 BASELINE_WEEKS = 4  # "usual" = average of the 4 weeks before this one
+FORECAST_CONDITIONS = ["malaria", "cholera", "meningitis", "measles", "pneumonia"]  # infectious only
+MIN_CHANCE_SHOWN = 0.1  # forecasts below 10% are left out
 
 # Map position = the district capital (approximate). We never map where patients live.
 DISTRICT_CENTRES = {
@@ -85,6 +89,19 @@ def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs")
                 alerts.append({"district": d, "condition": c, "this_week": this_week, "usual": round(usual, 1)})
     alerts.sort(key=lambda a: a["this_week"] / max(a["usual"], 1), reverse=True)
 
+    # 2-week outlook (forecast.py): statistics, not machine learning
+    forecasts = []
+    for d in districts:
+        for c in FORECAST_CONDITIONS:
+            weekly = cases[d][c]
+            usual = sum(weekly[:BASELINE_WEEKS]) / BASELINE_WEEKS  # the 4 weeks before next week
+            outbreak_level = max(ALERT_MIN_CASES, math.ceil(ALERT_FACTOR * max(usual, 1)))
+            outlook = forecast(weekly, outbreak_level)
+            if outlook["chance"] >= MIN_CHANCE_SHOWN:
+                outlook["expected_next_2_weeks"] = hide_small(outlook["expected_next_2_weeks"])
+                forecasts.append({"district": d, "condition": c, "outbreak_level": outbreak_level, **outlook})
+    forecasts.sort(key=lambda f: f["chance"], reverse=True)
+
     referrals_by_district = {r["district"]: r["n"] for r in referrals}
     return {
         "generated_at": now.strftime("%Y-%m-%d %H:%M"),
@@ -96,6 +113,7 @@ def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs")
             "alerts": len(alerts),
         },
         "alerts": alerts,
+        "forecasts": forecasts,
         "districts": [
             {
                 "district": d,

@@ -59,8 +59,29 @@ The dataset's body temperature is in **Fahrenheit (98–103 °F)**. HealthConnec
 | Keep the rule-based checks | ✅ Yes: transparent, explainable line by line, based on WHO danger signs, same result online and offline |
 | Use ML later | ✅ Once HealthConnect has collected **consented, de-identified Ghanaian data**, with ethics approval, and a clinician has reviewed the labels |
 
-## Where ML fits better: outbreak prediction
-The surveillance dashboard already produces **weekly counts per district and condition**. Forecasting next week's counts (e.g. malaria in the rainy season) is a better first ML use: it works on **aggregate, anonymised data** (no individual risk decisions), and a wrong forecast causes extra vigilance, not a missed referral. That needs at least a year of weekly data to learn seasonal patterns.
+## What the PROSIT asks for: predicting outbreaks
+The Week 3 brief asks for *"AI/ML disease prediction based on symptom patterns and community data"* and *"predictive analytics for health resource allocation"*: predict **where disease is coming next** from community totals, so GHS can send medicines and supplies **before** an outbreak peaks. This is population-level (district totals), not one patient's risk.
+
+### Built now: a 2-week forecast with statistics (`backend/forecast.py`)
+For each district and infectious disease, on the GHS dashboard:
+1. **Trend:** average change per week over the last 3 weeks.
+2. **Expected cases:** this week + 1 × trend (next week) and + 2 × trend (the week after), never below 0.
+3. **Outbreak level:** the same rule as the alerts (≥ 5 cases and ≥ 2× the usual week).
+4. **Chance:** the **Poisson** formula (standard maths for counts of random events per week) gives the chance each week reaches the outbreak level; over 2 weeks = 1 − (no outbreak next week × no outbreak the week after).
+5. **Supplies:** about 1 test or treatment per expected case. An example ratio, not GHS guidance.
+
+Example from the demo data: *Cholera, Tamale: >99% chance, ~35 cases expected in 2 weeks, prepare ~35 ORS sachets and rapid tests.*
+
+**Why statistics, not ML:** a trained model would only learn our random demo data. Every step here can be explained and checked, and it works with a few weeks of data. **Limits:** it assumes the recent trend continues, cannot know seasons, and small numbers are less certain (the screen says so).
+
+### Planned: trained ML
+| Step | Plan |
+|---|---|
+| Data | At least **1 year** (ideally 2–3) of **real** weekly counts per district from HealthConnect, or historical DHIMS2 data shared by GHS under an agreement |
+| Inputs | Recent weekly counts, week of the year (season), rainfall, neighbouring districts' counts |
+| Model | Start simple (Poisson regression), then try gradient boosting (e.g. XGBoost) only if it does better |
+| Testing | Train on earlier months, test on later months the model never saw (never shuffle time). Compare against the statistics forecast above: ML is used only if it predicts outbreaks better |
+| Safety | A forecast supports GHS decisions; people decide. A wrong forecast means extra preparation, not a missed patient |
 
 ## Exam points
 - **Data leakage:** duplicates or future information in the training set inflate test scores. Always remove duplicates and test on unseen data.

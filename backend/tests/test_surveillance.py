@@ -43,3 +43,33 @@ def test_dhims2_export_shape(client, login, demo_data):
     value = export["dataValues"][0]
     assert set(value) == {"dataElement", "orgUnit", "value"} and isinstance(value["value"], str)
     assert "Demo Patient" not in json.dumps(export)
+
+
+# ---------- 2-week outbreak forecast (forecast.py: statistics, not ML) ----------
+
+def test_poisson_chance():
+    from forecast import chance_at_least
+    assert chance_at_least(5, 0) == 0
+    assert chance_at_least(0, 3) == pytest.approx(1)  # "0 or more" is certain
+    assert chance_at_least(1, 2) == pytest.approx(1 - 2.718281828 ** -2)  # 1 - chance of zero
+    assert chance_at_least(20, 10) < 0.01 < chance_at_least(10, 10) < chance_at_least(5, 10)
+
+
+def test_forecast_follows_the_trend():
+    from forecast import forecast
+    rising = forecast([12, 6, 3, 3, 2, 2, 2, 2], outbreak_level=5)
+    assert rising["direction"] == "rising" and rising["chance"] > 0.9
+    falling = forecast([1, 3, 5, 7, 7, 7, 7, 7], outbreak_level=10)
+    assert falling["direction"] == "falling" and falling["chance"] < 0.01
+    assert falling["expected_next_2_weeks"] == 0  # never below zero
+    steady = forecast([10, 10, 10, 10, 10, 10, 10, 10], outbreak_level=20)
+    assert steady["direction"] == "steady" and steady["expected_next_2_weeks"] == 20
+
+
+def test_dashboard_forecast(client, login, demo_data):
+    forecasts = client.get("/surveillance/summary", headers=login("ghs1")).json()["forecasts"]
+    top = forecasts[0]
+    assert (top["district"], top["condition"]) == ("Tamale Metropolitan", "cholera")
+    assert top["chance"] > 0.9 and top["direction"] == "rising"
+    assert all(f["condition"] != "hypertension" for f in forecasts)  # not infectious: no outbreak forecast
+    assert all(f["expected_next_2_weeks"] == "<5" or f["expected_next_2_weeks"] >= 5 for f in forecasts)

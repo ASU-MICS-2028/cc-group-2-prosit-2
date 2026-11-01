@@ -91,6 +91,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
 | ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
+| 2-week outbreak forecast | ✅ Built with **statistics, not ML** (trend + Poisson chance); trained ML planned once ~1 year of real data exists |
 | DHIMS2 export (DHIS2 format, simulated) | ✅ Done (not sent to DHIMS2) |
 | Admin account management | ✅ Create accounts (temporary password shown once), disable / re-enable; no patient data |
 | Sustainability model | ⬜ Week 4 (report) |
@@ -171,6 +172,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Never names:** the query reads only *district, date, risk level, conditions*. No name, reference, phone or notes reach GHS.
 - **Small counts hidden:** 1–4 shown as **"<5"**, so a single case in a small community can't identify someone.
 - **Outbreak alert:** this week's cases **≥ 5** and **≥ 2× the usual** (average of the 4 weeks before) → red alert, e.g. *"Cholera, Tamale Metropolitan: 14 this week (usual ~2)"*.
+- **Next 2 weeks: chance of an outbreak** (`backend/forecast.py`): for each district and infectious disease, the trend of the last 3 weeks gives the expected cases; the **Poisson** formula turns that into the chance of reaching the outbreak level. Shown with the supplies to prepare (example: 1 per expected case). **Statistics, not machine learning**: a trained model needs about a year of real data to learn seasons. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md).
 - **Screen:** KPI tiles (last 7 days), alert cards, a **map** (bubble area = cases at each district capital, red ring = alert), a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
 - **Export for DHIMS2:** downloads last complete week's totals in the national system's DHIS2 format. Simulated: not sent anywhere. See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md).
 - **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
@@ -410,7 +412,7 @@ Each test builds its own temporary database with fake accounts, so your `healthc
 ```bash
 # Backend (venv active, inside backend/)
 pip install -r requirements-dev.txt
-pytest                 # 23 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
+pytest                 # 26 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
                        # surveillance privacy, DHIMS2 export, and Python rules = browser rules
 # Frontend (inside frontend/)
 npm test               # 11 tests: AES-GCM encryption and the encrypted patient cache
@@ -533,6 +535,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── reminders.py       # Appointment confirmation + 24h reminder job
 │   ├── calls.py           # Video call signalling (WebRTC introducer)
 │   ├── surveillance.py    # GHS dashboard: anonymised counts, "<5" rule, outbreak alerts
+│   ├── forecast.py        # 2-week outbreak chance: trend + Poisson (statistics, not ML)
 │   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
 │   ├── evaluate_model.py  # Honest XGBoost evaluation (needs requirements-ml.txt)
 │   ├── seed.py            # Creates fake demo accounts
@@ -608,7 +611,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 ### ✅ Phase 4: Week 3, Surveillance (Henry and Clifford)
 - [x] GHS officer dashboard: **anonymised** district totals, never names; small counts shown as "<5"; outbreak alerts; 8-week trend
 - [x] Map of cases by district (OpenStreetMap bubble map at district capitals; HIGH risk or any condition; alert rings)
-- [x] ML prediction: XGBoost evaluated honestly; **not wired in** (55% duplicate rows, 57% HIGH-risk recall, °F vs °C, Bangladesh data). See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md)
+- [x] Prediction: **2-week outbreak forecast** on the dashboard (statistics, not ML) + XGBoost evaluated honestly and **not wired in** (55% duplicate rows, 57% HIGH-risk recall, °F vs °C, Bangladesh data). Trained ML is planned, not built. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md)
 - [x] DHIMS2 integration: **designed** + simulated export in DHIS2 `dataValueSet` format (not sent). See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md)
 
 ### ✅ Phase 5: Admin and hardening (Henry and Clifford)

@@ -119,6 +119,8 @@ export default function GhsApp(props) {
           ))}
         </div>
 
+        <ForecastPanel t={t} forecasts={data.forecasts} onSelect={setSelected} />
+
         <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
 
         {/* Heatmap table: districts x conditions, last 7 days */}
@@ -261,6 +263,60 @@ function TrendChart({ t, district, condition, series, alertUsual }) {
         ))}
       </div>
       <p className="mt-2 h-5 text-xs text-stone-600">{hover || t.ghsHoverColumn}</p>
+    </div>
+  );
+}
+
+// Outlook colours from the status palette, always with an icon + text label (never colour alone)
+const OUTLOOK = {
+  high: { color: "#ec835a", icon: "▲" }, // serious
+  possible: { color: "#fab219", icon: "△" }, // warning
+};
+const ARROW = { rising: "↗", steady: "→", falling: "↘" };
+
+// Next 2 weeks: chance of an outbreak per district and disease (backend/forecast.py, statistics, not ML)
+function ForecastPanel({ t, forecasts, onSelect }) {
+  const shown = forecasts.filter((f) => f.chance >= 0.3);
+  const percent = (chance) => (chance >= 0.99 ? ">99%" : `${Math.round(chance * 100)}%`);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
+      <h2 className="text-lg font-semibold text-stone-800">{t.ghsForecastTitle}</h2>
+      <p className="text-xs text-stone-500">{t.ghsForecastHint}</p>
+      <div className="mt-3 space-y-2">
+        {shown.length === 0 && <p className="text-sm text-stone-500">✓ {t.ghsForecastNone}</p>}
+        {shown.map((f) => {
+          const level = f.chance >= 0.6 ? "high" : "possible";
+          const expected = f.expected_next_2_weeks;
+          return (
+            <button
+              key={f.district + f.condition}
+              onClick={() => onSelect({ district: f.district, condition: f.condition })}
+              className="flex w-full items-start gap-3 rounded-xl border border-l-4 border-stone-200 p-3 text-left hover:shadow-md"
+              style={{ borderLeftColor: OUTLOOK[level].color }}
+            >
+              <span className="text-lg" style={{ color: OUTLOOK[level].color }} aria-hidden="true">
+                {OUTLOOK[level].icon}
+              </span>
+              <div className="text-sm">
+                <p className="text-xs font-bold uppercase tracking-wide text-stone-700">
+                  {level === "high" ? t.ghsForecastHigh : t.ghsForecastPossible} · {percent(f.chance)}
+                </p>
+                <p className="font-semibold text-stone-900">
+                  {t["cond_" + f.condition]} · {f.district}
+                </p>
+                <p className="text-stone-600">
+                  {t.ghsForecastExpected} <span className="font-semibold tabular-nums text-stone-900">{expected}</span>{" "}
+                  ({ARROW[f.direction]} {t["trend_" + f.direction]}) · {t.ghsForecastLevel} {f.outbreak_level} {t.ghsPerWeek}
+                </p>
+                <p className="text-stone-600">
+                  {t.ghsForecastPrepare} {expected === "<5" ? t.ghsForecastAFew : `~${expected}`} {t["supply_" + f.condition]}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
