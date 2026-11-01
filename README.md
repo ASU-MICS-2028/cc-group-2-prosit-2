@@ -176,7 +176,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Screen:** KPI tiles (last 7 days), alert cards, a **map** (bubble area = cases at each district capital, red ring = alert), a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
 - **Export for DHIMS2:** downloads last complete week's totals in the national system's DHIS2 format. Simulated: not sent anywhere. See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md).
 - **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
-- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN". The backend **re-dates these demo records at start-up and every 10 minutes**, so the dashboard looks the same on any day (spike always "this week"). Only "Demo Patient" records are touched; a real database has none, so nothing happens there.
+- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN". With `DEMO_MODE=on` in `.env`, the backend **re-dates these demo records at start-up and every 10 minutes**, so the dashboard looks the same on any day (spike always "this week"). Only "Demo Patient" records are touched. **Off by default**, so a cloud or real deployment never does this unless switched on.
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
@@ -389,6 +389,9 @@ JWT_SECRET=paste-a-long-random-string-here
 # Optional: only needed for real referral SMS
 # ARKESEL_API_KEY=your-arkesel-key
 # ARKESEL_SENDER=YourSenderID
+
+# Optional, local demo only: keep the fake surveillance data dated "today"
+DEMO_MODE=on
 ```
 
 Create the fake demo accounts (one time), then start the server:
@@ -412,7 +415,7 @@ Each test builds its own temporary database with fake accounts, so your `healthc
 ```bash
 # Backend (venv active, inside backend/)
 pip install -r requirements-dev.txt
-pytest                 # 28 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
+pytest                 # 29 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
                        # surveillance privacy, DHIMS2 export, and Python rules = browser rules
 # Frontend (inside frontend/)
 npm test               # 11 tests: AES-GCM encryption and the encrypted patient cache
@@ -607,6 +610,12 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Secrets in AWS Secrets Manager instead of `.env`
 - [ ] Least-privilege IAM role (from Clifford's Lab 6)
 - [ ] CloudWatch logs and alarms
+
+**Notes for the migration:**
+- **Background jobs** (SMS reminders, demo refresh) run inside the API every 10 minutes. If the cloud runs **2+ copies** of the API, each copy runs them (double reminders, doubled demo data). Run **one copy**, or move both jobs to **one AWS EventBridge Scheduler** rule that calls them once.
+- **Lambda** has no always-on process, so those jobs would never run there without EventBridge Scheduler.
+- Leave **`DEMO_MODE` off** in any real deployment (it is off unless set).
+- SQLite → RDS: a few queries use SQLite date functions (`datetime('now', ...)`) and need translating.
 
 ### ✅ Phase 4: Week 3, Surveillance (Henry and Clifford)
 - [x] GHS officer dashboard: **anonymised** district totals, never names; small counts shown as "<5"; outbreak alerts; 8-week trend

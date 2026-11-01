@@ -80,7 +80,8 @@ def test_dashboard_forecast(client, login, demo_data):
     assert all(f["expected_next_2_weeks"] == "<5" or f["expected_next_2_weeks"] >= 5 for f in forecasts)
 
 
-def test_demo_data_stays_current(client, login, make_patient, demo_data):
+def test_demo_data_stays_current(client, login, make_patient, demo_data, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "on")
     chv = login("chv1")
     make_patient(chv, full_name="Test Patient Real")
     ghs = login("ghs1")
@@ -92,6 +93,14 @@ def test_demo_data_stays_current(client, login, make_patient, demo_data):
     assert "Test Patient Real" in names  # real patients untouched
 
 
-def test_no_demo_data_is_created_on_a_real_database(client):
+def test_demo_mode_off_by_default(client, demo_data, monkeypatch):
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    ids = [r[0] for r in database.get_db().execute("SELECT id FROM patients")]
+    keep_demo_data_current()
+    assert [r[0] for r in database.get_db().execute("SELECT id FROM patients")] == ids  # nothing touched
+
+
+def test_no_demo_data_is_created_on_a_real_database(client, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "on")
     keep_demo_data_current()
     assert database.get_db().execute("SELECT COUNT(*) FROM patients").fetchone()[0] == 0

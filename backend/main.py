@@ -39,7 +39,7 @@ async def background_loop():
         try:
             # Send reminders for appointments in the next 24 hours
             await asyncio.to_thread(send_due_reminders)
-            # Demo only: keep the fake surveillance data dated "now" (no-op on a real database)
+            # Demo only (DEMO_MODE=on): keep the fake surveillance data dated "now"
             await asyncio.to_thread(keep_demo_data_current)
         except Exception as err:  # keep the loop alive whatever happens
             print("BACKGROUND JOB ERROR:", type(err).__name__)

@@ -3,11 +3,13 @@ with a simulated cholera spike in Tamale this week. Run once: python seed_demo_d
 
 The dates count back from "now". So that the dashboard looks the same on any day
 (spike always "this week"), the backend re-creates these records at start-up and
-every 10 minutes (keep_demo_data_current). The fixed random seed makes every
-re-creation identical. A real database has no demo records, so nothing happens there.
+every 10 minutes (keep_demo_data_current), but ONLY when DEMO_MODE=on in .env.
+The fixed random seed makes every re-creation identical. Off by default, so a
+cloud/real deployment never touches this unless someone deliberately turns it on.
 
 Every patient is "Demo Patient NNNN". District names are real; all data is invented.
 """
+import os
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -92,7 +94,10 @@ def create_demo_data(conn):
 
 def keep_demo_data_current():
     # Re-date the demo visits to "now" (remove + re-create in one transaction,
-    # so the dashboard never sees half the data). Does nothing without demo data.
+    # so the dashboard never sees half the data).
+    # Two locks: DEMO_MODE must be switched on, AND demo records must exist.
+    if os.getenv("DEMO_MODE", "").lower() != "on":
+        return
     conn = get_db()
     if demo_data_exists(conn):
         remove_demo_data(conn)
