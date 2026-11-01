@@ -176,7 +176,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Screen:** KPI tiles (last 7 days), alert cards, a **map** (bubble area = cases at each district capital, red ring = alert), a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
 - **Export for DHIMS2:** downloads last complete week's totals in the national system's DHIS2 format. Simulated: not sent anywhere. See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md).
 - **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
-- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN".
+- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN". Dates count back from today, so **before a demo run `python seed_demo_data.py --refresh`** (replaces only the demo records).
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.

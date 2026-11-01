@@ -1,9 +1,13 @@
 """FAKE surveillance demo data: 8 weeks of general visits across 5 districts,
 with a simulated cholera spike in Tamale this week. Run once: python seed_demo_data.py
 
+Dates count back from today, so the spike slowly becomes "last week". Before a demo:
+    python seed_demo_data.py --refresh     (replaces ONLY the "Demo Patient" records)
+
 Every patient is "Demo Patient NNNN". District names are real; all data is invented.
 """
 import random
+import sys
 from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
@@ -36,6 +40,13 @@ SERIOUS = [(["cough", "fever", "difficulty_breathing"], 39.0), (["fever", "convu
 
 init_db()
 conn = get_db()
+if "--refresh" in sys.argv:
+    # Remove the old demo records (children first). Real test patients are never touched.
+    demo = "SELECT id FROM patients WHERE full_name LIKE 'Demo Patient%'"
+    for table in ["appointments", "referrals", "observations"]:
+        conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({demo})")
+    removed = conn.execute("DELETE FROM patients WHERE full_name LIKE 'Demo Patient%'").rowcount
+    print(f"Removed {removed} old demo patients.")
 if conn.execute("SELECT 1 FROM patients WHERE full_name LIKE 'Demo Patient%'").fetchone():
     print("Demo data already exists. Nothing to do.")
     raise SystemExit
