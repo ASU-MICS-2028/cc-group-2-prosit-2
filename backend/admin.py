@@ -1,7 +1,8 @@
 """System admin: create and disable staff accounts. No patient data here.
 
 The admin never chooses passwords: the server makes a random temporary one,
-shows it once, and stores only its bcrypt hash.
+shows it once, and stores only its bcrypt hash. The user must replace it at
+first login (must_change_password), so the admin never knows a working password.
 Accounts are disabled, never deleted: their patients, referrals and audit log
 entries still point to them.
 """
@@ -47,8 +48,9 @@ def create_user(body: AccountCreate, user=Depends(require_role("admin"))):
 
     temporary_password = secrets.token_urlsafe(9)  # 12 random characters
     conn.execute(
-        """INSERT INTO users (username, password_hash, role, full_name, facility, facility_phone, district)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO users (username, password_hash, role, full_name, facility, facility_phone, district,
+                              must_change_password)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
         (body.username, hash_password(temporary_password), body.role, body.full_name,
          body.facility or None, body.facility_phone or None, body.district or None),
     )
@@ -74,3 +76,23 @@ def set_active(user_id: int, body: AccountActive, user=Depends(require_role("adm
     conn.commit()
     conn.close()
     return {"success": True}
+
+
+@router.post("/admin/users/{user_id}/reset-password")
+def reset_password(user_id: int, user=Depends(require_role("admin"))):
+    # Forgotten password: new temporary one, which must be changed at next login
+    if user_id == user["id"]:
+        raise HTTPException(status_code=400, detail="Use 'change password' for your own account")
+
+    conn = get_db()
+    target = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Account not found")
+    temporary_password = secrets.token_urlsafe(9)
+    conn.execute("UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+                 (hash_password(temporary_password), user_id))
+    log_access(conn, user["id"], "reset_password", target["username"])
+    conn.commit()
+    conn.close()
+    return {"username": target["username"], "temporary_password": temporary_password}

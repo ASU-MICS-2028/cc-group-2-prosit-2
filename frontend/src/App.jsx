@@ -6,6 +6,7 @@ import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
 import GhsApp from "./GhsApp";
 import AdminApp from "./AdminApp";
+import ChangePassword from "./ChangePassword";
 
 // Sessions from before offline encryption have no key: make them log in again
 if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
@@ -47,6 +48,16 @@ export default function App() {
   if (checking) return null;
 
   if (!user) return <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />;
+
+  // Temporary password (new or reset account): must set a new one first
+  if (user.must_change_password) {
+    const done = () => {
+      const updated = { ...user, must_change_password: false };
+      sessionStorage.setItem("hc_user", JSON.stringify(updated));
+      setUser(updated);
+    };
+    return <ChangePassword user={user} t={t} onChanged={done} onLogout={handleLogout} />;
+  }
 
   // RBAC on the screen side: each role gets its own workspace.
   // The backend still checks the role on every request.

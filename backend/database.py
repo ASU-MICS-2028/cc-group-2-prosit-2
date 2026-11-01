@@ -43,7 +43,8 @@ def init_db():
         facility       TEXT,
         facility_phone TEXT,
         district       TEXT,  -- for surveillance totals (GHS sees districts, never names)
-        active         INTEGER NOT NULL DEFAULT 1  -- 0 = disabled by admin (kept, never deleted)
+        active         INTEGER NOT NULL DEFAULT 1,  -- 0 = disabled by admin (kept, never deleted)
+        must_change_password INTEGER NOT NULL DEFAULT 0  -- 1 = still on a temporary password
     );
 
     -- FHIR Patient. Registered by a CHV, only after consent (Act 843)
@@ -131,6 +132,7 @@ def migrate(conn):
     add_column_if_missing(conn, "patients", "phone", "TEXT")
     add_column_if_missing(conn, "users", "district", "TEXT")
     add_column_if_missing(conn, "users", "active", "INTEGER NOT NULL DEFAULT 1")
+    add_column_if_missing(conn, "users", "must_change_password", "INTEGER NOT NULL DEFAULT 0")
     if add_column_if_missing(conn, "patients", "district", "TEXT"):
         # Existing patients take their CHV's district
         conn.execute("UPDATE patients SET district = (SELECT district FROM users WHERE users.id = patients.chv_id)")

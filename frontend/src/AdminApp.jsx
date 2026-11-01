@@ -49,6 +49,16 @@ export default function AdminApp(props) {
     }
   };
 
+  const resetPassword = async (u) => {
+    if (!window.confirm(`${t.adminResetConfirm} ${u.username}?`)) return;
+    setError("");
+    try {
+      setCreated(await api(`/admin/users/${u.id}/reset-password`, { method: "POST" }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const field = (name) => ({ value: form[name], onChange: (e) => setForm({ ...form, [name]: e.target.value }) });
   const needsFacility = ["chv", "nurse", "doctor"].includes(form.role);
 
@@ -65,7 +75,7 @@ export default function AdminApp(props) {
         {created && (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>
-              {t.adminCreated} <strong>{created.username}</strong>. {t.adminTempPassword}
+              {t.adminPasswordFor} <strong>{created.username}</strong>. {t.adminTempPassword}
             </p>
             <p className="mt-2 font-mono text-lg font-semibold tracking-wide">{created.temporary_password}</p>
             <p className="mt-2 text-xs">{t.adminShownOnce}</p>
@@ -82,7 +92,7 @@ export default function AdminApp(props) {
             <input required pattern="[a-z0-9_]{3,30}" title={t.adminUsernameRule} className={inputClass} {...field("username")} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">{t.fullName}</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t.adminFullName}</label>
             <input required maxLength={100} className={inputClass} {...field("full_name")} />
           </div>
           <div>
@@ -124,7 +134,7 @@ export default function AdminApp(props) {
             <thead className="border-b border-stone-200 text-xs uppercase text-stone-500">
               <tr>
                 <th className="px-4 py-3">{t.adminUsername}</th>
-                <th className="px-4 py-3">{t.fullName}</th>
+                <th className="px-4 py-3">{t.adminFullName}</th>
                 <th className="px-4 py-3">{t.adminRole}</th>
                 <th className="px-4 py-3">{t.adminFacility}</th>
                 <th className="px-4 py-3">{t.adminDistrict}</th>
@@ -139,20 +149,32 @@ export default function AdminApp(props) {
                   <td className="px-4 py-3">{t["role_" + u.role]}</td>
                   <td className="px-4 py-3">{u.facility || "–"}</td>
                   <td className="px-4 py-3">{u.district || "–"}</td>
-                  <td className="flex items-center gap-2 px-4 py-3">
-                    <span className="w-16 text-xs">{u.active ? t.adminActive : t.adminDisabled}</span>
-                    {u.id === user.id ? (
-                      <span className="text-xs text-stone-500">{t.adminYou}</span>
-                    ) : (
-                      <button
-                        onClick={() => setActive(u.id, !u.active)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          u.active ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        }`}
-                      >
-                        {u.active ? t.adminDisable : t.adminEnable}
-                      </button>
-                    )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-16 text-xs">{u.active ? t.adminActive : t.adminDisabled}</span>
+                      {u.id === user.id ? (
+                        <span className="text-xs text-stone-500">{t.adminYou}</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setActive(u.id, !u.active)}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              u.active ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {u.active ? t.adminDisable : t.adminEnable}
+                          </button>
+                          {u.active === 1 && (
+                            <button
+                              onClick={() => resetPassword(u)}
+                              className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-200"
+                            >
+                              {t.adminReset}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

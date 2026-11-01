@@ -15,13 +15,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from admin import router as admin_router
 from calls import router as calls_router
 from surveillance import router as surveillance_router
-from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
+from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
+                  offline_key_for)
 from database import get_db, init_db, log_access
 from general_model import assess_general, advice_for
 from model import predict_risk
 from priority import priority
 from reminders import REMIND_HOURS_BEFORE, appointment_message, send_due_reminders
-from schemas import (LoginRequest, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
+from schemas import (LoginRequest, PasswordChange, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
                      PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus)
 from sms import send_sms
 
@@ -101,13 +102,39 @@ def login(body: LoginRequest):
             "role": user["role"],
             "full_name": user["full_name"],
             "facility": user["facility"],
+            "must_change_password": bool(user["must_change_password"]),
         },
     }
 
 
 @app.get("/auth/me")
-def me(user=Depends(get_current_user)):
+def me(user=Depends(get_user_allow_temp_password)):
     return user
+
+
+@app.post("/auth/change-password")
+def change_password(body: PasswordChange, user=Depends(get_user_allow_temp_password)):
+    new = body.new_password
+    if not (any(c.isalpha() for c in new) and any(c.isdigit() for c in new)):
+        raise HTTPException(status_code=422, detail="Use at least one letter and one number")
+    if user["username"].lower() in new.lower():
+        raise HTTPException(status_code=422, detail="The password must not contain your username")
+
+    conn = get_db()
+    current_hash = conn.execute("SELECT password_hash FROM users WHERE id = ?", (user["id"],)).fetchone()["password_hash"]
+    if not verify_password(body.current_password, current_hash):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Current password is wrong")
+    if verify_password(new, current_hash):
+        conn.close()
+        raise HTTPException(status_code=422, detail="Choose a password different from the current one")
+
+    conn.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+                 (hash_password(new), user["id"]))
+    log_access(conn, user["id"], "change_password")
+    conn.commit()
+    conn.close()
+    return {"success": True}
 
 
 # ---------- Patients (CHV only, own patients only) ----------

@@ -48,7 +48,7 @@ def create_token(user) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
-def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
+def get_user_allow_temp_password(creds: HTTPAuthorizationCredentials = Depends(bearer)):
     # Reject missing, tampered or expired tokens
     try:
         payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=["HS256"])
@@ -57,7 +57,8 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
 
     conn = get_db()
     user = conn.execute(
-        "SELECT id, username, role, full_name, facility, facility_phone, district FROM users WHERE id = ? AND active = 1",
+        "SELECT id, username, role, full_name, facility, facility_phone, district, must_change_password "
+        "FROM users WHERE id = ? AND active = 1",
         (int(payload["sub"]),),
     ).fetchone()
     conn.close()
@@ -65,6 +66,14 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
         # Checked on every request, so disabling an account locks it out at once
         raise HTTPException(status_code=401, detail="Account not found or disabled")
     return dict(user)
+
+
+def get_current_user(user=Depends(get_user_allow_temp_password)):
+    # Everything except /auth/me and /auth/change-password: a temporary password
+    # only lets you set a new one (enforced here on the server, not just on screen)
+    if user["must_change_password"]:
+        raise HTTPException(status_code=403, detail="Change your temporary password first")
+    return user
 
 
 def require_role(*roles):

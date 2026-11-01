@@ -23,6 +23,11 @@ class AccountActive(BaseModel):
     active: bool
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=72)  # bcrypt only reads the first 72 bytes
+
+
 class PatientCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=100)
     age: int = Field(ge=0, le=120)

@@ -181,6 +181,15 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Book a follow-up appointment** (nurse or doctor) and manage the **Upcoming appointments** list: Attended / Missed / Cancel.
 - **Mark as arrived** and **record the outcome**. Video consults come next (Week 2).
 
+### For a system admin: staff accounts (`backend/admin.py`, `frontend/src/AdminApp.jsx`)
+**Why:** new CHVs and nurses join and leave; this replaces editing `seed.py`.
+
+- **Create an account:** username, name, role, facility, district. The server makes a **random temporary password**, shown **once** for the admin to hand over in person.
+- **First login:** the user must set their own password before anything else works (enforced by the server, not just the screen). So the admin never knows a working password.
+- **Disable / re-enable:** never delete, because patients, referrals and the audit log point to the account. A disabled user is locked out on their next click.
+- **Reset password:** for a forgotten password; gives a new temporary one.
+- **No patient data** on this screen (least privilege). Every action is audit-logged.
+
 ### How the checks work
 Both checks are **rule-based** (fixed if/else rules, not machine learning). Each check exists twice: on the server (official) and in the browser (for offline use). The server always re-checks synced data.
 
@@ -322,6 +331,8 @@ Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data
 | Measure | How |
 |---|---|
 | **Passwords never stored** | Hashed with bcrypt (one-way, salted) |
+| **Temporary passwords** | New and reset accounts get a random password shown once to the admin. The server blocks every action except "change password" until the user sets their own (8–72 characters, a letter and a number, not the username) |
+| **Disabled accounts** | Checked on every request, so a disabled user is locked out immediately, not when their token expires |
 | **Login tokens** | JWT signed with a server secret, carrying user id + role; expires after 8 hours |
 | **Token storage** | `sessionStorage`, which is wiped when the tab closes (safer on shared phones) |
 | **RBAC** | Every route checks the role (`require_role`). Wrong role → 403 |
@@ -333,6 +344,13 @@ Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data
 | **CORS** | Only our own frontend origin may call the API from a browser |
 | **Secrets** | Kept in `backend/.env` (git-ignored), never printed or committed |
 | **No API caching** | The PWA caches the app itself, not API replies (which contain patient data) |
+
+### Before any real use (checklist)
+The demo password `Demo@1234` is printed in this public README, so the demo accounts must never reach real patients.
+1. Start from an **empty database**. Do not run `seed.py` or `seed_demo_data.py`.
+2. Run `python prepare_real_use.py <admin_username> "<Full name>"`. It creates the first real admin (temporary password, shown once) and **disables every account still using the demo password**.
+3. The admin logs in, sets their own password, then creates the real staff accounts from the admin screen.
+4. Set a strong `JWT_SECRET` in `.env`, serve over HTTPS, and set `FRONTEND_ORIGINS` to the real address.
 
 ---
 
@@ -468,6 +486,8 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET | `/admin/users` | admin | All staff accounts (no password hashes, no patients) + district list |
 | POST | `/admin/users` | admin | Create an account; returns a random temporary password **once** |
 | POST | `/admin/users/{id}/active` | admin | Disable (`false`) or re-enable (`true`); a disabled user is locked out on their next request |
+| POST | `/admin/users/{id}/reset-password` | admin | New temporary password (shown once); user must change it at next login |
+| POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
 
@@ -494,6 +514,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
 │   ├── evaluate_model.py  # Honest XGBoost evaluation (needs requirements-ml.txt)
 │   ├── seed.py            # Creates fake demo accounts
+│   ├── admin.py           # Admin: create / disable accounts, reset passwords (no patient data)
+│   ├── prepare_real_use.py # Run once before real use: first real admin + disable demo accounts
 │   ├── train_model.py     # Old XGBoost predictor (NOT wired in; evaluated in docs/ML_EVALUATION.md)
 │   ├── requirements.txt
 │   └── data/              # Kaggle Maternal Health Risk dataset (public)
@@ -511,7 +533,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── IncomingCalls.jsx  # "X is calling about Y: Join" banner
         ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend, DHIMS2 export
         ├── DistrictMap.jsx    # Leaflet/OpenStreetMap bubble map of districts
-        ├── RolePlaceholder.jsx# "Coming soon" for other roles
+        ├── AdminApp.jsx       # Admin: create / disable accounts, reset passwords
+        ├── ChangePassword.jsx # Forced "set your own password" screen after a temporary password
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
         ├── GeneralVisitForm.jsx, AntenatalForm.jsx
@@ -565,7 +588,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 
 ### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
 - [x] Admin screen: create / disable accounts (replaces `seed.py`)
-- [ ] Force password change on first login; remove demo accounts before any real use
+- [x] Force password change on first login; remove demo accounts before any real use
 - [ ] Cache patient lists on the phone (encrypted) for full offline use
 - [ ] Automated tests in the repo
 
