@@ -71,6 +71,7 @@ const text = {
     saveOutcome: "Save outcome",
     cancel: "Cancel",
     previousComplicationsShort: "Previous complications",
+    savedCopy: "No signal: showing the copy saved on this phone at",
     adminTitle: "Staff accounts",
     adminHint: "Create and disable accounts. Accounts are disabled, never deleted, so their records and audit trail stay intact. No patient data is shown here.",
     adminNew: "New account",

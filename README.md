@@ -112,6 +112,7 @@ All of this work is on the **`main`** branch.
 - **Record an antenatal check** for pregnant patients: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
 - **Get a risk level** (LOW / MEDIUM / HIGH) with advice for either check, **even with no signal**.
   Offline checks are encrypted, saved on the phone, and synced automatically when signal returns.
+- **Open patients with no signal**, even after reloading the app: the patient list and each patient page opened online are kept as an **encrypted copy** on the phone. An amber note shows when you are looking at the saved copy and when it was saved.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
 - **Refer a MEDIUM-risk patient** if worried, but a **reason is required** (e.g. "fever not improving after 2 days"). LOW cannot be referred.
 - **See upcoming appointments** on the patient page, with a warning when the patient has no phone so the CHV can remind them in person.
@@ -256,6 +257,7 @@ flowchart LR
         UI["React app"]
         RM["riskModel.js<br/>(offline scoring)"]
         Q["Encrypted offline queue<br/>(localStorage, AES-GCM)"]
+        PC["Encrypted patient copies<br/>(localStorage, AES-GCM)"]
     end
 
     subgraph Server["Backend (FastAPI, Python)"]
@@ -270,6 +272,7 @@ flowchart LR
     UI --> RM
     RM --> Q
     Q -- "sync when online" --> API
+    UI -- "saved copy when no signal" --> PC
     API --> M
     API --> DB
     API -- "referral alert<br/>(reference only)" --> SMS
@@ -340,10 +343,10 @@ Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data
 | **Consent** | Registration refused without consent, enforced in the form, the API **and** a database constraint |
 | **Data minimisation** | Referral SMS contains only reference, age, risk, CHV; **no patient name**. Arkesel's reply is not passed back to the browser |
 | **Audit log** | Logins, failed logins, every view/create/update, and **blocked access attempts** (`access_denied`) |
-| **Offline encryption** | Queued checks are encrypted with AES-GCM. Per-user key issued at login, kept only in `sessionStorage` |
+| **Offline encryption** | Queued checks **and saved patient copies** are encrypted with AES-256-GCM. Per-user key issued at login, kept only in `sessionStorage` (gone when the tab closes) |
 | **CORS** | Only our own frontend origin may call the API from a browser |
 | **Secrets** | Kept in `backend/.env` (git-ignored), never printed or committed |
-| **No API caching** | The PWA caches the app itself, not API replies (which contain patient data) |
+| **No plain-text API caching** | The PWA caches the app itself, never API replies. Patient data kept for offline use is stored **only encrypted** (`patientCache.js`, AES-GCM, same per-user key) |
 
 ### Before any real use (checklist)
 The demo password `Demo@1234` is printed in this public README, so the demo accounts must never reach real patients.
@@ -452,6 +455,12 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 3. Run a check → you get an "Offline result" and an amber "waiting to sync" banner.
 4. Set the network back to online → the banner clears and the check appears in history.
 
+**Offline reload**
+1. As `chv1`, open the patient list and one patient while online.
+2. Set DevTools → Network to **Offline** and reload the page.
+3. The list and that patient still open, with an amber "saved copy" note. A patient never opened online says it has not been saved yet.
+4. DevTools → Application → Local Storage: the `hc_cache:` entries are unreadable (`iv` + `data`), with no names.
+
 ---
 
 ## 10. API reference
@@ -541,6 +550,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── riskModel.js       # Offline copy of the antenatal rules
         ├── generalModel.js    # Offline copy of the general visit rules
         ├── offlineQueue.js    # Queue + sync for offline checks
+        ├── patientCache.js    # Encrypted saved copies of patient list / pages for offline use
         ├── crypto.js          # AES-GCM encrypt/decrypt
         ├── i18n.js            # English + Twi text
         ├── styles.js, RiskBadge.jsx, Logo.jsx
@@ -589,7 +599,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 ### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
 - [x] Admin screen: create / disable accounts (replaces `seed.py`)
 - [x] Force password change on first login; remove demo accounts before any real use
-- [ ] Cache patient lists on the phone (encrypted) for full offline use
+- [x] Cache patient lists on the phone (encrypted) for full offline use
 - [ ] Automated tests in the repo
 
 ### ⬜ Phase 6: Languages and translation (Isaac)
@@ -629,11 +639,11 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 ## 14. Known limitations
 
 - **Local only**: SQLite on a laptop; the database file itself is not encrypted yet (planned: RDS with encryption at rest).
-- **Partial offline**: a patient must be opened while online before an offline check can be done for them. A full reload with no signal shows an empty list.
+- **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in `model.py` and `riskModel.js`. Change both, and re-run the comparison test.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
 - **Twi** covers only some screens.
-- **Demo accounts** share one known password. They must be removed before any real deployment.
+- **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---
 

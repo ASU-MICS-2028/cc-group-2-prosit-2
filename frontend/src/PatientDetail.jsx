@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "./api";
 import RiskBadge from "./RiskBadge";
 import ConditionChips from "./ConditionChips";
@@ -8,6 +8,8 @@ import { RISK_STYLE, REFERRAL_STYLE, inputClass } from "./styles";
 import { predictRisk } from "./riskModel";
 import { assessGeneral } from "./generalModel";
 import { addPending } from "./offlineQueue";
+import { cachedApi } from "./patientCache";
+import SavedCopyNote from "./SavedCopyNote";
 import { ReminderNote } from "./AppointmentsPanel";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
@@ -20,12 +22,24 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
   const [smsState, setSmsState] = useState({}); // observation id -> "sending" | "failed" | "noSms"
   const opened = useRef(false);
 
-  const load = () => api(`/patients/${patientId}`).then(setData).catch((err) => setError(err.message));
+  const [savedAt, setSavedAt] = useState(null); // set when showing the phone's saved copy (no signal)
+
+  // With signal: fresh page (and an encrypted copy is saved). Without: the saved copy.
+  const fetchPatient = useCallback(
+    () =>
+      cachedApi(user.id, `/patients/${patientId}`).then((r) => {
+        setData(r.data);
+        setSavedAt(r.savedAt);
+        return r.data;
+      }),
+    [user.id, patientId]
+  );
+
+  const load = () => fetchPatient().catch((err) => setError(err.message));
 
   useEffect(() => {
-    api(`/patients/${patientId}`)
+    fetchPatient()
       .then((d) => {
-        setData(d);
         // Pregnant patients open on the antenatal check (first load only, not after each sync)
         if (!opened.current) {
           opened.current = true;
@@ -33,7 +47,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
         }
       })
       .catch((err) => setError(err.message));
-  }, [patientId, syncTick]);
+  }, [fetchPatient, syncTick]);
 
   const finish = (result) => {
     setLatest(result);
@@ -100,13 +114,20 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
     }
   };
 
-  if (!data) return error ? <p className="text-red-600">{error}</p> : null;
+  if (!data)
+    return error ? (
+      <>
+        <button onClick={onBack} className="text-sm text-teal-700 hover:underline">← {t.back}</button>
+        <p className="mt-3 text-red-600">{error}</p>
+      </>
+    ) : null;
   const { patient, observations, appointments = [] } = data;
   const canBePregnant = patient.sex === "female" && patient.age >= 10;
 
   return (
     <>
       <button onClick={onBack} className="text-sm text-teal-700 hover:underline">← {t.back}</button>
+      {savedAt && <SavedCopyNote t={t} savedAt={savedAt} />}
 
       {/* Patient summary */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-teal-800 to-teal-600 p-6 text-white">

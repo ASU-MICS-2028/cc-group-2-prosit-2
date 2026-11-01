@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
@@ -7,6 +7,8 @@ import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { inputClass } from "./styles";
 import { getPending, syncPending } from "./offlineQueue";
+import { cachedApi } from "./patientCache";
+import SavedCopyNote from "./SavedCopyNote";
 
 export default function ChvApp(props) {
   const { t, user } = props;
@@ -17,7 +19,19 @@ export default function ChvApp(props) {
   const [syncTick, setSyncTick] = useState(0); // bumps after a sync so screens reload
   const [call, setCall] = useState(null); // { referralId, title } while a video call is open
 
-  const loadPatients = () => api("/patients").then(setPatients).catch(() => {});
+  const [savedAt, setSavedAt] = useState(null); // set when showing the phone's saved copy (no signal)
+
+  // With signal: fresh list (and an encrypted copy is saved). Without: the saved copy.
+  const loadPatients = useCallback(
+    () =>
+      cachedApi(user.id, "/patients")
+        .then((r) => {
+          setPatients(r.data);
+          setSavedAt(r.savedAt);
+        })
+        .catch(() => {}),
+    [user.id]
+  );
 
   useEffect(() => {
     // Send any offline checks now, and again whenever signal comes back
@@ -30,7 +44,7 @@ export default function ChvApp(props) {
     sync();
     window.addEventListener("online", sync);
     return () => window.removeEventListener("online", sync);
-  }, [user.id]);
+  }, [user.id, loadPatients]);
 
   const openPatient = (id) => {
     setSelectedId(id);
@@ -55,7 +69,7 @@ export default function ChvApp(props) {
           </div>
         )}
         {view === "list" && (
-          <PatientList t={t} patients={patients} onOpen={openPatient} onRegister={() => setView("register")} />
+          <PatientList t={t} patients={patients} savedAt={savedAt} onOpen={openPatient} onRegister={() => setView("register")} />
         )}
         {view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
         {view === "patient" && (
@@ -76,7 +90,7 @@ export default function ChvApp(props) {
   );
 }
 
-function PatientList({ t, patients, onOpen, onRegister }) {
+function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
   const [query, setQuery] = useState("");
   const count = (level) => patients.filter((p) => p.latest_risk === level).length;
   const shown = patients.filter((p) =>
@@ -101,6 +115,8 @@ function PatientList({ t, patients, onOpen, onRegister }) {
           + {t.register}
         </button>
       </div>
+
+      {savedAt && <SavedCopyNote t={t} savedAt={savedAt} />}
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map(([label, value, color]) => (
@@ -252,3 +268,4 @@ function RegisterPatient({ t, onDone, onBack }) {
     </div>
   );
 }
+
