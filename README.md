@@ -410,7 +410,7 @@ Each test builds its own temporary database with fake accounts, so your `healthc
 ```bash
 # Backend (venv active, inside backend/)
 pip install -r requirements-dev.txt
-pytest                 # 22 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
+pytest                 # 23 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
                        # surveillance privacy, DHIMS2 export, and Python rules = browser rules
 # Frontend (inside frontend/)
 npm test               # 11 tests: AES-GCM encryption and the encrypted patient cache

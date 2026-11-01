@@ -1,6 +1,5 @@
 import asyncio
 import os
-import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -17,7 +16,7 @@ from calls import router as calls_router
 from surveillance import router as surveillance_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
-from database import get_db, init_db, log_access
+from database import get_db, init_db, log_access, new_patient_ref
 from general_model import assess_general, advice_for
 from model import predict_risk
 from priority import priority
@@ -183,7 +182,7 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
         raise HTTPException(status_code=400, detail="Only female patients aged 10 or over can be marked pregnant")
 
     conn = get_db()
-    ref = "HC-" + secrets.token_hex(3).upper()  # random, not derived from the name
+    ref = new_patient_ref(conn)
     cur = conn.execute(
         "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",

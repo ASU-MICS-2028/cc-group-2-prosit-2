@@ -76,3 +76,13 @@ def test_every_case_reaches_a_doctor(client, login, make_patient):
     assert client.post(f"/referrals/{dref['id']}/status", headers=doctor, json=done).status_code == 200
     history = client.get(f"/patients/{patient['id']}", headers=chv).json()["observations"][0]
     assert history["escalated_status"] == "completed"
+
+
+def test_patient_ref_never_repeats(client, login, make_patient, monkeypatch):
+    # Force the random generator to repeat itself: the second patient must still get a new reference
+    import secrets
+    values = iter(["AAAAAA", "AAAAAA", "BBBBBB"])
+    monkeypatch.setattr(secrets, "token_hex", lambda n: next(values))
+    chv = login("chv1")
+    assert make_patient(chv)["ref"] == "HC-AAAAAA"
+    assert make_patient(chv)["ref"] == "HC-BBBBBB"

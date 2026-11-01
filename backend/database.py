@@ -1,3 +1,4 @@
+import secrets
 import sqlite3
 
 DB_PATH = "healthconnect.db"
@@ -155,6 +156,15 @@ def migrate(conn):
             FROM referrals_old
         """)
         conn.execute("DROP TABLE referrals_old")
+
+
+def new_patient_ref(conn):
+    # Random reference like HC-3FA21C, never derived from the name.
+    # 6 hex characters = 16.7 million options; pick again in the rare case it is taken.
+    while True:
+        ref = "HC-" + secrets.token_hex(3).upper()
+        if not conn.execute("SELECT 1 FROM patients WHERE ref = ?", (ref,)).fetchone():
+            return ref
 
 
 def log_access(conn, user_id, action, resource=None):

@@ -4,7 +4,6 @@ with a simulated cholera spike in Tamale this week. Run once: python seed_demo_d
 Every patient is "Demo Patient NNNN". District names are real; all data is invented.
 """
 import random
-import secrets
 from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from auth import hash_password
-from database import get_db, init_db
+from database import get_db, init_db, new_patient_ref
 from general_model import assess_general
 
 random.seed(42)  # same "random" data every time
@@ -62,7 +61,7 @@ for district, (username, per_week) in DISTRICTS.items():
             cur = conn.execute(
                 "INSERT INTO patients (ref, chv_id, full_name, age, sex, community, district, consent) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
-                ("HC-" + secrets.token_hex(3).upper(), chv_id, f"Demo Patient {count:04d}",
+                (new_patient_ref(conn), chv_id, f"Demo Patient {count:04d}",
                  random.randint(1, 80), random.choice(["female", "male"]), "Demo community", district),
             )
             level, conditions = assess_general(temp, None, None, None, symptoms)
