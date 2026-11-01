@@ -72,7 +72,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
-| Role-based access control (RBAC) | ✅ Done for CHV, nurse, doctor and GHS officer; admin sees a "coming soon" screen |
+| Role-based access control (RBAC) | ✅ Done for all five roles: CHV, nurse, doctor, GHS officer and admin |
 | Patient registration with consent | ✅ Done |
 | General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
 | Antenatal risk check (pregnant patients) | ✅ Done |
@@ -92,7 +92,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
 | ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
 | DHIMS2 export (DHIS2 format, simulated) | ✅ Done (not sent to DHIMS2) |
-| Admin account management | ⬜ Planned |
+| Admin account management | ✅ Create accounts (temporary password shown once), disable / re-enable; no patient data |
 | Sustainability model | ⬜ Week 4 (report) |
 
 All of this work is on the **`main`** branch.
@@ -233,7 +233,7 @@ RBAC (role-based access control) means what you can see and do depends on your r
 | **Facility nurse / midwife** | Mark referrals arrived, treat, refer every patient on to a doctor | Only referrals to **their facility** | ✅ Built |
 | **Doctor / specialist** | Receive referrals, record the **final** outcome (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
 | **GHS officer** | Surveillance dashboard, outbreak alerts | **Anonymised district totals only, never names** | ✅ Built |
-| **System admin** | Manage accounts | No routine patient-data access | ⬜ Planned |
+| **System admin** | Create, disable and re-enable staff accounts | Account details only, **no patient data** | ✅ Built |
 
 Not app users: the **patient** (receives care, gives consent), the **pharmacist** and the **traditional healer** (described in the report only).
 
@@ -465,6 +465,9 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET | `/appointments` | nurse, doctor | Upcoming appointments at the user's facility, soonest first |
 | POST | `/appointments/{id}/status` | nurse, doctor | Mark `attended`, `missed` or `cancelled` |
 | POST | `/referrals/{id}/escalate` | nurse | Refer an arrived patient to a doctor's hospital (`facility`, `reason` = treatment given) |
+| GET | `/admin/users` | admin | All staff accounts (no password hashes, no patients) + district list |
+| POST | `/admin/users` | admin | Create an account; returns a random temporary password **once** |
+| POST | `/admin/users/{id}/active` | admin | Disable (`false`) or re-enable (`true`); a disabled user is locked out on their next request |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
 
@@ -561,7 +564,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] DHIMS2 integration: **designed** + simulated export in DHIS2 `dataValueSet` format (not sent). See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md)
 
 ### ⬜ Phase 5: Admin and hardening (Henry and Clifford)
-- [ ] Admin screen: create / disable accounts (replaces `seed.py`)
+- [x] Admin screen: create / disable accounts (replaces `seed.py`)
 - [ ] Force password change on first login; remove demo accounts before any real use
 - [ ] Cache patient lists on the phone (encrypted) for full offline use
 - [ ] Automated tests in the repo

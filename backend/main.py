@@ -12,6 +12,7 @@ load_dotenv()
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from admin import router as admin_router
 from calls import router as calls_router
 from surveillance import router as surveillance_router
 from auth import verify_password, create_token, get_current_user, require_role, offline_key_for
@@ -51,6 +52,7 @@ async def lifespan(app):
 app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
 app.include_router(calls_router)  # video consult signalling (calls.py)
 app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
+app.include_router(admin_router)  # account management (admin.py)
 
 # Only our own frontend may call this API from a browser
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -80,6 +82,12 @@ def login(body: LoginRequest):
         conn.commit()
         conn.close()
         raise HTTPException(status_code=401, detail="Wrong username or password")
+
+    if not user["active"]:
+        log_access(conn, user["id"], "login_disabled")
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=403, detail="This account is disabled. Contact your system admin.")
 
     log_access(conn, user["id"], "login")
     conn.commit()
@@ -493,7 +501,7 @@ def list_hospitals(user=Depends(require_role("nurse"))):
     # Facilities that have at least one doctor = places a nurse can escalate to
     conn = get_db()
     rows = conn.execute(
-        "SELECT DISTINCT facility FROM users WHERE role = 'doctor' AND facility IS NOT NULL ORDER BY facility"
+        "SELECT DISTINCT facility FROM users WHERE role = 'doctor' AND active = 1 AND facility IS NOT NULL ORDER BY facility"
     ).fetchall()
     conn.close()
     return [r["facility"] for r in rows]

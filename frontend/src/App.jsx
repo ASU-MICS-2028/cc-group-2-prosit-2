@@ -5,7 +5,7 @@ import Login from "./Login";
 import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
 import GhsApp from "./GhsApp";
-import RolePlaceholder from "./RolePlaceholder";
+import AdminApp from "./AdminApp";
 
 // Sessions from before offline encryption have no key: make them log in again
 if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
@@ -54,5 +54,6 @@ export default function App() {
   if (user.role === "chv") return <ChvApp {...shared} />;
   if (user.role === "nurse" || user.role === "doctor") return <InboxApp {...shared} />;
   if (user.role === "ghs") return <GhsApp {...shared} />;
-  return <RolePlaceholder {...shared} />;
+  if (user.role === "admin") return <AdminApp {...shared} />;
+  return null;
 }

@@ -9,6 +9,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AccountCreate(BaseModel):
+    # Admin creates staff accounts. No password here: the server makes a temporary one.
+    username: str = Field(pattern=r"^[a-z0-9_]{3,30}$")
+    full_name: str = Field(min_length=1, max_length=100)
+    role: Literal["chv", "nurse", "doctor", "ghs", "admin"]
+    facility: str = Field("", max_length=100)
+    facility_phone: str = Field("", pattern=r"^$|^(0\d{9}|\+?233\d{9})$")  # where CHV referral SMS goes
+    district: str = ""
+
+
+class AccountActive(BaseModel):
+    active: bool
+
+
 class PatientCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=100)
     age: int = Field(ge=0, le=120)

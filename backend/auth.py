@@ -57,12 +57,13 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
 
     conn = get_db()
     user = conn.execute(
-        "SELECT id, username, role, full_name, facility, facility_phone, district FROM users WHERE id = ?",
+        "SELECT id, username, role, full_name, facility, facility_phone, district FROM users WHERE id = ? AND active = 1",
         (int(payload["sub"]),),
     ).fetchone()
     conn.close()
     if not user:
-        raise HTTPException(status_code=401, detail="User no longer exists")
+        # Checked on every request, so disabling an account locks it out at once
+        raise HTTPException(status_code=401, detail="Account not found or disabled")
     return dict(user)
 
 
