@@ -23,6 +23,7 @@ from priority import priority
 from reminders import REMIND_HOURS_BEFORE, appointment_message, send_due_reminders
 from schemas import (LoginRequest, PasswordChange, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
                      PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus)
+from seed_demo_data import keep_demo_data_current
 from sms import send_sms
 
 # Only report whether the key exists; never print the secret itself
@@ -32,19 +33,22 @@ if not os.getenv("ARKESEL_API_KEY"):
 init_db()
 
 
-async def reminder_loop():
-    # Every 10 minutes: send reminders for appointments in the next 24 hours
+async def background_loop():
+    # At start-up, then every 10 minutes
     while True:
         try:
+            # Send reminders for appointments in the next 24 hours
             await asyncio.to_thread(send_due_reminders)
+            # Demo only: keep the fake surveillance data dated "now" (no-op on a real database)
+            await asyncio.to_thread(keep_demo_data_current)
         except Exception as err:  # keep the loop alive whatever happens
-            print("REMINDER JOB ERROR:", type(err).__name__)
+            print("BACKGROUND JOB ERROR:", type(err).__name__)
         await asyncio.sleep(600)
 
 
 @asynccontextmanager
 async def lifespan(app):
-    task = asyncio.create_task(reminder_loop())  # starts with the server
+    task = asyncio.create_task(background_loop())  # starts with the server
     yield
     task.cancel()  # stops with the server
 

@@ -1,13 +1,18 @@
 """GHS dashboard and DHIMS2 export: totals only, never names."""
 import json
-import runpy
 
 import pytest
+
+import database
+from seed_demo_data import create_demo_data, keep_demo_data_current
 
 
 @pytest.fixture
 def demo_data(client):
-    runpy.run_path("seed_demo_data.py")  # ~800 fake visits, cholera spike in Tamale
+    conn = database.get_db()
+    create_demo_data(conn)  # ~800 fake visits, cholera spike in Tamale
+    conn.commit()
+    conn.close()
 
 
 def test_only_ghs_can_see_dashboard(client, login):
@@ -73,3 +78,20 @@ def test_dashboard_forecast(client, login, demo_data):
     assert top["chance"] > 0.9 and top["direction"] == "rising"
     assert all(f["condition"] != "hypertension" for f in forecasts)  # not infectious: no outbreak forecast
     assert all(f["expected_next_2_weeks"] == "<5" or f["expected_next_2_weeks"] >= 5 for f in forecasts)
+
+
+def test_demo_data_stays_current(client, login, make_patient, demo_data):
+    chv = login("chv1")
+    make_patient(chv, full_name="Test Patient Real")
+    ghs = login("ghs1")
+    before = client.get("/surveillance/summary", headers=ghs).json()
+    keep_demo_data_current()  # what the backend does every 10 minutes
+    after = client.get("/surveillance/summary", headers=ghs).json()
+    assert before["districts"] == after["districts"] and before["forecasts"] == after["forecasts"]  # same picture
+    names = [r["full_name"] for r in database.get_db().execute("SELECT full_name FROM patients")]
+    assert "Test Patient Real" in names  # real patients untouched
+
+
+def test_no_demo_data_is_created_on_a_real_database(client):
+    keep_demo_data_current()
+    assert database.get_db().execute("SELECT COUNT(*) FROM patients").fetchone()[0] == 0
