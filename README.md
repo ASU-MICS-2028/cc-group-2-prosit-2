@@ -86,7 +86,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
-| English + Twi | 🟡 English complete; Twi partial (needs review by a Twi speaker) |
+| Languages: English, Twi, Ewe, Dagbani, Hausa | 🟡 Language picker built. English complete; Twi, Ewe and Hausa cover every screen (need native-speaker review); Dagbani not translated yet (shows English) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
@@ -573,7 +573,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── offlineQueue.js    # Queue + sync for offline checks
         ├── patientCache.js    # Encrypted saved copies of patient list / pages for offline use
         ├── crypto.js          # AES-GCM encrypt/decrypt
-        ├── i18n.js            # English + Twi text
+        ├── i18n.js            # English, Twi, Ewe, Dagbani, Hausa text
         ├── styles.js, RiskBadge.jsx, Logo.jsx
         └── main.jsx           # Entry point + service worker
 ```
@@ -669,7 +669,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
-- **Twi** covers only some screens.
+- **Translations** (Twi, Ewe, Hausa) have not been reviewed by native speakers. **Dagbani** has no text yet and shows English. Run `node frontend/scripts/check-i18n.mjs` to see coverage.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---
