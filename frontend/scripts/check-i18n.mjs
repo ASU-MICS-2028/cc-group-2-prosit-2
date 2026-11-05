@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 const SAME_AS_ENGLISH = {
   tw: ["appName", "chvLabel", "role_chv", "short_meningitis", "short_pneumonia", "cond_meningitis", "cond_pneumonia"],
   ee: ["appName", "chvLabel", "role_chv", "short_meningitis", "short_pneumonia", "short_measles", "cond_meningitis", "cond_pneumonia", "cond_measles"],
-  ha: ["appName", "chvLabel", "role_chv"],
+  gaa: ["appName", "chvLabel", "role_chv"],
   dag: ["appName", "chvLabel", "role_chv"],
 };
 

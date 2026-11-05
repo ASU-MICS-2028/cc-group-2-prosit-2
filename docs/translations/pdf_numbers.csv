@@ -1,0 +1,300 @@
+﻿No.,key,English
+1,tagline,Connecting rural communities to care
+2,feature1,"Works on low-cost phones, even with weak signal"
+3,feature2,Patient records protected by role-based access
+4,feature3,Fast referrals from village to facility
+5,welcome,Welcome back
+6,signInHint,Sign in with the account your supervisor gave you.
+7,username,Username
+8,password,Password
+9,login,Sign in
+10,signingIn,Signing in...
+11,demoAccounts,Demo accounts (fake test data only)
+12,pwTitle,Set your own password
+13,pwHint,you are using a temporary password. Choose a new one before you continue.
+14,pwCurrent,Temporary password
+15,pwNew,New password
+16,pwRule,"At least 8 characters, with a letter and a number. Not your username."
+17,pwConfirm,Type the new password again
+18,pwMismatch,The two new passwords do not match.
+19,pwSave,Save new password
+20,appName,HealthConnect Ghana
+21,logout,Log out
+22,online,Online
+23,offline,Offline
+24,savedCopy,No signal: showing the copy saved on this phone at
+25,builtBy,Built by Storm Surfers · Group 2 · ICS 534
+26,patients,My patients
+27,register,Register patient
+28,search,Search by name or ref
+29,noPatients,No patients yet. Register your first patient to begin.
+30,total,Total
+31,high,High risk
+32,medium,Medium risk
+33,low,Low risk
+34,notAssessed,Not assessed
+35,fullName,Patient full name
+36,age,Age
+37,community,Community
+38,consentLabel,"I explained how this information will be used and the patient agrees (Data Protection Act, 2012)."
+39,consentRequired,Patient consent is required before registering.
+40,save,Register patient
+41,saving,Saving...
+42,back,Back to patients
+43,gestational_age,Gestational age
+44,systolic_bp,Systolic BP
+45,diastolic_bp,Diastolic BP
+46,weight,Weight
+47,hemoglobin,Haemoglobin
+48,body_temp,Temperature
+49,heart_rate,Heart rate
+50,previous_complications,Previous pregnancy complications
+51,assess,Check risk
+52,assessing,Checking...
+53,riskLevel,Risk
+54,history,Visit history
+55,noHistory,No checks recorded yet.
+56,sendReferral,Refer to facility
+57,referralFailed,Could not create the referral. Please try again.
+58,smsNotDelivered,"SMS not delivered, but the facility can see this referral in its inbox."
+59,patientPhone,Patient phone (optional)
+60,patientPhoneHint,Used only for appointment reminders. Leave empty if the patient has no phone.
+61,referMedium,Refer anyway (give reason)
+62,mediumReasonPlaceholder,Why refer? e.g. fever not improving after 2 days
+63,referredOnTo,Referred on to
+64,sex,Sex
+65,female,Female
+66,male,Male
+67,pregnantNow,Currently pregnant
+68,pregnantTag,Pregnant
+69,markPregnant,Mark as pregnant
+70,markNotPregnant,No longer pregnant
+71,antenatalHint,Antenatal checks appear for pregnant patients.
+72,temperature,Temperature
+73,symptomsLabel,Symptoms (tick all that apply)
+74,dangerSign,danger sign
+75,notes,Notes (optional)
+76,vitalsOptional,"Vital signs (optional, enter what you can measure)"
+77,checkVisit,Check visit
+78,checkFor,Check for
+79,possibleNote,Possible conditions to test for. Not a diagnosis.
+80,needSomething,Enter at least one symptom or vital sign.
+81,sym_fever,Fever
+82,sym_cough,Cough
+83,sym_difficulty_breathing,Difficulty breathing
+84,sym_diarrhoea,Diarrhoea
+85,sym_vomiting,Vomiting
+86,sym_rash,Rash
+87,sym_severe_headache,Severe headache
+88,sym_stiff_neck,Stiff neck
+89,sym_convulsions,Convulsions / fits
+90,sym_unconscious,Unconscious / very drowsy
+91,sym_bleeding,Heavy bleeding
+92,sym_unable_to_drink,Unable to drink or eat
+93,cond_malaria,Malaria (do RDT)
+94,cond_meningitis,Meningitis
+95,cond_measles,Measles
+96,cond_cholera,Cholera / severe diarrhoea
+97,cond_pneumonia,Pneumonia
+98,cond_hypertension,Hypertension
+99,pendingSync,"check(s) saved on this phone, waiting for signal to sync."
+100,offlineResult,"Offline result, calculated on this phone. It will sync when you have signal."
+101,sending,Sending...
+102,referral_pending,Referred · waiting at facility
+103,referral_arrived,Arrived at facility
+104,referral_completed,Completed
+105,inbox,Referral inbox
+106,inboxHint,"Patients referred to your facility by CHVs, most urgent first."
+107,noReferrals,No referrals here.
+108,all,All
+109,pending,Waiting
+110,arrived,Arrived
+111,completed,Completed
+112,referredBy,Referred by
+113,markArrived,Mark as arrived
+114,recordOutcome,Record outcome
+115,outcomePlaceholder,"What was done? e.g. BP managed, admitted for monitoring"
+116,saveOutcome,Save outcome
+117,cancel,Cancel
+118,previousComplicationsShort,Previous complications
+119,doctorInbox,Specialist referrals
+120,doctorInboxHint,"Patients referred on to your hospital by health centre nurses, most urgent first."
+121,reason,Reason
+122,chvLabel,CHV
+123,escalate,Refer to doctor
+124,chooseHospital,Choose a hospital
+125,escalateReasonPlaceholder,"Treatment given and what the doctor should check, e.g. paracetamol and IV fluids given; suspected meningitis"
+126,treatmentNotes,Treatment given & notes for the doctor
+127,viewHistory,View patient history
+128,upcomingAppointments,Upcoming appointments
+129,videoCall,Video call about this patient
+130,noAppointments,No upcoming appointments.
+131,overdue,Time passed: attended or missed?
+132,bookFollowUp,Book follow-up
+133,book,Book
+134,bookedFor,Booked for
+135,bookedBy,Booked by
+136,apptReasonPlaceholder,"Reason (optional), e.g. BP review"
+137,confirmSent,confirmation SMS sent
+138,confirmFailed,confirmation SMS not delivered
+139,reminderSent,reminder SMS sent
+140,reminderFailed,reminder SMS failed
+141,reminderPending,SMS reminder ~24h before
+142,noPhoneRemind,no phone: CHV to remind in person
+143,appt_attended,Attended
+144,appt_missed,Missed
+145,appt_cancelled,Cancel
+146,hideHistory,Hide patient history
+147,historyTitle,All visits
+148,loadingHistory,Loading history...
+149,registered,Registered
+150,sendTo,Send to
+151,nurseMustRefer,"Every patient must be seen by a doctor: mark as arrived, give treatment, then refer to the doctor."
+152,priority_urgent,Urgent
+153,priority_high,High priority
+154,priority_routine,Routine
+155,waiting,Waiting
+156,ds_severe_hypertension,Severe high BP
+157,ds_severe_anaemia,Severe anaemia
+158,generalVisit,General visit
+159,antenatalCheck,Antenatal check
+160,isCallingAbout,is calling about
+161,joinCall,Join call
+162,callStarting,Starting camera...
+163,callWaiting,Waiting for the other person to join...
+164,callConnecting,Connecting...
+165,callConnected,Connected with
+166,callEnded,The other person hung up.
+167,cameraError,Could not use the camera/microphone. Allow access in the browser and try again.
+168,mute,Mute
+169,unmute,Unmute
+170,audioOnly,Audio only
+171,videoOnAgain,Video on
+172,hangUp,Hang up
+173,ghsTitle,Disease surveillance
+174,ghsHint,"Anonymised totals from CHV visits across districts, last 7 days."
+175,ghsPrivacy,"No names or patient details are ever shown. Counts of 1-4 appear as ""<5""."
+176,ghsUpdated,Updated
+177,ghsVisits,Visits (7 days)
+178,ghsHighRisk,HIGH risk (7 days)
+179,ghsReferrals,Referrals (7 days)
+180,ghsAlerts,Outbreak alerts
+181,ghsNoAlerts,No outbreak alerts this week.
+182,ghsAlertLabel,Outbreak alert
+183,ghsForecastTitle,Next 2 weeks: chance of an outbreak
+184,ghsForecastHint,"Statistics from the last few weeks, not machine learning. Assumes the recent trend continues; small numbers are less certain. Supply amounts are examples (1 per expected case), not GHS guidance."
+185,ghsForecastNone,No outbreak likely in the next 2 weeks.
+186,ghsForecastHigh,High chance
+187,ghsForecastPossible,Possible
+188,ghsForecastExpected,Expected in the next 2 weeks:
+189,ghsForecastLevel,outbreak level
+190,ghsPerWeek,a week
+191,ghsForecastPrepare,Prepare:
+192,ghsForecastAFew,a few
+193,trend_rising,rising
+194,trend_steady,steady
+195,trend_falling,falling
+196,supply_malaria,malaria rapid tests and treatment courses
+197,supply_cholera,ORS sachets and cholera rapid tests
+198,supply_meningitis,meningitis tests and antibiotic courses
+199,supply_measles,measles tests and vitamin A doses
+200,supply_pneumonia,amoxicillin courses
+201,ghsThisWeek,cases this week
+202,ghsUsual,usual
+203,ghsHeatTitle,Possible conditions by district (last 7 days)
+204,ghsHeatHint,Darker = more cases. Click a cell to see its 8-week trend.
+205,ghsDistrict,District
+206,ghsVisitsShort,Visits
+207,ghsHoverHint,Hover or tab to a cell for details.
+208,ghsTrendHint,"Weekly cases, oldest on the left. This week in blue; dashed line = usual level."
+209,ghsWeekNow,This week
+210,ghsExport,Export last week for DHIMS2
+211,ghsExportNote,"Simulated: DHIS2 format file, not sent to DHIMS2"
+212,ghsMapTitle,Map: last 7 days by district
+213,ghsMapHint,"Bubble area = number of cases, placed at the district capital (never patient locations). Click a bubble to see its trend."
+214,ghsMapMeasure,What to map
+215,ghsMapHidden,<5 (exact number hidden)
+216,ghsHoverColumn,Hover or tab to a column for details.
+217,short_malaria,Malaria
+218,short_cholera,Cholera
+219,short_meningitis,Meningitis
+220,short_measles,Measles
+221,short_pneumonia,Pneumonia
+222,short_hypertension,Hypertension
+223,ghsWeeksAgo,weeks ago
+224,adminTitle,Staff accounts
+225,adminHint,"Create and disable accounts. Accounts are disabled, never deleted, so their records and audit trail stay intact. No patient data is shown here."
+226,adminNew,New account
+227,adminUsername,Username
+228,adminFullName,Full name
+229,adminUsernameRule,"3-30 characters: lowercase letters, numbers, _"
+230,adminRole,Role
+231,adminFacility,Facility
+232,adminFacilityPhone,Facility phone (referral SMS)
+233,adminDistrict,District
+234,adminNone,None (national)
+235,adminCreate,Create account
+236,adminPasswordFor,New password for
+237,adminReset,Reset password
+238,adminResetConfirm,Give a new temporary password to
+239,adminTempPassword,Temporary password:
+240,adminShownOnce,Shown only once. Give it to the person directly (not by SMS or WhatsApp). They must change it when they first log in.
+241,adminDone,I have noted it
+242,adminStatus,Status
+243,adminActive,Active
+244,adminDisabled,Disabled
+245,adminDisable,Disable
+246,adminEnable,Enable
+247,adminYou,(you)
+248,role_chv,CHV
+249,role_nurse,Nurse / Midwife
+250,role_doctor,Doctor
+251,role_ghs,GHS Officer
+252,role_admin,System Admin
+253,sms_appt_confirm,HealthConnect: Your appointment is booked at {facility} on {date and time}. Ref {ref}. Please come on time.
+254,sms_appt_reminder,HealthConnect: Reminder: you have an appointment at {facility} on {date and time}. Ref {ref}. Please come on time.
+255,sms_referral_0,HealthConnect Referral
+256,sms_referral_1,Ref
+257,sms_referral_2,Age
+258,sms_referral_3,Visit
+259,sms_referral_4,Antenatal
+260,sms_referral_5,General
+261,sms_referral_6,Risk
+262,sms_referral_7,Check for
+263,sms_referral_8,CHV
+264,sms_referral_9,Please prepare to receive this patient.
+265,err_chvs_nurses_and_doctors_need_a_facility,"CHVs, nurses and doctors need a facility"
+266,err_unknown_district,Unknown district
+267,err_that_username_is_already_taken,That username is already taken
+268,err_you_cannot_disable_your_own_account,You cannot disable your own account
+269,err_account_not_found,Account not found
+270,err_use_change_password_for_your_own_account,Use 'change password' for your own account
+271,err_invalid_or_expired_token,Invalid or expired token
+272,err_account_not_found_or_disabled,Account not found or disabled
+273,err_change_your_temporary_password_first,Change your temporary password first
+274,err_your_role_cannot_do_this,Your role cannot do this
+275,err_call_not_found,Call not found
+276,err_call_busy_two_people_are_already_on_this,Call busy: two people are already on this call
+277,err_join_the_call_first,Join the call first
+278,err_wrong_username_or_password,Wrong username or password
+279,err_this_account_is_disabled_contact_your_sy,This account is disabled. Contact your system admin.
+280,err_use_at_least_one_letter_and_one_number,Use at least one letter and one number
+281,err_the_password_must_not_contain_your_usern,The password must not contain your username
+282,err_current_password_is_wrong,Current password is wrong
+283,err_choose_a_password_different_from_the_cur,Choose a password different from the current one
+284,err_patient_not_found,Patient not found
+285,err_patient_consent_is_required,Patient consent is required
+286,err_only_female_patients_aged_10_or_over_can,Only female patients aged 10 or over can be marked pregnant
+287,err_enter_at_least_one_symptom_or_vital_sign,Enter at least one symptom or vital sign
+288,err_antenatal_checks_are_only_for_pregnant_p,Antenatal checks are only for pregnant patients
+289,err_observation_not_found,Observation not found
+290,err_low_risk_checks_cannot_be_referred,LOW risk checks cannot be referred
+291,err_please_give_a_reason_for_referring_a_med,Please give a reason for referring a MEDIUM risk patient
+292,err_this_check_was_already_referred,This check was already referred
+293,err_referral_not_found,Referral not found
+294,err_choose_a_time_in_the_future,Choose a time in the future
+295,err_appointment_not_found,Appointment not found
+296,err_only_a_doctor_can_close_a_case_refer_the,Only a doctor can close a case. Refer the patient to a doctor.
+297,err_please_record_the_outcome,Please record the outcome
+298,err_mark_the_patient_as_arrived_before_refer,Mark the patient as arrived before referring onward
+299,err_choose_a_hospital_from_the_list,Choose a hospital from the list

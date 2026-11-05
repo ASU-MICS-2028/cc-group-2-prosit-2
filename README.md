@@ -86,7 +86,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
-| Languages: English, Twi, Ewe, Dagbani, Hausa | 🟡 Language picker built. English complete; Twi, Ewe and Hausa cover every screen (need native-speaker review); Dagbani not translated yet (shows English) |
+| Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 of 254 screen strings per language (human translation by Isaac), dropdown to switch. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
@@ -573,7 +573,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── offlineQueue.js    # Queue + sync for offline checks
         ├── patientCache.js    # Encrypted saved copies of patient list / pages for offline use
         ├── crypto.js          # AES-GCM encrypt/decrypt
-        ├── i18n.js            # English, Twi, Ewe, Dagbani, Hausa text
+        ├── i18n.js            # Screen text: English, Twi, Ewe, Ga, Dagbani
         ├── styles.js, RiskBadge.jsx, Logo.jsx
         └── main.jsx           # Entry point + service worker
 ```
@@ -629,11 +629,13 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Cache patient lists on the phone (encrypted) for full offline use
 - [x] Automated tests in the repo
 
-### ⬜ Phase 6: Languages and translation (Isaac)
-- [ ] Research translation APIs for Twi and other Ghanaian languages (e.g. Ewe, Ga, Dagbani)
-- [ ] Compare them on language coverage, accuracy, cost, offline use and health-data privacy
-- [ ] Recommend one, and decide what to translate live vs. fix in `i18n.js`
-- [ ] Get the app's Twi text reviewed by a native speaker
+### 🟡 Phase 6: Languages and translation (Isaac)
+- [x] Research translation APIs for Twi and other Ghanaian languages (e.g. Ewe, Ga, Dagbani)
+- [x] Compare them on language coverage, accuracy, cost, offline use and health-data privacy
+- [x] Recommend one, and decide what to translate live vs. fix in `i18n.js` (human translation in the app; no live translation of patient data; see [docs/TRANSLATION.md](docs/TRANSLATION.md))
+- [x] Translate the app into Twi, Ewe, Ga and Dagbani (Isaac), with a language dropdown
+- [ ] Get the translations reviewed by native speakers
+- [ ] Send SMS in the patient's preferred language (translations ready in `docs/translations/`)
 
 ### ⬜ Phase 7: Week 4, Sustainability (whole team)
 - [ ] Insurance (NHIS) and mobile money: described and costed
@@ -669,7 +671,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
-- **Translations** (Twi, Ewe, Hausa) have not been reviewed by native speakers. **Dagbani** has no text yet and shows English. Run `node frontend/scripts/check-i18n.mjs` to see coverage.
+- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of 254 screen strings (7 left in English); not yet reviewed by native speakers. SMS and error messages are still English only.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---
