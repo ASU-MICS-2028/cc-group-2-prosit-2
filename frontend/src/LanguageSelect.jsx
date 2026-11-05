@@ -1,7 +1,7 @@
 import { LANGUAGES } from "./i18n";
 
-// One picker for the login page and the header. Each language is named in itself.
-export default function LanguagePicker({ lang, setLang, className = "" }) {
+// Dropdown to pick the app's language; used on the sign-in page and in the header
+export default function LanguageSelect({ lang, setLang, className = "" }) {
   return (
     <select
       value={lang}

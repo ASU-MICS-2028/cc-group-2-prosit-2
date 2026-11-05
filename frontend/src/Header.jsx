@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "./Logo";
-import LanguagePicker from "./LanguagePicker";
+import LanguageSelect from "./LanguageSelect";
 
 const ROLE_NAMES = {
   chv: "Community Health Volunteer",
@@ -44,7 +44,7 @@ export default function Header({ user, t, lang, setLang, onLogout }) {
             <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
             {isOnline ? t.online : t.offline}
           </span>
-            <LanguagePicker lang={lang} setLang={setLang} className="text-xs" />
+          <LanguageSelect lang={lang} setLang={setLang} className="text-xs" />
           <div className="hidden text-right leading-tight md:block">
             <p className="text-sm font-medium text-stone-800">{user.full_name}</p>
             <p className="text-xs text-stone-500">{user.facility}</p>
