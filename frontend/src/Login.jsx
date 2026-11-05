@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import Logo from "./Logo";
+import LanguageSelect from "./LanguageSelect";
 
 const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "ghs1", "admin1"];
 
@@ -119,12 +120,7 @@ export default function Login({ onLogin, t, lang, setLang }) {
           )}
 
           <div className="mt-6 flex items-center justify-between text-sm">
-            <button
-              onClick={() => setLang(lang === "en" ? "tw" : "en")}
-              className="rounded-full border border-stone-300 px-3 py-1 text-stone-600 hover:bg-stone-100"
-            >
-              {lang === "en" ? "Twi" : "English"}
-            </button>
+            <LanguageSelect lang={lang} setLang={setLang} />
             <span className="text-xs text-stone-400 lg:hidden">Storm Surfers · Group 2</span>
           </div>
         </div>
