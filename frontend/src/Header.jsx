@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "./Logo";
+import LanguagePicker from "./LanguagePicker";
 
 const ROLE_NAMES = {
   chv: "Community Health Volunteer",
@@ -43,12 +44,7 @@ export default function Header({ user, t, lang, setLang, onLogout }) {
             <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
             {isOnline ? t.online : t.offline}
           </span>
-          <button
-            onClick={() => setLang(lang === "en" ? "tw" : "en")}
-            className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 hover:bg-stone-100"
-          >
-            {lang === "en" ? "Twi" : "EN"}
-          </button>
+            <LanguagePicker lang={lang} setLang={setLang} className="text-xs" />
           <div className="hidden text-right leading-tight md:block">
             <p className="text-sm font-medium text-stone-800">{user.full_name}</p>
             <p className="text-xs text-stone-500">{user.facility}</p>
