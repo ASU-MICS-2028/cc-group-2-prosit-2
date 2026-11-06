@@ -1,7 +1,12 @@
 """Shared test setup. Run from backend/:  pytest
 
-Every test gets a fresh, empty database (in a temporary folder) with the 7 demo
-accounts, so tests never touch healthconnect.db and never depend on each other.
+Every test gets a fresh, empty database with the 7 demo accounts, so tests never
+touch healthconnect.db and never depend on each other.
+
+SQLite (default): a new file in a temporary folder for each test.
+PostgreSQL: set TEST_DATABASE_URL to an EMPTY database you can wipe, e.g.
+    TEST_DATABASE_URL=postgresql://localhost/healthconnect_test pytest
+Each test then drops and re-creates its tables. GitHub Actions runs the tests both ways.
 """
 import os
 import runpy
@@ -18,11 +23,30 @@ os.chdir(BACKEND)  # seed.py and the data files use paths relative to backend/
 # Set before the app is imported: fixed test secret, and never send a real SMS
 os.environ["JWT_SECRET"] = "test-only-" + "0" * 54  # 64 characters: HS256 wants at least 32 bytes
 os.environ["ARKESEL_API_KEY"] = ""
+# Never point tests at a real database by accident: only TEST_DATABASE_URL is used
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+os.environ.pop("DATABASE_URL", None)
+os.environ.pop("DB_SECRET_ID", None)
+os.environ.pop("APP_SECRET_ID", None)
+if TEST_DATABASE_URL:
+    os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 import database  # noqa: E402
 
-# main.py creates tables when imported, so point it at a throwaway file first
-database.DB_PATH = os.path.join(tempfile.mkdtemp(), "import.db")
+
+def empty_postgres():
+    import psycopg
+
+    with psycopg.connect(TEST_DATABASE_URL, autocommit=True) as conn:
+        conn.execute("DROP SCHEMA public CASCADE")
+        conn.execute("CREATE SCHEMA public")
+
+
+# main.py creates tables when imported, so point it at a throwaway database first
+if TEST_DATABASE_URL:
+    empty_postgres()
+else:
+    database.DB_PATH = os.path.join(tempfile.mkdtemp(), "import.db")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -33,7 +57,10 @@ PASSWORD = "Demo@1234"
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setattr(database, "DB_PATH", str(tmp_path / "test.db"))
+    if TEST_DATABASE_URL:
+        empty_postgres()
+    else:
+        monkeypatch.setattr(database, "DB_PATH", str(tmp_path / "test.db"))
     runpy.run_path("seed.py")  # tables + demo accounts
     return TestClient(main.app)
 

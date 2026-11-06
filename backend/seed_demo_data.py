@@ -75,18 +75,18 @@ def create_demo_data(conn):
                 visits += [CHOLERA_LIKE] * (14 if week == 0 else random.randint(1, 3))
             for symptoms, temp in visits:
                 count += 1
-                cur = conn.execute(
+                patient_id = conn.execute(
                     "INSERT INTO patients (ref, chv_id, full_name, age, sex, community, district, consent) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 1) RETURNING id",
                     (new_patient_ref(conn), chv_id, f"Demo Patient {count:04d}",
                      random.randint(1, 80), random.choice(["female", "male"]), "Demo community", district),
-                )
+                ).fetchone()["id"]
                 level, conditions = assess_general(temp, None, None, None, symptoms)
                 when = now - timedelta(days=week * 7 + random.randint(0, 6), hours=random.randint(0, 23))
                 conn.execute(
                     "INSERT INTO observations (patient_id, recorded_by, visit_type, body_temp, symptoms, "
                     "possible_conditions, risk_level, created_at) VALUES (?, ?, 'general', ?, ?, ?, ?, ?)",
-                    (cur.lastrowid, chv_id, temp, ",".join(symptoms), ",".join(conditions), level,
+                    (patient_id, chv_id, temp, ",".join(symptoms), ",".join(conditions), level,
                      when.strftime("%Y-%m-%d %H:%M:%S")),
                 )
     return count
