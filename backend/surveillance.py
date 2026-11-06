@@ -39,26 +39,31 @@ def hide_small(count):
     return f"<{SMALL_COUNT}" if 0 < count < SMALL_COUNT else count
 
 
+DB_TIME = "%Y-%m-%d %H:%M:%S"  # how every timestamp is stored (UTC text, see database.py)
+
+
 def week_index(created_at, now):
-    seen = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    seen = datetime.strptime(created_at, DB_TIME).replace(tzinfo=timezone.utc)
     return (now - seen).days // 7
 
 
 @router.get("/surveillance/summary")
 def summary(weeks: int = Query(8, ge=5, le=26), user=Depends(require_role("ghs"))):
     now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=weeks * 7)).strftime(DB_TIME)
+    week_ago = (now - timedelta(days=7)).strftime(DB_TIME)
     conn = get_db()
     # Only these four columns are read. No name, ref, id or notes ever leave this query.
     rows = conn.execute("""
         SELECT p.district, o.created_at, o.risk_level, o.possible_conditions
         FROM observations o JOIN patients p ON p.id = o.patient_id
-        WHERE o.created_at >= datetime('now', ?) AND p.district IS NOT NULL
-    """, (f"-{weeks * 7} days",)).fetchall()
+        WHERE o.created_at >= ? AND p.district IS NOT NULL
+    """, (since,)).fetchall()
     referrals = conn.execute("""
         SELECT p.district, COUNT(*) AS n FROM referrals r JOIN patients p ON p.id = r.patient_id
-        WHERE r.parent_id IS NULL AND r.created_at >= datetime('now', '-7 days') AND p.district IS NOT NULL
+        WHERE r.parent_id IS NULL AND r.created_at >= ? AND p.district IS NOT NULL
         GROUP BY p.district
-    """).fetchall()
+    """, (week_ago,)).fetchall()
     log_access(conn, user["id"], "view_surveillance", f"last {weeks} weeks")
     conn.commit()
     conn.close()

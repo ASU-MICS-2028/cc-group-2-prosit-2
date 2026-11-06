@@ -1,3 +1,5 @@
+import config  # noqa: F401  JWT_SECRET comes from .env or AWS Secrets Manager
+
 import base64
 import hashlib
 import hmac

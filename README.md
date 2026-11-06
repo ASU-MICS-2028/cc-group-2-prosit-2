@@ -415,12 +415,20 @@ Each test builds its own temporary database with fake accounts, so your `healthc
 ```bash
 # Backend (venv active, inside backend/)
 pip install -r requirements-dev.txt
-pytest                 # 29 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
-                       # surveillance privacy, DHIMS2 export, and Python rules = browser rules
+pytest                 # 36 tests: login/RBAC, admin, consent, need-to-know, referral chain, offline sync,
+                       # surveillance privacy, DHIMS2 export, Python rules = browser rules,
+                       # health check, no caching, reminders sent once even when two runs overlap
+# Optional: the same tests on PostgreSQL (what AWS RDS runs). Use an EMPTY database: it is wiped.
+TEST_DATABASE_URL=postgresql://localhost/healthconnect_test pytest
 # Frontend (inside frontend/)
 npm test               # 11 tests: AES-GCM encryption and the encrypted patient cache
 ```
-GitHub runs both automatically after every push (**Actions** tab, `.github/workflows/tests.yml`).
+GitHub runs everything automatically after every push (**Actions** tab, `.github/workflows/tests.yml`):
+backend tests on SQLite **and** PostgreSQL, frontend tests, and a dependency scan (`pip-audit`, `npm audit`).
+
+**Database:** on a laptop the API uses SQLite (`healthconnect.db`, no setup). If `DATABASE_URL` is set to a
+`postgresql://` address it uses PostgreSQL instead; in AWS it builds that address from Secrets Manager
+(see `backend/config.py` and [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md)).
 
 ### Common problems
 

@@ -6,3 +6,8 @@ __pycache__/
 .DS_Store
 CLAUDE.md
 *.db
+# Deployment evidence (screenshots, logs) shows account details: keep it out of this public repo
+docs/deployment-screenshots/
+docs/deployment-logs/
+hc-aws.env
+build/
