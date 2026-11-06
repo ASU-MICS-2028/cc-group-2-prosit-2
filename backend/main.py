@@ -3,12 +3,12 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv
+# Load settings (.env locally, AWS Secrets Manager in the cloud) BEFORE importing auth,
+# so JWT_SECRET is available
+import config  # noqa: F401
 
-# Load .env BEFORE importing auth, so JWT_SECRET is available
-load_dotenv()
-
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from admin import router as admin_router
@@ -16,7 +16,7 @@ from calls import router as calls_router
 from surveillance import router as surveillance_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
-from database import get_db, init_db, log_access, new_patient_ref
+from database import get_db, init_db, log_access, new_patient_ref, now_text
 from general_model import assess_general, advice_for
 from model import predict_risk
 from priority import priority
@@ -32,13 +32,19 @@ if not os.getenv("ARKESEL_API_KEY"):
 
 init_db()
 
+# In the cloud an AWS Lambda function sends reminders (lambda_handler.py), so the
+# servers set REMINDERS_IN_PROCESS=off. On a laptop the API sends them itself.
+REMINDERS_IN_PROCESS = os.getenv("REMINDERS_IN_PROCESS", "on").lower() != "off"
+DEMO_MODE = os.getenv("DEMO_MODE", "").lower() == "on"
+
 
 async def background_loop():
     # At start-up, then every 10 minutes
     while True:
         try:
-            # Send reminders for appointments in the next 24 hours
-            await asyncio.to_thread(send_due_reminders)
+            if REMINDERS_IN_PROCESS:
+                # Send reminders for appointments in the next 24 hours
+                await asyncio.to_thread(send_due_reminders)
             # Demo only (DEMO_MODE=on): keep the fake surveillance data dated "now"
             await asyncio.to_thread(keep_demo_data_current)
         except Exception as err:  # keep the loop alive whatever happens
@@ -48,9 +54,10 @@ async def background_loop():
 
 @asynccontextmanager
 async def lifespan(app):
-    task = asyncio.create_task(background_loop())  # starts with the server
+    task = asyncio.create_task(background_loop()) if (REMINDERS_IN_PROCESS or DEMO_MODE) else None
     yield
-    task.cancel()  # stops with the server
+    if task:
+        task.cancel()  # stops with the server
 
 
 app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
@@ -68,9 +75,30 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def no_store(request: Request, call_next):
+    # Patient data must never be kept by CloudFront, a proxy or the browser's HTTP cache
+    response = await call_next(request)
+    response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
 @app.get("/")
 def root():
     return {"message": "HealthConnect Ghana API is running"}
+
+
+@app.get("/health")
+def health():
+    # The load balancer calls this every 15 s. Healthy = the API can reach its database.
+    try:
+        conn = get_db()
+        conn.execute("SELECT 1").fetchone()
+        conn.close()
+    except Exception as err:
+        print("HEALTH CHECK FAILED:", type(err).__name__)
+        return JSONResponse(status_code=503, content={"status": "database unavailable"})
+    return {"status": "ok"}
 
 
 # ---------- Login ----------
@@ -187,15 +215,14 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
 
     conn = get_db()
     ref = new_patient_ref(conn)
-    cur = conn.execute(
-        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+    patient = conn.execute(
+        "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent, "
+        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) RETURNING *",
         (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant),
-         body.phone.strip() or None, body.community.strip(), user["district"]),
-    )
+         body.phone.strip() or None, body.community.strip(), user["district"], now_text()),
+    ).fetchone()
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()
-    patient = conn.execute("SELECT * FROM patients WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.close()
     return dict(patient)
 
@@ -245,7 +272,7 @@ def set_pregnancy(patient_id: int, body: PregnancyUpdate, user=Depends(require_r
 
 def to_db_time(recorded_at):
     # Offline checks carry the time they were really done; online ones use "now"
-    return recorded_at.strftime("%Y-%m-%d %H:%M:%S") if recorded_at else None
+    return recorded_at.strftime("%Y-%m-%d %H:%M:%S") if recorded_at else now_text()
 
 
 @app.post("/patients/{patient_id}/visit")
@@ -259,16 +286,16 @@ def general_visit(patient_id: int, visit: VisitIn, user=Depends(require_role("ch
     risk_level, conditions = assess_general(
         visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate, visit.symptoms
     )
-    cur = conn.execute("""
+    observation = conn.execute("""
         INSERT INTO observations (patient_id, recorded_by, visit_type, body_temp, systolic_bp, diastolic_bp,
             heart_rate, symptoms, possible_conditions, notes, risk_level, created_at)
-        VALUES (?, ?, 'general', ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
+        VALUES (?, ?, 'general', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING *
     """, (patient_id, user["id"], visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate,
           ",".join(visit.symptoms), ",".join(conditions), visit.notes.strip(), risk_level,
-          to_db_time(visit.recorded_at)))
+          to_db_time(visit.recorded_at))).fetchone()
     log_access(conn, user["id"], "sync_offline_visit" if visit.recorded_at else "general_visit", patient["ref"])
     conn.commit()
-    observation = conn.execute("SELECT * FROM observations WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.close()
     return {"observation": dict(observation), "advice": advice_for(risk_level)}
 
@@ -284,18 +311,18 @@ def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv")))
     # The server always re-scores, even for offline checks: its result is the official one
     risk_score, risk_level = predict_risk(PatientData(age=patient["age"], **vitals.model_dump()))
 
-    cur = conn.execute("""
+    observation = conn.execute("""
         INSERT INTO observations (patient_id, recorded_by, gestational_age, systolic_bp, diastolic_bp,
             weight, hemoglobin, body_temp, heart_rate, previous_complications, risk_score, risk_level,
             created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING *
     """, (patient_id, user["id"], vitals.gestational_age, vitals.systolic_bp, vitals.diastolic_bp,
           vitals.weight, vitals.hemoglobin, vitals.body_temp, vitals.heart_rate,
           int(vitals.previous_complications), risk_score, risk_level,
-          to_db_time(vitals.recorded_at)))
+          to_db_time(vitals.recorded_at))).fetchone()
     log_access(conn, user["id"], "sync_offline_check" if vitals.recorded_at else "assess_patient", patient["ref"])
     conn.commit()
-    observation = conn.execute("SELECT * FROM observations WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.close()
 
     advice = ("Refer immediately to the nearest health facility." if risk_level == "HIGH"
@@ -327,9 +354,9 @@ def send_referral(observation_id: int, body: ReferralCreate | None = None, user=
 
     # 1. The referral record: this is what the facility's inbox reads
     conn.execute(
-        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, facility, reason) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (observation_id, patient["id"], user["id"], user["id"], user["facility"], reason or None),
+        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, facility, reason, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (observation_id, patient["id"], user["id"], user["id"], user["facility"], reason or None, now_text()),
     )
     conn.execute("UPDATE observations SET referral_sent = 1 WHERE id = ?", (observation_id,))
 
@@ -443,11 +470,12 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
         conn.close()
         raise HTTPException(status_code=400, detail="Choose a time in the future")
 
-    cur = conn.execute(
-        "INSERT INTO appointments (patient_id, referral_id, booked_by, facility, scheduled_at, reason) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (referral["patient_id"], referral_id, user["id"], user["facility"], when, body.reason.strip() or None),
-    )
+    appointment_id = conn.execute(
+        "INSERT INTO appointments (patient_id, referral_id, booked_by, facility, scheduled_at, reason, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+        (referral["patient_id"], referral_id, user["id"], user["facility"], when, body.reason.strip() or None,
+         now_text()),
+    ).fetchone()["id"]
     patient = conn.execute("SELECT ref, phone FROM patients WHERE id = ?", (referral["patient_id"],)).fetchone()
     # Confirmation SMS straight away (the 24-hour reminder comes later from the reminder job)
     confirmed = bool(patient["phone"]) and send_sms(
@@ -457,11 +485,11 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
     # so mark it done and the patient doesn't get two SMS minutes apart.
     soon = (body.scheduled_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).total_seconds() < REMIND_HOURS_BEFORE * 3600
     if confirmed and soon:
-        conn.execute("UPDATE appointments SET reminder_status = 'sent' WHERE id = ?", (cur.lastrowid,))
+        conn.execute("UPDATE appointments SET reminder_status = 'sent' WHERE id = ?", (appointment_id,))
     log_access(conn, user["id"], "book_appointment", f"{patient['ref']} {when}")
     conn.commit()
     conn.close()
-    return {"id": cur.lastrowid, "scheduled_at": when, "has_phone": bool(patient["phone"]), "sms_sent": confirmed}
+    return {"id": appointment_id, "scheduled_at": when, "has_phone": bool(patient["phone"]), "sms_sent": confirmed}
 
 
 @app.get("/appointments")
@@ -517,8 +545,8 @@ def update_referral(referral_id: int, body: ReferralUpdate, user=Depends(require
         raise HTTPException(status_code=400, detail="Please record the outcome")
 
     conn.execute(
-        "UPDATE referrals SET status = ?, outcome = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?",
-        (body.status, (body.outcome or "").strip() or referral["outcome"], user["id"], referral_id),
+        "UPDATE referrals SET status = ?, outcome = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+        (body.status, (body.outcome or "").strip() or referral["outcome"], user["id"], now_text(), referral_id),
     )
     log_access(conn, user["id"], f"referral_{body.status}", referral["ref"])
     conn.commit()
@@ -553,17 +581,17 @@ def escalate_referral(referral_id: int, body: EscalateIn, user=Depends(require_r
 
     reason = body.reason.strip()
     # New referral to the hospital, linked to this one...
+    now = now_text()
     conn.execute(
-        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, parent_id, facility, reason) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, parent_id, facility, reason, "
+        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (referral["observation_id"], referral["patient_id"], referral["chv_id"], user["id"],
-         referral_id, body.facility, reason),
+         referral_id, body.facility, reason, now),
     )
     # ...and this one is closed, recording the nurse's treatment and where the patient went
     conn.execute(
-        "UPDATE referrals SET status = 'completed', outcome = ?, updated_by = ?, updated_at = datetime('now') "
-        "WHERE id = ?",
-        (f"Referred on to {body.facility}: {reason}", user["id"], referral_id),
+        "UPDATE referrals SET status = 'completed', outcome = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+        (f"Referred on to {body.facility}: {reason}", user["id"], now, referral_id),
     )
     log_access(conn, user["id"], "escalate_referral", f"{referral['ref']} -> {body.facility}")
     conn.commit()
