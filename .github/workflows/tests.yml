@@ -1,12 +1,29 @@
 # Runs all automated tests on GitHub after every push and pull request.
 # Uses only fake data: each test builds its own temporary database.
+# The backend tests run twice: on SQLite (laptops) and on PostgreSQL (AWS RDS),
+# so the same SQL is proven to work on both.
 name: Tests
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_call]
 
 jobs:
   backend:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hc
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: healthconnect_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hc -d healthconnect_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -19,7 +36,10 @@ jobs:
         with:
           node-version: "22"
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: pytest
+      - name: pytest (${{ matrix.database }})
+        run: pytest
+        env:
+          TEST_DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://hc:ci-only@localhost:5432/healthconnect_test' || '' }}
 
   frontend:
     runs-on: ubuntu-latest
@@ -37,3 +57,21 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # Week 6: check every dependency against the public lists of known vulnerabilities
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - name: pip-audit (backend)
+        run: pip-audit -r backend/requirements.txt
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: npm audit (frontend, high and critical)
+        working-directory: frontend
+        run: npm audit --audit-level=high

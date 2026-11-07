@@ -7,6 +7,14 @@ import database
 from seed_demo_data import create_demo_data, keep_demo_data_current
 
 
+def query(sql):
+    # Open, read, close: an open connection would block the next test's table reset on PostgreSQL
+    conn = database.get_db()
+    rows = [dict(r) for r in conn.execute(sql).fetchall()]
+    conn.close()
+    return rows
+
+
 @pytest.fixture
 def demo_data(client):
     conn = database.get_db()
@@ -89,18 +97,18 @@ def test_demo_data_stays_current(client, login, make_patient, demo_data, monkeyp
     keep_demo_data_current()  # what the backend does every 10 minutes
     after = client.get("/surveillance/summary", headers=ghs).json()
     assert before["districts"] == after["districts"] and before["forecasts"] == after["forecasts"]  # same picture
-    names = [r["full_name"] for r in database.get_db().execute("SELECT full_name FROM patients")]
+    names = [r["full_name"] for r in query("SELECT full_name FROM patients")]
     assert "Test Patient Real" in names  # real patients untouched
 
 
 def test_demo_mode_off_by_default(client, demo_data, monkeypatch):
     monkeypatch.delenv("DEMO_MODE", raising=False)
-    ids = [r[0] for r in database.get_db().execute("SELECT id FROM patients")]
+    ids = [r["id"] for r in query("SELECT id FROM patients ORDER BY id")]
     keep_demo_data_current()
-    assert [r[0] for r in database.get_db().execute("SELECT id FROM patients")] == ids  # nothing touched
+    assert [r["id"] for r in query("SELECT id FROM patients ORDER BY id")] == ids  # nothing touched
 
 
 def test_no_demo_data_is_created_on_a_real_database(client, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "on")
     keep_demo_data_current()
-    assert database.get_db().execute("SELECT COUNT(*) FROM patients").fetchone()[0] == 0
+    assert query("SELECT COUNT(*) AS n FROM patients")[0]["n"] == 0

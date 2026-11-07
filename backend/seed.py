@@ -29,8 +29,9 @@ init_db()
 conn = get_db()
 for username, role, full_name, facility, phone, district in USERS:
     conn.execute(
-        """INSERT OR IGNORE INTO users (username, password_hash, role, full_name, facility, facility_phone, district)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO users (username, password_hash, role, full_name, facility, facility_phone, district)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (username) DO NOTHING""",
         (username, hash_password(DEMO_PASSWORD), role, full_name, facility, phone, district),
     )
     # Accounts created before districts existed get theirs now
