@@ -1,7 +1,7 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # Load settings (.env locally, AWS Secrets Manager in the cloud) BEFORE importing auth,
 # so JWT_SECRET is available
@@ -24,7 +24,8 @@ from model import predict_risk
 from priority import priority
 from reminders import REMIND_HOURS_BEFORE, appointment_message, send_due_reminders
 from schemas import (LoginRequest, PasswordChange, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
-                     PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus)
+                     PregnancyUpdate, ReferralCreate, EscalateIn, AppointmentCreate, AppointmentStatus,
+                     ReminderPreference)
 from seed_demo_data import keep_demo_data_current
 from sms import send_sms
 
@@ -221,14 +222,48 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
     ref = new_patient_ref(conn)
     patient = conn.execute(
         "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent, "
-        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) RETURNING *",
+        "reminder_method, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?) RETURNING *",
         (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant),
-         body.phone.strip() or None, body.community.strip(), user["district"], now_text()),
+         body.phone.strip() or None, body.community.strip(), user["district"], body.reminder_method,
+         body.language, now_text()),
     ).fetchone()
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()
     conn.close()
     return dict(patient)
+
+
+@app.post("/patients/{patient_id}/reminder-preference")
+def set_reminder_preference(patient_id: int, body: ReminderPreference, user=Depends(require_role("chv"))):
+    # How this patient wants to be reminded: SMS, a voice call in their language, or the CHV in person
+    conn = get_db()
+    patient = get_own_patient(conn, patient_id, user)
+    conn.execute("UPDATE patients SET reminder_method = ?, language = ? WHERE id = ?",
+                 (body.reminder_method, body.language, patient_id))
+    log_access(conn, user["id"], "set_reminder_preference", f"{patient['ref']} {body.reminder_method}")
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.get("/chv/reminders")
+def chv_reminders(user=Depends(require_role("chv"))):
+    """The CHV's own patients with an appointment in the next 7 days whom an SMS will not reach:
+    they chose a voice call or a CHV visit, have no phone, or their SMS failed."""
+    now = datetime.now(timezone.utc)
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT a.id, a.facility, a.scheduled_at, a.reason, a.reminder_status,
+               p.id AS patient_id, p.ref, p.full_name, p.community, p.reminder_method, p.language
+        FROM appointments a JOIN patients p ON p.id = a.patient_id
+        WHERE p.chv_id = ? AND a.status = 'booked' AND a.scheduled_at > ? AND a.scheduled_at <= ?
+          AND (p.reminder_method != 'sms' OR p.phone IS NULL OR a.reminder_status IN ('failed', 'no_phone', 'chv'))
+        ORDER BY a.scheduled_at
+    """, (user["id"], now.strftime("%Y-%m-%d %H:%M"), (now + timedelta(days=7)).strftime("%Y-%m-%d %H:%M"))).fetchall()
+    log_access(conn, user["id"], "list_chv_reminders")
+    conn.commit()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 @app.get("/patients/{patient_id}")
@@ -480,9 +515,14 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
         (referral["patient_id"], referral_id, user["id"], user["facility"], when, body.reason.strip() or None,
          now_text()),
     ).fetchone()["id"]
-    patient = conn.execute("SELECT ref, phone FROM patients WHERE id = ?", (referral["patient_id"],)).fetchone()
+    patient = conn.execute("SELECT ref, phone, reminder_method FROM patients WHERE id = ?",
+                           (referral["patient_id"],)).fetchone()
+    by_sms = patient["reminder_method"] == "sms"
+    if not by_sms:
+        # Voice call (designed, not built) or CHV visit: the CHV reminds the patient in person
+        conn.execute("UPDATE appointments SET reminder_status = 'chv' WHERE id = ?", (appointment_id,))
     # Confirmation SMS straight away (the 24-hour reminder comes later from the reminder job)
-    confirmed = bool(patient["phone"]) and send_sms(
+    confirmed = by_sms and bool(patient["phone"]) and send_sms(
         patient["phone"], appointment_message("confirm", user["facility"], when, patient["ref"])
     )
     # Appointment less than a day away? The confirmation already serves as the reminder,
@@ -493,7 +533,8 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
     log_access(conn, user["id"], "book_appointment", f"{patient['ref']} {when}")
     conn.commit()
     conn.close()
-    return {"id": appointment_id, "scheduled_at": when, "has_phone": bool(patient["phone"]), "sms_sent": confirmed}
+    return {"id": appointment_id, "scheduled_at": when, "has_phone": bool(patient["phone"]), "sms_sent": confirmed,
+            "reminder_method": patient["reminder_method"]}
 
 
 @app.get("/appointments")

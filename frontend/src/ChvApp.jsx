@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
+import { ReminderFields, RemindInPersonList } from "./ReminderPreference";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import PatientDetail from "./PatientDetail";
@@ -127,6 +128,8 @@ function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
         ))}
       </div>
 
+      <RemindInPersonList t={t} onOpen={onOpen} />
+
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -172,7 +175,7 @@ function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
 }
 
 function RegisterPatient({ t, onDone, onBack }) {
-  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, phone: "", community: "", consent: false });
+  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, phone: "", community: "", consent: false, reminder_method: "sms", language: "" });
   const canBePregnant = form.sex === "female" && Number(form.age) >= 10;
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -184,7 +187,7 @@ function RegisterPatient({ t, onDone, onBack }) {
     try {
       const patient = await api("/patients", {
         method: "POST",
-        body: { ...form, age: Number(form.age), pregnant: canBePregnant && form.pregnant },
+        body: { ...form, age: Number(form.age), pregnant: canBePregnant && form.pregnant, language: form.language || null },
       });
       onDone(patient.id);
     } catch (err) {
@@ -244,6 +247,7 @@ function RegisterPatient({ t, onDone, onBack }) {
           />
           <p className="mt-1 text-xs text-stone-500">{t.patientPhoneHint}</p>
         </div>
+        <ReminderFields t={t} value={form} onChange={setForm} />
 
         <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-teal-50 p-4 text-sm text-teal-900">
           <input

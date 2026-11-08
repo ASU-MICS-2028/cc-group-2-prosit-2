@@ -87,6 +87,8 @@ TABLES = [
         sex        TEXT CHECK (sex IN ('female','male')),
         pregnant   INTEGER NOT NULL DEFAULT 0,
         phone      TEXT,      -- optional; used ONLY for appointment reminders
+        reminder_method TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','voice','chv')),
+        language   TEXT,      -- language the patient speaks (for a voice call or the CHV's visit)
         community  TEXT,
         district   TEXT,      -- copied from the registering CHV
         consent    INTEGER NOT NULL CHECK (consent = 1),
@@ -327,6 +329,10 @@ def migrate(conn):
     # Columns added after the first version. A new database already has them all.
     add_column_if_missing(conn, "appointments", "reminder_attempts", "INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing(conn, "appointments", "reminder_claimed_at", "TEXT")
+    # How to remind the patient: many can speak but not read their language, so SMS is not always right
+    add_column_if_missing(conn, "patients", "reminder_method",
+                          "TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','voice','chv'))")
+    add_column_if_missing(conn, "patients", "language", "TEXT")
     if is_postgres():
         allow_all_roles(conn)
         return  # PostgreSQL databases start from the current schema; the steps below are for old laptop files

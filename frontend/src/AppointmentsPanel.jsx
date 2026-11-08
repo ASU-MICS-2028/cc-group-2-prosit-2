@@ -71,6 +71,7 @@ export function AppointmentsPanel({ t, refreshKey }) {
 export function ReminderNote({ a, t }) {
   if (a.reminder_status === "sent") return <span className="text-emerald-700">{t.reminderSent}</span>;
   if (a.reminder_status === "failed") return <span className="text-red-600">{t.reminderFailed}</span>;
+  if (a.reminder_status === "chv") return <span className="text-amber-700">{t.chvRemind}</span>;
   if (a.reminder_status === "no_phone" || a.has_phone === 0) return <span className="text-amber-700">{t.noPhoneRemind}</span>;
   return <span>{t.reminderPending}</span>;
 }
@@ -104,7 +105,8 @@ export function BookAppointment({ referralId, t, onBooked }) {
     <div className="mt-3">
       {result && (
         <p className="mb-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          ✓ {t.bookedFor} {result.scheduled_at} · {result.has_phone ? (result.sms_sent ? t.confirmSent : t.confirmFailed) : t.noPhoneRemind}
+          ✓ {t.bookedFor} {result.scheduled_at} ·{" "}
+          {result.reminder_method !== "sms" ? t.chvRemind : result.has_phone ? (result.sms_sent ? t.confirmSent : t.confirmFailed) : t.noPhoneRemind}
         </p>
       )}
       {!open ? (

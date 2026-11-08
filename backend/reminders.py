@@ -46,14 +46,14 @@ def send_due_reminders(now=None):
 
     conn = get_db()
     due = conn.execute(f"""
-        SELECT a.id, a.facility, a.scheduled_at, a.reminder_attempts, p.ref, p.phone
+        SELECT a.id, a.facility, a.scheduled_at, a.reminder_attempts, p.ref, p.phone, p.reminder_method
         FROM appointments a JOIN patients p ON p.id = a.patient_id
         WHERE a.status = 'booked' AND {CLAIMABLE.replace('reminder_', 'a.reminder_')}
           AND a.scheduled_at > ? AND a.scheduled_at <= ?
     """, (stale_before, window_start, window_end)).fetchall()
     conn.commit()
 
-    counts = {"due": len(due), "sent": 0, "no_phone": 0, "retry": 0, "failed": 0, "skipped": 0}
+    counts = {"due": len(due), "sent": 0, "no_phone": 0, "chv": 0, "retry": 0, "failed": 0, "skipped": 0}
     for a in due:
         # 1. Claim it. If another run got there first, no row comes back and we move on.
         claimed = conn.execute(
@@ -68,7 +68,9 @@ def send_due_reminders(now=None):
 
         # 2. Send, and record the result
         attempts = a["reminder_attempts"]
-        if not a["phone"]:
+        if a["reminder_method"] != "sms":
+            result = "chv"  # voice call (not built yet) or CHV visit: the CHV reminds in person
+        elif not a["phone"]:
             result = "no_phone"  # the CHV sees it in the app and reminds in person
         elif send_sms(a["phone"], appointment_message("remind", a["facility"], a["scheduled_at"], a["ref"])):
             result = "sent"

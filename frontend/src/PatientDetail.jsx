@@ -11,6 +11,7 @@ import { addPending } from "./offlineQueue";
 import { cachedApi } from "./patientCache";
 import SavedCopyNote from "./SavedCopyNote";
 import { ReminderNote } from "./AppointmentsPanel";
+import { ReminderSummary } from "./ReminderPreference";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
   const [data, setData] = useState(null);
@@ -151,6 +152,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
         </div>
         <RiskBadge level={observations[0]?.risk_level} t={t} />
       </div>
+      <ReminderSummary t={t} patient={patient} onChanged={load} />
 
       {appointments.length > 0 && (
         <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">

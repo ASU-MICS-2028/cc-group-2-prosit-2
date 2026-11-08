@@ -108,6 +108,7 @@ All of this work is on the **`main`** branch.
 - **Register any patient** (any age, female or male), but only after ticking that the patient has given consent (Data Protection Act, 2012).
   Each patient gets a random reference such as `HC-1D28D0`. Female patients aged 10+ can be marked **pregnant**.
   An optional **phone number** can be added, used **only** for appointment reminders.
+  The CHV also records **how to remind the patient** (text message, CHV visit in person, or voice call in their language) and **the language they speak**, because many patients speak a Ghanaian language but cannot read it. See [docs/REMINDERS.md](docs/REMINDERS.md).
 - **Record a general visit** for anyone: a symptom checklist (fever, cough, diarrhoea, stiff neck, convulsions…) plus optional temperature, BP and pulse.
   The app gives a triage level and lists **possible conditions to test for** (malaria, cholera, meningitis, measles, pneumonia, hypertension).
 - **Record an antenatal check** for pregnant patients: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
@@ -117,6 +118,7 @@ All of this work is on the **`main`** branch.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
 - **Refer a MEDIUM-risk patient** if worried, but a **reason is required** (e.g. "fever not improving after 2 days"). LOW cannot be referred.
 - **See upcoming appointments** on the patient page, with a warning when the patient has no phone so the CHV can remind them in person.
+- **Remind in person** list on the home screen: their patients' appointments in the next 7 days that a text message will not reach (chose a CHV visit or voice call, no phone, or the SMS failed), with the language each patient speaks.
 - **Follow the whole chain**: health centre (waiting → arrived → completed), and, if the nurse referred onward, the hospital step and the doctor's outcome.
 
 ### Who starts a referral?
@@ -312,7 +314,7 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | Table | FHIR resource | Holds |
 |---|---|---|
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
-| `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), community, consent, CHV owner, random reference |
+| `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), how to remind them (`sms` / `voice` / `chv`) and the language they speak, community, consent, CHV owner, random reference |
 | `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
 | `appointments` | Appointment | Follow-up time, facility, reason, status, reminder result |
 | `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
@@ -527,6 +529,8 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/patients/{id}/visit` | chv | General visit: symptoms + optional vitals → triage + possible conditions |
 | POST | `/patients/{id}/assess` | chv | Antenatal check (pregnant patients only) → risk score |
 | POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
+| POST | `/patients/{id}/reminder-preference` | chv | How to remind the patient (`sms`, `voice`, `chv`) and the language they speak |
+| GET | `/chv/reminders` | chv | Own patients' appointments in the next 7 days that need an in-person reminder |
 | POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
 | GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, sorted by priority score |
 | POST | `/referrals/{id}/status` | nurse, doctor | Set `arrived` (both) or `completed` + outcome (**doctor only**) |
@@ -605,6 +609,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── InboxApp.jsx       # Referral inbox (nurse and doctor), escalation
         ├── PatientHistory.jsx # Visit timeline for a referred patient
         ├── AppointmentsPanel.jsx # Book follow-up, upcoming list, reminder status
+        ├── ReminderPreference.jsx # How to remind a patient; CHV's "Remind in person" list
         ├── VideoCall.jsx      # 1-to-1 WebRTC call screen (mute, audio only, hang up)
         ├── IncomingCalls.jsx  # "X is calling about Y: Join" banner
         ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend, DHIMS2 export
@@ -690,7 +695,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Translate the app into Twi, Ewe, Ga and Dagbani (Isaac), with a language dropdown
 - [x] Get the translations reviewed by native speakers
 - [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
-- [ ] Send SMS in the patient's preferred language (translations ready in `docs/translations/`)
+- [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS, CHV visit, voice call) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
+- [ ] Voice-call reminders in the patient's language: **designed, not built** (needs a paid provider and recordings)
 
 ### ⬜ Phase 7: Week 4, Sustainability (whole team)
 - [ ] Insurance (NHIS) and mobile money: described and costed
@@ -727,7 +733,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
-- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of the app's 314 screen strings, reviewed by native speakers. Not yet translated: 7 early lines, and the 60 pharmacy and System health labels added later (they fall back to English). SMS and error messages are still English only.
+- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of the app's 314 screen strings, reviewed by native speakers. Not yet translated: 7 early lines, and the 60 pharmacy and System health labels added later (they fall back to English). SMS stay in English on purpose (see [docs/REMINDERS.md](docs/REMINDERS.md)); error messages are English only.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---
