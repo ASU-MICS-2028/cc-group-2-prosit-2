@@ -5,47 +5,52 @@
 @theme {
   --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
 
-  /* teal = forest green */
-  --color-teal-50: #edf5ef;
-  --color-teal-100: #d5e8db;
-  --color-teal-200: #add1ba;
-  --color-teal-300: #7db393;
-  --color-teal-400: #4f9570;
-  --color-teal-500: #2f7d57;
-  --color-teal-600: #1f6b48;
-  --color-teal-700: #17583b;
-  --color-teal-800: #11452e;
-  --color-teal-900: #0c3322;
+  /* teal = cobalt blue */
+  --color-teal-50: #eef2ff;
+  --color-teal-100: #dce4ff;
+  --color-teal-200: #b9c8ff;
+  --color-teal-300: #8aa2ff;
+  --color-teal-400: #5b7bf5;
+  --color-teal-500: #3558ea;
+  --color-teal-600: #1f45e0;
+  --color-teal-700: #1738c7;
+  --color-teal-800: #122ca0;
+  --color-teal-900: #0e2180;
 
-  /* stone = warm paper and ink */
-  --color-stone-50: #faf6ee;
-  --color-stone-100: #f2ecdf;
-  --color-stone-200: #e3dbca;
-  --color-stone-300: #cfc5b0;
-  --color-stone-400: #7f755f;
-  --color-stone-500: #6b624e;
-  --color-stone-600: #5a5240;
-  --color-stone-700: #443d2f;
-  --color-stone-800: #2c271d;
-  --color-stone-900: #1c1913;
+  /* stone = clean cool greys */
+  --color-stone-50: #f6f7fb;
+  --color-stone-100: #eceef6;
+  --color-stone-200: #dee2ee;
+  --color-stone-300: #c5cbdc;
+  --color-stone-400: #6e7690;
+  --color-stone-500: #5c6480;
+  --color-stone-600: #49506a;
+  --color-stone-700: #363c54;
+  --color-stone-800: #20253b;
+  --color-stone-900: #12162a;
 
-  --color-marigold: #f0ae2b;
+  --color-marigold: #ffc531;
 
-  /* Tighter corners than the Tailwind defaults */
-  --radius-xl: 0.5rem;
-  --radius-2xl: 0.625rem;
+  /* Friendly, generous corners */
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
 }
 
 @layer base {
   h1, h2 { font-family: var(--font-display); letter-spacing: -0.015em; }
 }
 
-/* Woven band: an original stripe pattern used as the brand's signature */
-.hc-band {
-  height: 14px;
-  background:
-    repeating-linear-gradient(90deg, #f0ae2b 0 28px, #11452e 28px 36px, #c2452d 36px 64px, #faf6ee 64px 72px, #11452e 72px 104px, #f0ae2b 104px 112px);
-}
+/* Key numbers as solid colour blocks */
+.hc-tiles > * { border-color: transparent; color: #fff; }
+.hc-tiles p { color: inherit; }
+.hc-tiles > :nth-child(1) { background: #1f45e0; }
+.hc-tiles > :nth-child(2) { background: #14c4b2; color: #0e2180; }
+.hc-tiles > :nth-child(3) { background: #ffc531; color: #0e2180; }
+.hc-tiles > :nth-child(4) { background: #7a3ff2; }
+.hc-tiles > button[class*="ring-4"] { outline: 3px solid #0e2180; outline-offset: 2px; }
+/* Risk numbers keep their medical meaning: red, amber, green */
+.hc-tiles-risk > :nth-child(2) { background: #dc2626; color: #fff; }
+.hc-tiles-risk > :nth-child(4) { background: #0b8a5f; }
 
 /* Opening screen: the words appear, rest, then everything fades to the login page */
 .hc-splash { animation: hc-splash-out 2.8s ease-in-out forwards; }

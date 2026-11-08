@@ -95,7 +95,7 @@ export default function GhsApp(props) {
         </p>
 
         {/* KPI row: last 7 days */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="hc-tiles mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {tiles.map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-stone-200 bg-white p-4">
               <p className="text-xs font-medium text-stone-500">{label}</p>

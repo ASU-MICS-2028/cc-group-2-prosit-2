@@ -79,7 +79,7 @@ export default function InboxApp(props) {
         </p>
 
         {/* Status tabs double as counters */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="hc-tiles mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {tabs.map(([key, label, n]) => (
             <button
               key={key}

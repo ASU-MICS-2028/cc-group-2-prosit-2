@@ -56,7 +56,7 @@ export default function PharmacistApp(props) {
           {t.pharmacyHint} <span className="font-medium text-stone-700">{user.facility}</span>
         </p>
 
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="hc-tiles hc-tiles-risk mt-5 grid grid-cols-3 gap-3">
           {tiles.map(([target, label, n, colour]) => (
             <button key={label} onClick={() => setTab(target)} className="rounded-2xl border border-stone-200 bg-white p-4 text-left hover:border-teal-300">
               <p className="text-xs font-medium text-stone-500">{label}</p>

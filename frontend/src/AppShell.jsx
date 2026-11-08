@@ -3,6 +3,9 @@ import Logo from "./Logo";
 import Icon from "./Icon";
 import LanguageSelect from "./LanguageSelect";
 
+// Each menu item gets its own colour, so people can find it by colour as well as by word
+const ITEM_COLOURS = ["#ffc531", "#ff8a6b", "#2cd4c2", "#ff9fe0", "#b8ec51", "#7cc7ff"];
+
 const ROLE_NAMES = {
   chv: "Community Health Volunteer",
   nurse: "Facility Nurse / Midwife",
@@ -47,17 +50,17 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
             <p className="text-xs text-teal-200">by Storm Surfers</p>
           </div>
         </div>
-        <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3">
-          {items.map((item) => (
+        <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
+          {items.map((item, i) => (
             <button
               key={item.key}
               onClick={() => onSelect(item.key)}
               aria-current={active === item.key ? "page" : undefined}
-              className={`flex w-full items-center gap-3 border-l-[3px] px-3 py-2.5 text-left text-sm font-medium ${
-                active === item.key ? "border-marigold bg-teal-800 text-white" : "border-transparent text-teal-100 hover:bg-teal-800/60"
+              className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm font-medium ${
+                active === item.key ? "bg-white font-semibold text-teal-900" : "text-white hover:bg-teal-800"
               }`}
             >
-              <Icon name={item.icon} />
+              <span className="rounded-lg p-1.5 text-teal-900" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={18} /></span>
               <span className="flex-1">{item.label}</span>
               {item.count > 0 && <span className="rounded-full bg-marigold px-2 text-xs font-bold text-teal-900">{item.count}</span>}
             </button>
@@ -73,7 +76,7 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
             {status}
             <LanguageSelect lang={lang} setLang={setLang} className="text-xs" />
           </div>
-          <button onClick={onLogout} className="w-full border border-teal-600 py-1.5 text-xs font-medium hover:bg-teal-800">
+          <button onClick={onLogout} className="w-full rounded-xl border border-teal-500 py-1.5 text-xs font-medium hover:bg-teal-800">
             {t.logout}
           </button>
         </div>
@@ -98,16 +101,16 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
 
       {/* Bottom bar: phones. Scrolls sideways if a role has many sections. */}
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-stone-200 bg-white lg:hidden">
-        {items.map((item) => (
+        {items.map((item, i) => (
           <button
             key={item.key}
             onClick={() => onSelect(item.key)}
             aria-current={active === item.key ? "page" : undefined}
             className={`relative flex min-w-[4.6rem] flex-1 flex-col items-center gap-1 border-t-[3px] px-1 pb-2 pt-2 text-[11px] font-medium ${
-              active === item.key ? "border-teal-700 text-teal-800" : "border-transparent text-stone-500"
+              active === item.key ? "border-teal-600 font-bold text-teal-700" : "border-transparent text-stone-500"
             }`}
           >
-            <Icon name={item.icon} size={22} />
+            <span className="rounded-lg p-1 text-teal-900" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={20} /></span>
             {item.label}
             {item.count > 0 && <span className="absolute right-3 top-1 rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{item.count}</span>}
           </button>

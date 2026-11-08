@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import Logo from "./Logo";
+import Pattern from "./Pattern";
 import LanguageSelect from "./LanguageSelect";
 
 const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "pharm1", "ghs1", "admin1"];
@@ -27,18 +28,15 @@ export default function Login({ onLogin, t, lang, setLang }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-stone-50">
       {/* Brand panel */}
-      <div className="hidden flex-col justify-between bg-teal-900 text-stone-50 lg:flex">
-        <div className="flex flex-1 flex-col justify-between p-12">
-          <Logo size={44} />
-          <div>
-            <h1 className="font-display text-7xl font-extrabold leading-none">HealthConnect</h1>
-            <p className="mt-3 font-display text-3xl font-semibold text-marigold">by Storm Surfers</p>
-            <p className="mt-6 max-w-md text-lg text-teal-50">{t.tagline}</p>
-          </div>
-          <p className="text-sm text-teal-200">{t.builtBy}</p>
+      <div className="hidden flex-col bg-teal-700 text-white lg:flex">
+        <div className="min-h-0 flex-1"><Pattern cols={7} rows={5} /></div>
+        <div className="p-10">
+          <h1 className="font-display text-6xl font-extrabold leading-none">HealthConnect</h1>
+          <p className="mt-2 font-display text-2xl font-semibold text-marigold">by Storm Surfers</p>
+          <p className="mt-4 text-lg">{t.tagline}</p>
         </div>
-        <div className="hc-band" />
       </div>
+      <div className="h-24 lg:hidden"><Pattern cols={8} rows={2} /></div>
 
       {/* Form panel */}
       <div className="flex flex-col items-center justify-center p-6">
