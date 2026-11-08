@@ -20,6 +20,7 @@ load_dotenv()
 from auth import hash_password
 from database import get_db, init_db, new_patient_ref, now_text
 from general_model import assess_general
+from training_list import TRAINING_MODULES
 
 DISTRICTS = {
     # district: (demo CHV username, typical visits per week)
@@ -203,6 +204,34 @@ def create_demo_equipment(conn):
     return created
 
 
+def create_demo_training(conn):
+    """Fake certificates so the GHS list shows each status. Only once. The approvals are demo approvals."""
+    if conn.execute("SELECT 1 FROM certificates WHERE code LIKE 'DEMO-%'").fetchone():
+        return
+    doctor = conn.execute("SELECT id FROM users WHERE username = 'doctor1'").fetchone()
+    if not doctor:
+        return
+    for module in TRAINING_MODULES:
+        conn.execute("INSERT INTO training_reviews (module, reviewed_by, reviewed_at) VALUES (?, ?, ?) "
+                     "ON CONFLICT (module) DO NOTHING", (module, doctor["id"], now_text()))
+    # username, module, days until expiry, revoke reason
+    examples = [("chv2", "danger_signs", 300, None), ("chv2", "malaria_testing", 12, None),
+                ("nurse2", "privacy_consent", -20, None), ("pharm1", "danger_signs", 200, "Demo: issued in error")]
+    now = datetime.now(timezone.utc)
+    for number, (username, module, days, reason) in enumerate(examples):
+        user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        if not user:
+            continue
+        expires = now + timedelta(days=days)
+        issued = expires - timedelta(days=365)
+        conn.execute(
+            "INSERT INTO certificates (code, user_id, module, source, issued_at, expires_at, revoked_at, revoke_reason) "
+            "VALUES (?, ?, ?, 'quiz', ?, ?, ?, ?)",
+            (f"DEMO-{number}", user["id"], module, issued.strftime("%Y-%m-%d %H:%M:%S"), expires.strftime("%Y-%m-%d %H:%M:%S"),
+             now_text() if reason else None, reason),
+        )
+
+
 def keep_demo_data_current():
     # Re-date the demo visits to "now" (remove + re-create in one transaction,
     # so the dashboard never sees half the data).
@@ -228,6 +257,7 @@ if __name__ == "__main__":
         print(f"Created {count} fake demo visits across {len(DISTRICTS)} districts (cholera spike in Tamale this week).")
     pharmacies = create_demo_stock(conn)
     create_demo_equipment(conn)
+    create_demo_training(conn)
     conn.commit()
     print(f"Demo stock created for {pharmacies} pharmacies." if pharmacies else "Demo stock already exists. Nothing to do.")
     conn.close()

@@ -82,7 +82,8 @@ def test_antenatal_rules_match_browser_copy():
 
 def test_general_rules_match_browser_copy():
     symptom_sets = [[], ["fever"], ["fever", "rash"], ["fever", "stiff_neck"], ["diarrhoea", "vomiting"],
-                    ["cough", "fever", "difficulty_breathing"], ["cough", "rash", "vomiting"], ["bleeding"]]
+                    ["cough", "fever", "difficulty_breathing"], ["cough", "rash", "vomiting"], ["bleeding"],
+                    ["snake_bite"], ["chest_pain"], ["animal_bite"], ["other"], ["injury"], ["burn"], ["mental_distress"], ["abdominal_pain"]]
     grid = list(itertools.product([None, 34.9, 35, 38, 39.5], [None, 89, 90, 140, 160], [None, 90, 110],
                                   [None, 100, 101, 121], symptom_sets))
     js = run_js(f"""

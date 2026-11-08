@@ -4,10 +4,14 @@
 export const SYMPTOMS = [
   "fever", "cough", "difficulty_breathing", "diarrhoea", "vomiting", "rash",
   "severe_headache", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink",
+  "chest_pain", "snake_bite", "animal_bite", "injury", "burn", "abdominal_pain", "mental_distress", "other",
 ];
 
 // Any one of these means the patient needs a facility now
-export const DANGER_SIGNS = ["difficulty_breathing", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink"];
+export const DANGER_SIGNS = ["difficulty_breathing", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink", "chest_pain", "snake_bite", "animal_bite"];
+
+// Never just "home care": someone should look at these within 24 hours
+const NEEDS_REVIEW = ["injury", "burn", "mental_distress", "other"];
 
 const has = (v) => v !== null && v !== undefined;
 
@@ -26,7 +30,8 @@ export function assessGeneral({ temperature: t, systolic_bp: sys, diastolic_bp: 
     (has(sys) && sys >= 140) ||
     (has(dia) && dia >= 90) ||
     (has(hr) && hr > 100) ||
-    s.size >= 3;
+    s.size >= 3 ||
+    NEEDS_REVIEW.some((c) => s.has(c));
 
   const risk_level = high ? "HIGH" : medium ? "MEDIUM" : "LOW";
   return { risk_level, possible_conditions: possibleConditions(s, t, sys, dia), advice: generalAdvice(risk_level) };

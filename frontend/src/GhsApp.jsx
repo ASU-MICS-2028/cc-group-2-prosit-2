@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import StockOutsPanel from "./StockOutsPanel";
 import ImpactPanel from "./ImpactPanel";
+import { WorkerCertificates } from "./TrainingPanel";
 import { EquipmentByDistrict } from "./EquipmentPanel";
 import Header from "./Header";
 import DistrictMap from "./DistrictMap";
@@ -17,7 +18,7 @@ function heatStyle(value) {
   return { background: "#184f95", color: "#ffffff" };
 }
 
-// GHS officer: anonymised district totals and outbreak alerts. Never names.
+// GHS officer: anonymised district totals and outbreak alerts. Never patient names.
 export default function GhsApp(props) {
   const { t } = props;
   const [data, setData] = useState(null);
@@ -129,6 +130,8 @@ export default function GhsApp(props) {
         <EquipmentByDistrict t={t} />
 
         <ImpactPanel t={t} />
+
+        <WorkerCertificates t={t} />
 
         <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
 

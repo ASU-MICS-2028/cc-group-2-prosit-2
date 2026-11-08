@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import { ReminderFields, RemindInPersonList } from "./ReminderPreference";
 import LessonsPanel from "./LessonsPanel";
+import TrainingPanel from "./TrainingPanel";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import PatientDetail from "./PatientDetail";
@@ -131,6 +132,7 @@ function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
 
       <RemindInPersonList t={t} onOpen={onOpen} />
       <LessonsPanel t={t} role="chv" userId={userId} />
+      <TrainingPanel t={t} role="chv" userId={userId} />
 
       <input
         value={query}

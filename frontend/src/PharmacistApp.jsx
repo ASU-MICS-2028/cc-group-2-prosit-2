@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
+import TrainingPanel from "./TrainingPanel";
 import { RxItems } from "./Prescriptions";
 import { RX_STYLE, inputClass } from "./styles";
 
@@ -90,6 +91,8 @@ export default function PharmacistApp(props) {
           </div>
         )}
         {tab === "history" && <StockHistory history={history} t={t} />}
+
+        <TrainingPanel t={t} role={user.role} userId={user.id} />
 
         <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
       </main>

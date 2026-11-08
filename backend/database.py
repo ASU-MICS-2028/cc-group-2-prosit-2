@@ -270,6 +270,39 @@ TABLES = [
         created_at  TEXT NOT NULL DEFAULT {now},
         UNIQUE (title, language)
     )""",
+    """
+    -- A nurse or doctor approved this training module (the modules live in training_list.py)
+    CREATE TABLE IF NOT EXISTS training_reviews (
+        module      TEXT PRIMARY KEY,
+        reviewed_by INTEGER NOT NULL REFERENCES users(id),
+        reviewed_at TEXT NOT NULL
+    )""",
+    """
+    CREATE TABLE IF NOT EXISTS training_attempts (
+        id         {id},
+        user_id    INTEGER NOT NULL REFERENCES users(id),
+        module     TEXT NOT NULL,
+        score      INTEGER NOT NULL,
+        total      INTEGER NOT NULL,
+        passed     INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+    )""",
+    """
+    -- Never deleted: a renewal adds a new row and a revoked one stays on record
+    CREATE TABLE IF NOT EXISTS certificates (
+        id            {id},
+        code          TEXT NOT NULL UNIQUE,
+        user_id       INTEGER NOT NULL REFERENCES users(id),
+        module        TEXT NOT NULL,
+        source        TEXT NOT NULL,                  -- quiz or ghs
+        issued_by     INTEGER REFERENCES users(id),   -- NULL = earned by passing the quiz
+        note          TEXT,
+        issued_at     TEXT NOT NULL,
+        expires_at    TEXT NOT NULL,
+        revoked_at    TEXT,
+        revoked_by    INTEGER REFERENCES users(id),
+        revoke_reason TEXT
+    )""",
 ]
 
 

@@ -25,6 +25,7 @@ export default function GeneralVisitForm({ t, loading, onSubmit }) {
     const body = { symptoms, notes };
     VITALS.forEach(([name]) => (body[name] = vitals[name] ? Number(vitals[name]) : null));
     if (symptoms.length === 0 && VITALS.every(([name]) => body[name] === null)) return setError(t.needSomething);
+    if (symptoms.includes("other") && !notes.trim()) return setError(t.needDescription);
     setError("");
     onSubmit(body);
   };
@@ -80,7 +81,7 @@ export default function GeneralVisitForm({ t, loading, onSubmit }) {
         ))}
       </div>
 
-      <label className="mb-1 mt-5 block text-sm font-medium text-stone-700">{t.notes}</label>
+      <label className="mb-1 mt-5 block text-sm font-medium text-stone-700">{symptoms.includes("other") ? t.describeCase : t.notes}</label>
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={500} className={inputClass} />
 
       {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

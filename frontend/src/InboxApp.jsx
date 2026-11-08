@@ -9,6 +9,7 @@ import { PrescribePanel } from "./Prescriptions";
 import { CoverageBadge } from "./InsurancePanel";
 import EquipmentPanel from "./EquipmentPanel";
 import LessonsPanel from "./LessonsPanel";
+import TrainingPanel from "./TrainingPanel";
 import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
@@ -86,6 +87,8 @@ export default function InboxApp(props) {
         <EquipmentPanel t={t} />
 
         <LessonsPanel t={t} role={user.role} userId={user.id} />
+
+        <TrainingPanel t={t} role={user.role} userId={user.id} />
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 

@@ -86,3 +86,11 @@ def test_patient_ref_never_repeats(client, login, make_patient, monkeypatch):
     chv = login("chv1")
     assert make_patient(chv)["ref"] == "HC-AAAAAA"
     assert make_patient(chv)["ref"] == "HC-BBBBBB"
+
+
+def test_other_kinds_of_case(client, login, make_patient):
+    chv = login("chv1")
+    patient = make_patient(chv)
+    assert visit(client, chv, patient, symptoms=["snake_bite"])["risk_level"] == "HIGH"
+    assert visit(client, chv, patient, symptoms=["other"], notes="Swollen painful knee")["risk_level"] == "MEDIUM"
+    assert visit(client, chv, patient, symptoms=["abdominal_pain"])["risk_level"] == "LOW"

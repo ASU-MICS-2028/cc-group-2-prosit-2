@@ -7,10 +7,15 @@ Mirrored in frontend/src/generalModel.js for offline use: change both together.
 SYMPTOMS = [
     "fever", "cough", "difficulty_breathing", "diarrhoea", "vomiting", "rash",
     "severe_headache", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink",
+    "chest_pain", "snake_bite", "animal_bite", "injury", "burn", "abdominal_pain", "mental_distress", "other",
 ]
 
 # Any one of these means the patient needs a facility now
-DANGER_SIGNS = {"difficulty_breathing", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink"}
+DANGER_SIGNS = {"difficulty_breathing", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink",
+                "chest_pain", "snake_bite", "animal_bite"}
+
+# Never just "home care": someone should look at these within 24 hours
+NEEDS_REVIEW = {"injury", "burn", "mental_distress", "other"}
 
 
 def assess_general(temperature, systolic_bp, diastolic_bp, heart_rate, symptoms):
@@ -34,6 +39,7 @@ def assess_general(temperature, systolic_bp, diastolic_bp, heart_rate, symptoms)
         or (dia_bp is not None and dia_bp >= 90)
         or (hr is not None and hr > 100)
         or len(s) >= 3
+        or bool(s & NEEDS_REVIEW)
     )
     risk_level = "HIGH" if high else "MEDIUM" if medium else "LOW"
     return risk_level, possible_conditions(s, t, sys_bp, dia_bp)

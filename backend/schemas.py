@@ -54,7 +54,8 @@ class PregnancyUpdate(BaseModel):
 
 Symptom = Literal[
     "fever", "cough", "difficulty_breathing", "diarrhoea", "vomiting", "rash",
-    "severe_headache", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink",
+    "severe_headache", "stiff_neck", "convulsions", "unconscious", "bleeding", "unable_to_drink", "chest_pain", "snake_bite", "animal_bite", "injury", "burn",
+    "abdominal_pain", "mental_distress", "other"
 ]
 
 
