@@ -1,63 +1,79 @@
 ﻿No.,key,English
 1,unknownRole,This copy of HealthConnect is out of date and does not have your screen yet. Reload to get the latest version.
 2,reloadApp,Reload
-3,prescriptions,Prescriptions
-4,prescribe,Prescribe drugs
-5,chooseDrug,Choose a drug
-6,inStock,in stock
-7,quantity,Quantity
-8,instructionsPlaceholder,"How to take it, e.g. 1 tablet 3 times a day for 5 days"
-9,removeDrug,Remove
-10,addDrug,Add another drug
-11,rxNotesPlaceholder,Note for the pharmacist (optional)
-12,sendToPharmacy,Send to pharmacy
-13,rx_pending,Waiting at pharmacy
-14,rx_dispensed,Dispensed
-15,rx_cancelled,Cancelled
-16,cancelPrescription,Cancel prescription
-17,notEnoughHere,Not enough in stock
-18,pharmacyTitle,Pharmacy
-19,pharmacyHint,"Prescriptions from doctors at your facility, and your drug stock."
-20,waitingRx,Waiting prescriptions
-21,outOfStock,Out of stock
-22,lowStock,Low stock
-23,stockTab,Stock
-24,historyTab,Stock history
-25,noPrescriptions,No prescriptions yet.
-26,prescribedBy,Prescribed by
-27,dispensedBy,dispensed by
-28,dispense,Dispense
-29,reorderAt,Reorder at
-30,stock_ok,OK
-31,stock_low,Low
-32,stock_out,Out
-33,receive,Receive
-34,adjust,Correct count
-35,newCount,Count on shelf
-36,adjustNote,"Why? e.g. 20 expired, recounted"
-37,receivedNote,From where? e.g. Regional Medical Stores (optional)
-38,saveChanges,Save
-39,noStockHistory,No stock changes yet.
-40,move_received,Received
-41,move_dispensed,Dispensed
-42,move_adjusted,Count corrected
-43,by,by
-44,ghsStockTitle,Medicine shortages by district
-45,ghsStockHint,"How many pharmacies are out of or low on each drug. Counts only, no patient data."
-46,ghsStockNone,No district is short of any drug.
-47,pharmaciesReporting,Pharmacies
-48,ghsStockForecast,Needed: outbreak expected here
-49,stockOutCount,out
-50,stockLowCount,low
-51,role_pharmacist,Pharmacist
-52,healthTitle,System health
-53,healthRefresh,Check again
-54,healthAllOk,All systems normal.
-55,healthFiring,alarm(s) need attention
-56,healthOk,OK
-57,healthAlarm,ALARM
-58,healthChecking,Collecting data
-59,healthLocalOnly,System health is only available on the cloud version (AWS CloudWatch).
-60,healthUnreachable,Could not reach AWS CloudWatch. Check again in a minute.
-61,err_chvs_nurses_doctors_and_pharmacists_need,"CHVs, nurses, doctors and pharmacists need a facility"
-62,err_prescription_not_found,Prescription not found
+3,saveChanges,Save
+4,remindHow,How to remind this patient
+5,remind_sms,Text message (SMS)
+6,remind_voice,Voice call in their language
+7,remind_chv,CHV visits in person
+8,speaksLanguage,Language they speak
+9,speaksShort,speaks
+10,remindHint,Choose a CHV visit if the patient cannot read messages and nobody at home can read them out.
+11,remindVoiceHint,"Voice calls are planned, not built yet. Until then the CHV reminds this patient in person."
+12,change,Change
+13,remindInPerson,Remind in person
+14,remindInPersonHint,Appointments in the next 7 days that a text message will not reach. Please visit or call these patients.
+15,remindWhy_voice,voice call not built yet
+16,remindWhy_chv,asked for a CHV visit
+17,remindWhy_no_phone,no phone
+18,remindWhy_failed,SMS failed
+19,chvRemind,CHV to remind in person
+20,prescriptions,Prescriptions
+21,prescribe,Prescribe drugs
+22,chooseDrug,Choose a drug
+23,inStock,in stock
+24,quantity,Quantity
+25,instructionsPlaceholder,"How to take it, e.g. 1 tablet 3 times a day for 5 days"
+26,removeDrug,Remove
+27,addDrug,Add another drug
+28,rxNotesPlaceholder,Note for the pharmacist (optional)
+29,sendToPharmacy,Send to pharmacy
+30,rx_pending,Waiting at pharmacy
+31,rx_dispensed,Dispensed
+32,rx_cancelled,Cancelled
+33,cancelPrescription,Cancel prescription
+34,notEnoughHere,Not enough in stock
+35,pharmacyTitle,Pharmacy
+36,pharmacyHint,"Prescriptions from doctors at your facility, and your drug stock."
+37,waitingRx,Waiting prescriptions
+38,outOfStock,Out of stock
+39,lowStock,Low stock
+40,stockTab,Stock
+41,historyTab,Stock history
+42,noPrescriptions,No prescriptions yet.
+43,prescribedBy,Prescribed by
+44,dispensedBy,dispensed by
+45,dispense,Dispense
+46,reorderAt,Reorder at
+47,stock_ok,OK
+48,stock_low,Low
+49,stock_out,Out
+50,receive,Receive
+51,adjust,Correct count
+52,newCount,Count on shelf
+53,adjustNote,"Why? e.g. 20 expired, recounted"
+54,receivedNote,From where? e.g. Regional Medical Stores (optional)
+55,noStockHistory,No stock changes yet.
+56,move_received,Received
+57,move_dispensed,Dispensed
+58,move_adjusted,Count corrected
+59,by,by
+60,ghsStockTitle,Medicine shortages by district
+61,ghsStockHint,"How many pharmacies are out of or low on each drug. Counts only, no patient data."
+62,ghsStockNone,No district is short of any drug.
+63,pharmaciesReporting,Pharmacies
+64,ghsStockForecast,Needed: outbreak expected here
+65,stockOutCount,out
+66,stockLowCount,low
+67,role_pharmacist,Pharmacist
+68,healthTitle,System health
+69,healthRefresh,Check again
+70,healthAllOk,All systems normal.
+71,healthFiring,alarm(s) need attention
+72,healthOk,OK
+73,healthAlarm,ALARM
+74,healthChecking,Collecting data
+75,healthLocalOnly,System health is only available on the cloud version (AWS CloudWatch).
+76,healthUnreachable,Could not reach AWS CloudWatch. Check again in a minute.
+77,err_chvs_nurses_doctors_and_pharmacists_need,"CHVs, nurses, doctors and pharmacists need a facility"
+78,err_prescription_not_found,Prescription not found

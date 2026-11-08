@@ -33,6 +33,7 @@ SCREENS = {
     "DistrictMap.jsx": "GHS officer: district map",
     "AdminApp.jsx": "System admin: staff accounts",
     "SystemHealthPanel.jsx": "System admin: system health",
+    "ReminderPreference.jsx": "CHV: patient list and registration",
     "PharmacistApp.jsx": "Pharmacist: pharmacy",
     "Prescriptions.jsx": "Doctor and pharmacist: prescriptions",
     "StockOutsPanel.jsx": "GHS officer: medicine shortages",
