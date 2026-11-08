@@ -67,12 +67,12 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 
 ## 3. Where we are now
 
-**Week 1 (health records) is done, and Week 2 has started: the facility referral inbox is built. HealthConnect now covers general visits for any patient, not just antenatal care.**
+**Weeks 1 to 3 (health records, telemedicine, surveillance) are done and deployed on AWS. Week 4 (sustainability) is the remaining report work. HealthConnect covers general visits for any patient, not just antenatal care.**
 
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
-| Role-based access control (RBAC) | ✅ Done for all five roles: CHV, nurse, doctor, GHS officer and admin |
+| Role-based access control (RBAC) | ✅ Done for all six roles: CHV, nurse, doctor, pharmacist, GHS officer and admin |
 | Patient registration with consent | ✅ Done |
 | General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
 | Antenatal risk check (pregnant patients) | ✅ Done |
@@ -280,7 +280,7 @@ flowchart LR
     subgraph Server["Backend (FastAPI, Python)"]
         API["REST API<br/>JWT + RBAC checks"]
         M["model.py<br/>(official scoring)"]
-        DB[("SQLite<br/>users · patients · observations<br/>referrals · access_log")]
+        DB[("SQLite on a laptop, PostgreSQL (RDS) on AWS<br/>users · patients · observations<br/>referrals · access_log")]
     end
 
     SMS["Arkesel SMS"]
@@ -302,7 +302,7 @@ flowchart LR
 | Frontend | React 19, Vite, Tailwind CSS | Component-based UI, fast dev server, mobile-first styling |
 | App type | PWA (vite-plugin-pwa / Workbox) | Installs like an app without an app store, and opens offline |
 | Backend | FastAPI (Python) | Small, readable API code with automatic input validation and docs at `/docs` |
-| Database | SQLite (local) | Zero setup for the prototype; planned move to AWS RDS |
+| Database | SQLite (laptop), PostgreSQL on AWS RDS (cloud) | SQLite needs no setup for development; RDS gives encrypted, managed storage in the cloud |
 | Auth | bcrypt + JWT (PyJWT) | Industry-standard password hashing and signed role tokens |
 | Offline crypto | Web Crypto API, AES-GCM | Built into every browser; encrypts and detects tampering |
 | SMS | Arkesel | Ghanaian SMS provider |
@@ -720,7 +720,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
 | Pharmacy (stock, e-prescriptions) | **Built** (local and tests). Drug list and reorder levels are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
 | Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
-| Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. SMS-reminder Lambda and alarms not yet |
+| Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms are on; alarm emails and the SMS-reminder Lambda are not built yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
 | NHIS integration | **Not built**: no access to real systems |
 | Patient data | **Fake test data only** |
