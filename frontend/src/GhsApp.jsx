@@ -4,7 +4,7 @@ import StockOutsPanel from "./StockOutsPanel";
 import ImpactPanel from "./ImpactPanel";
 import { WorkerCertificates } from "./TrainingPanel";
 import { EquipmentByDistrict } from "./EquipmentPanel";
-import Header from "./Header";
+import AppShell from "./AppShell";
 import DistrictMap from "./DistrictMap";
 
 const CONDITIONS = ["malaria", "cholera", "meningitis", "measles", "pneumonia", "hypertension"];
@@ -21,6 +21,7 @@ function heatStyle(value) {
 // GHS officer: anonymised district totals and outbreak alerts. Never patient names.
 export default function GhsApp(props) {
   const { t } = props;
+  const [section, setSection] = useState("overview");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null); // { district, condition } shown in the trend chart
@@ -65,10 +66,17 @@ export default function GhsApp(props) {
   ];
   const selectedRow = selected && data.districts.find((d) => d.district === selected.district);
 
+  const menu = [
+    { key: "overview", label: t.navOverview, icon: "overview", count: data.alerts.length },
+    { key: "map", label: t.navMap, icon: "map" },
+    { key: "resources", label: t.navResources, icon: "stock" },
+    { key: "impact", label: t.navImpact, icon: "impact" },
+    { key: "workforce", label: t.navWorkforce, icon: "training" },
+  ];
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Header {...props} />
-      <main className="mx-auto max-w-5xl px-4 py-6">
+    <AppShell {...props} items={menu} active={section} onSelect={setSection}>
+        {section === "overview" && (<>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-bold text-stone-800">{t.ghsTitle}</h1>
           <div className="text-right">
@@ -76,7 +84,7 @@ export default function GhsApp(props) {
               onClick={exportDhims2}
               className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
             >
-              ⬇ {t.ghsExport}
+              {t.ghsExport}
             </button>
             <p className="mt-1 text-[11px] text-stone-400">{t.ghsExportNote}</p>
           </div>
@@ -124,15 +132,15 @@ export default function GhsApp(props) {
         </div>
 
         <ForecastPanel t={t} forecasts={data.forecasts} onSelect={setSelected} />
+        </>)}
+        {section === "resources" && (<>
+          <StockOutsPanel t={t} forecasts={data.forecasts} />
+          <EquipmentByDistrict t={t} />
+        </>)}
+        {section === "impact" && <ImpactPanel t={t} />}
+        {section === "workforce" && <WorkerCertificates t={t} />}
 
-        <StockOutsPanel t={t} forecasts={data.forecasts} />
-
-        <EquipmentByDistrict t={t} />
-
-        <ImpactPanel t={t} />
-
-        <WorkerCertificates t={t} />
-
+        {section === "map" && (<>
         <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
 
         {/* Heatmap table: districts x conditions, last 7 days */}
@@ -204,10 +212,8 @@ export default function GhsApp(props) {
             alertUsual={data.alerts.find((a) => a.district === selected.district && a.condition === selected.condition)?.usual}
           />
         )}
-
-        <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
-      </main>
-    </div>
+        </>)}
+    </AppShell>
   );
 }
 

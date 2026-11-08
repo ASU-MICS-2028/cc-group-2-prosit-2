@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
-import Header from "./Header";
+import AppShell from "./AppShell";
 import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
 import PatientHistory from "./PatientHistory";
@@ -32,6 +32,8 @@ function formatWait(mins) {
 export default function InboxApp(props) {
   const { t, user } = props;
   const isNurse = user.role === "nurse";
+  const [section, setSection] = useState("referrals");
+  const [isManager, setIsManager] = useState(false); // the server decides who is a manager
   const [referrals, setReferrals] = useState([]);
   const [hospitals, setHospitals] = useState([]); // where a nurse can refer onward
   const [apptKey, setApptKey] = useState(0); // bump to reload the appointments panel
@@ -43,6 +45,7 @@ export default function InboxApp(props) {
 
   useEffect(() => {
     api("/referrals").then(setReferrals).catch((err) => setError(err.message));
+    api("/facility/overview").then(() => setIsManager(true)).catch(() => {});
     if (isNurse) api("/facilities/hospitals").then(setHospitals).catch(() => {});
   }, [isNurse]);
 
@@ -56,12 +59,20 @@ export default function InboxApp(props) {
     ["all", t.all, referrals.length],
   ];
 
+  const menu = [
+    { key: "referrals", label: t.navReferrals, icon: "referrals", count: count("pending") },
+    { key: "appointments", label: t.navAppointments, icon: "calendar" },
+    ...(isManager ? [{ key: "centre", label: t.navCentre, icon: "centre" }] : []),
+    { key: "equipment", label: t.navEquipment, icon: "equipment" },
+    { key: "lessons", label: t.navLessons, icon: "lessons" },
+    { key: "training", label: t.navTraining, icon: "training" },
+  ];
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Header {...props} />
+    <AppShell {...props} items={menu} active={section} onSelect={setSection}>
       {call && <VideoCall referralId={call.referralId} title={call.title} t={t} onClose={() => setCall(null)} />}
-      <main className="mx-auto max-w-5xl px-4 py-6">
         <IncomingCalls t={t} onJoin={(referralId, title) => setCall({ referralId, title })} />
+        {section === "referrals" && (<>
         <h1 className="text-2xl font-bold text-stone-800">{isNurse ? t.inbox : t.doctorInbox}</h1>
         <p className="mt-1 text-sm text-stone-500">
           {isNurse ? t.inboxHint : t.doctorInboxHint} <span className="font-medium text-stone-700">{user.facility}</span>
@@ -83,16 +94,6 @@ export default function InboxApp(props) {
           ))}
         </div>
 
-        <AppointmentsPanel t={t} refreshKey={apptKey} />
-
-        <FacilityPanel t={t} />
-
-        <EquipmentPanel t={t} />
-
-        <LessonsPanel t={t} role={user.role} userId={user.id} />
-
-        <TrainingPanel t={t} role={user.role} userId={user.id} />
-
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <div className="mt-5 space-y-3">
@@ -105,10 +106,13 @@ export default function InboxApp(props) {
             <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} onCall={() => setCall({ referralId: r.id, title: r.full_name })} />
           ))}
         </div>
-
-        <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
-      </main>
-    </div>
+        </>)}
+        {section === "appointments" && <AppointmentsPanel t={t} refreshKey={apptKey} />}
+        {section === "centre" && <FacilityPanel t={t} />}
+        {section === "equipment" && <EquipmentPanel t={t} />}
+        {section === "lessons" && <LessonsPanel t={t} role={user.role} userId={user.id} />}
+        {section === "training" && <TrainingPanel t={t} role={user.role} userId={user.id} />}
+    </AppShell>
   );
 }
 
@@ -232,7 +236,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
       {/* Prescriptions go to the pharmacy at the doctor's own facility */}
       {!isNurse && <PrescribePanel referralId={r.id} t={t} />}
       <button onClick={onCall} className="mt-2 block text-sm font-medium text-teal-700 hover:underline">
-        📹 {t.videoCall}
+        {t.videoCall}
       </button>
 
       {r.outcome && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{r.outcome}</p>}
@@ -245,7 +249,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
             <button
               onClick={() => update("arrived")}
               disabled={saving}
-              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+              className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
             >
               {t.markArrived}
             </button>

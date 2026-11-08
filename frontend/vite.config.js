@@ -14,7 +14,7 @@ export default defineConfig({
         name: 'HealthConnect Ghana',
         short_name: 'HealthConnect',
         description: 'Connecting rural patients and CHVs with health facilities',
-        theme_color: '#0f766e',
+        theme_color: '#0c3322',
         background_color: '#fafaf9',
         display: 'standalone',
         orientation: 'portrait',

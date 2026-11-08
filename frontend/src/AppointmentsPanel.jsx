@@ -29,7 +29,7 @@ export function AppointmentsPanel({ t, refreshKey }) {
   return (
     <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-5">
       <h2 className="text-lg font-semibold text-stone-800">
-        📅 {t.upcomingAppointments} ({appointments.length})
+        {t.upcomingAppointments} ({appointments.length})
       </h2>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       {appointments.length === 0 && <p className="mt-2 text-sm text-stone-500">{t.noAppointments}</p>}
@@ -113,7 +113,7 @@ export function BookAppointment({ referralId, t, onBooked }) {
       )}
       {!open ? (
         <button onClick={() => setOpen(true)} className="text-sm font-medium text-teal-700 hover:underline">
-          📅 {t.bookFollowUp}
+          {t.bookFollowUp}
         </button>
       ) : (
         <div className="space-y-2 rounded-xl border border-teal-200 bg-teal-50/50 p-3">

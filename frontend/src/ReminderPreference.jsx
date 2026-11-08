@@ -108,7 +108,7 @@ export function RemindInPersonList({ t, onOpen }) {
               <span className="font-mono text-xs text-stone-500">{a.ref}</span>
               {a.community && <span className="text-stone-600"> · {a.community}</span>}
               <span className="block text-xs text-stone-600">
-                📅 {a.scheduled_at} · {a.facility}
+                {a.scheduled_at} · {a.facility}
                 {a.language && ` · ${t.speaksShort} ${languageName(a.language)}`} · {t["remindWhy_" + (a.reminder_method !== "sms" ? a.reminder_method : a.reminder_status === "failed" ? "failed" : "no_phone")]}
               </span>
             </button>

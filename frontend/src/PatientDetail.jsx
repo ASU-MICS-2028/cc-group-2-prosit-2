@@ -160,7 +160,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
 
       {appointments.length > 0 && (
         <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">
-          <p className="text-sm font-semibold text-teal-900">📅 {t.upcomingAppointments}</p>
+          <p className="text-sm font-semibold text-teal-900">{t.upcomingAppointments}</p>
           {appointments.map((a) => (
             <p key={a.id} className="mt-1 text-sm text-teal-900">
               {a.scheduled_at} · {a.facility}
@@ -325,7 +325,7 @@ function ReferralChain({ o, t, noSms, onCall }) {
       {noSms && <p className="text-xs text-amber-700">{t.smsNotDelivered}</p>}
       {o.referral_id && (
         <button onClick={onCall} className="block text-sm font-medium text-teal-700 hover:underline">
-          📹 {t.videoCall}
+          {t.videoCall}
         </button>
       )}
     </div>

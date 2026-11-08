@@ -38,24 +38,19 @@ function EquipmentRow({ t, row, onSaved }) {
 // Nurse / doctor: how many of each device this facility has, and how many are broken
 export default function EquipmentPanel({ t }) {
   const [rows, setRows] = useState([]);
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     api("/equipment").then(setRows).catch(() => setRows([]));
   }, []);
 
-  if (rows.length === 0) return null;
+  if (rows.length === 0) return <p className="mt-6 text-sm text-stone-500">{t.navEmpty}</p>;
   return (
     <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 text-sm">
-      <button onClick={() => setOpen(!open)} className="text-lg font-semibold text-stone-800">
-        {open ? "▾" : "▸"} 🩺 {t.equipTitle}
-      </button>
-      {open && (
-        <div className="mt-2">
-          <p className="mb-2 text-xs text-stone-500">{t.equipHint}</p>
-          {rows.map((r) => <EquipmentRow key={r.item} t={t} row={r} onSaved={setRows} />)}
-        </div>
-      )}
+      <h2 className="text-lg font-semibold text-stone-800">{t.equipTitle}</h2>
+      <div className="mt-2">
+        <p className="mb-2 text-xs text-stone-500">{t.equipHint}</p>
+        {rows.map((r) => <EquipmentRow key={r.item} t={t} row={r} onSaved={setRows} />)}
+      </div>
     </div>
   );
 }
@@ -73,7 +68,7 @@ export function EquipmentByDistrict({ t }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
-      <h2 className="text-lg font-semibold text-stone-800">🩺 {t.equipDistrictTitle}</h2>
+      <h2 className="text-lg font-semibold text-stone-800">{t.equipDistrictTitle}</h2>
       <p className="text-xs text-stone-500">{t.equipDistrictHint}</p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">

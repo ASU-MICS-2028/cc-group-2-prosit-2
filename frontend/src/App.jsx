@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import { getText } from "./i18n";
+import Landing from "./Landing";
 import Login from "./Login";
 import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
@@ -15,6 +16,8 @@ if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) ses
 export default function App() {
   const [lang, setLang] = useState("en");
   const [user, setUser] = useState(null);
+  // An installed app skips the landing page: a volunteer just wants to sign in
+  const [wantsSignIn, setWantsSignIn] = useState(() => window.matchMedia("(display-mode: standalone)").matches);
   // Only need to check with the backend if a token was saved earlier
   const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem("hc_token")));
   const t = getText(lang);
@@ -48,6 +51,7 @@ export default function App() {
 
   if (checking) return null;
 
+  if (!user && !wantsSignIn) return <Landing onSignIn={() => setWantsSignIn(true)} />;
   if (!user) return <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />;
 
   // Temporary password (new or reset account): must set a new one first

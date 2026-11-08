@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
-import Header from "./Header";
+import AppShell from "./AppShell";
 import TrainingPanel from "./TrainingPanel";
 import { RxItems } from "./Prescriptions";
 import { RX_STYLE, inputClass } from "./styles";
@@ -41,10 +41,16 @@ export default function PharmacistApp(props) {
     ["stock", t.lowStock, stock.filter((s) => s.status === "low").length, "text-amber-700"],
   ];
 
+  const menu = [
+    { key: "prescriptions", label: t.prescriptions, icon: "pill", count: waiting },
+    { key: "stock", label: t.stockTab, icon: "stock" },
+    { key: "history", label: t.historyTab, icon: "history" },
+    { key: "training", label: t.navTraining, icon: "training" },
+  ];
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Header {...props} />
-      <main className="mx-auto max-w-5xl px-4 py-6">
+    <AppShell {...props} items={menu} active={tab} onSelect={setTab}>
+        {tab !== "training" && (<>
         <h1 className="text-2xl font-bold text-stone-800">{t.pharmacyTitle}</h1>
         <p className="mt-1 text-sm text-stone-500">
           {t.pharmacyHint} <span className="font-medium text-stone-700">{user.facility}</span>
@@ -58,18 +64,7 @@ export default function PharmacistApp(props) {
             </button>
           ))}
         </div>
-
-        <div className="mt-5 flex gap-2 border-b border-stone-200">
-          {[["prescriptions", t.prescriptions], ["stock", t.stockTab], ["history", t.historyTab]].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === key ? "border-teal-700 text-teal-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        </>)}
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
@@ -92,11 +87,8 @@ export default function PharmacistApp(props) {
         )}
         {tab === "history" && <StockHistory history={history} t={t} />}
 
-        <TrainingPanel t={t} role={user.role} userId={user.id} />
-
-        <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
-      </main>
-    </div>
+        {tab === "training" && <TrainingPanel t={t} role={user.role} userId={user.id} />}
+    </AppShell>
   );
 }
 

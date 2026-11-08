@@ -27,28 +27,17 @@ export default function Login({ onLogin, t, lang, setLang }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-stone-50">
       {/* Brand panel */}
-      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-600 p-12 text-white">
-        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber-300/20" />
-        <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-emerald-300/10" />
-
-        <div className="relative flex items-center gap-3">
+      <div className="hidden flex-col justify-between bg-teal-900 text-stone-50 lg:flex">
+        <div className="flex flex-1 flex-col justify-between p-12">
           <Logo size={44} />
-          <span className="text-xl font-semibold tracking-tight">{t.appName}</span>
+          <div>
+            <h1 className="font-display text-7xl font-extrabold leading-none">HealthConnect</h1>
+            <p className="mt-3 font-display text-3xl font-semibold text-marigold">by Storm Surfers</p>
+            <p className="mt-6 max-w-md text-lg text-teal-50">{t.tagline}</p>
+          </div>
+          <p className="text-sm text-teal-200">{t.builtBy}</p>
         </div>
-
-        <div className="relative max-w-md">
-          <h1 className="text-4xl font-bold leading-tight">{t.tagline}</h1>
-          <ul className="mt-8 space-y-4 text-teal-50">
-            {[t.feature1, t.feature2, t.feature3].map((f) => (
-              <li key={f} className="flex items-start gap-3">
-                <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-teal-900">✓</span>
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="relative text-sm text-teal-100/80">{t.builtBy}</p>
+        <div className="hc-band" />
       </div>
 
       {/* Form panel */}
@@ -56,7 +45,8 @@ export default function Login({ onLogin, t, lang, setLang }) {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center text-center lg:hidden">
             <Logo size={56} />
-            <h1 className="mt-3 text-2xl font-bold text-teal-800">{t.appName}</h1>
+            <h1 className="mt-3 text-3xl font-extrabold text-teal-800">HealthConnect</h1>
+            <p className="font-display font-semibold text-stone-700">by Storm Surfers</p>
             <p className="text-sm text-stone-500">{t.tagline}</p>
           </div>
 
@@ -93,7 +83,7 @@ export default function Login({ onLogin, t, lang, setLang }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-teal-700 py-3 font-semibold text-white shadow-lg shadow-teal-700/20 transition hover:bg-teal-800 disabled:opacity-60"
+              className="w-full rounded-xl bg-teal-700 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
             >
               {loading ? t.signingIn : t.login}
             </button>

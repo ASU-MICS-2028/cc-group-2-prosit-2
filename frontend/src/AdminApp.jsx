@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
-import Header from "./Header";
+import AppShell from "./AppShell";
 import { inputClass } from "./styles";
 import SystemHealthPanel from "./SystemHealthPanel";
 
@@ -10,6 +10,7 @@ const EMPTY = { username: "", full_name: "", role: "chv", facility: "", facility
 // System admin: create and disable staff accounts. Never sees patient data.
 export default function AdminApp(props) {
   const { t, user } = props;
+  const [section, setSection] = useState("accounts");
   const [users, setUsers] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [form, setForm] = useState(EMPTY);
@@ -73,14 +74,18 @@ export default function AdminApp(props) {
   const field = (name) => ({ value: form[name], onChange: (e) => setForm({ ...form, [name]: e.target.value }) });
   const needsFacility = ["chv", "nurse", "doctor", "pharmacist"].includes(form.role);
 
+  const menu = [
+    { key: "accounts", label: t.navAccounts, icon: "accounts" },
+    { key: "system", label: t.navSystem, icon: "system" },
+  ];
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Header {...props} />
-      <main className="mx-auto max-w-5xl px-4 py-8">
+    <AppShell {...props} items={menu} active={section} onSelect={setSection}>
+        {section === "system" && <SystemHealthPanel t={t} />}
+        {section === "accounts" && (<>
         <h1 className="text-2xl font-bold text-stone-800">{t.adminTitle}</h1>
         <p className="mt-1 text-sm text-stone-500">{t.adminHint}</p>
 
-        <SystemHealthPanel t={t} />
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
@@ -199,7 +204,7 @@ export default function AdminApp(props) {
             </tbody>
           </table>
         </div>
-      </main>
-    </div>
+        </>)}
+    </AppShell>
   );
 }

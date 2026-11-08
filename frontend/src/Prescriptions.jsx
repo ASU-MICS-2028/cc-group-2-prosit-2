@@ -79,7 +79,7 @@ export function PrescribePanel({ referralId, t }) {
       {prescriptions.map((rx) => (
         <div key={rx.id} className="mb-2 rounded-xl border border-stone-200 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-stone-700">💊 {t.prescriptions} · {rx.created_at}</p>
+            <p className="text-sm font-semibold text-stone-700">{t.prescriptions} · {rx.created_at}</p>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${RX_STYLE[rx.status]}`}>{t["rx_" + rx.status]}</span>
           </div>
           <RxItems rx={rx} t={t} />
@@ -93,7 +93,7 @@ export function PrescribePanel({ referralId, t }) {
 
       {!open ? (
         <button onClick={start} className="text-sm font-medium text-teal-700 hover:underline">
-          💊 {t.prescribe}
+          {t.prescribe}
         </button>
       ) : (
         <div className="space-y-2 rounded-xl border border-teal-200 bg-teal-50/50 p-3">

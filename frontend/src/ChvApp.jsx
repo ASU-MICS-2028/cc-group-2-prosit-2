@@ -3,7 +3,7 @@ import { api } from "./api";
 import { ReminderFields, RemindInPersonList } from "./ReminderPreference";
 import LessonsPanel from "./LessonsPanel";
 import TrainingPanel from "./TrainingPanel";
-import Header from "./Header";
+import AppShell from "./AppShell";
 import RiskBadge from "./RiskBadge";
 import PatientDetail from "./PatientDetail";
 import VideoCall from "./VideoCall";
@@ -15,6 +15,7 @@ import SavedCopyNote from "./SavedCopyNote";
 
 export default function ChvApp(props) {
   const { t, user } = props;
+  const [section, setSection] = useState("patients"); // which menu item is open
   const [view, setView] = useState("list"); // list | register | patient
   const [patients, setPatients] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -59,11 +60,19 @@ export default function ChvApp(props) {
     setView("list");
   };
 
+  const menu = [
+    { key: "patients", label: t.navPatients, icon: "patients" },
+    { key: "lessons", label: t.navLessons, icon: "lessons" },
+    { key: "training", label: t.navTraining, icon: "training" },
+  ];
+  const choose = (key) => {
+    setSection(key);
+    if (key === "patients") goToList();
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Header {...props} />
+    <AppShell {...props} items={menu} active={section} onSelect={choose}>
       {call && <VideoCall referralId={call.referralId} title={call.title} t={t} onClose={() => setCall(null)} />}
-      <main className="mx-auto max-w-5xl px-4 py-6">
         <IncomingCalls t={t} onJoin={(referralId, title) => setCall({ referralId, title })} />
         {pendingCount > 0 && (
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -71,11 +80,13 @@ export default function ChvApp(props) {
             {pendingCount} {t.pendingSync}
           </div>
         )}
-        {view === "list" && (
-          <PatientList t={t} userId={user.id} patients={patients} savedAt={savedAt} onOpen={openPatient} onRegister={() => setView("register")} />
+        {section === "lessons" && <LessonsPanel t={t} role="chv" userId={user.id} />}
+        {section === "training" && <TrainingPanel t={t} role="chv" userId={user.id} />}
+        {section === "patients" && view === "list" && (
+          <PatientList t={t} patients={patients} savedAt={savedAt} onOpen={openPatient} onRegister={() => setView("register")} />
         )}
-        {view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
-        {view === "patient" && (
+        {section === "patients" && view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
+        {section === "patients" && view === "patient" && (
           <PatientDetail
             key={selectedId}
             t={t}
@@ -87,13 +98,11 @@ export default function ChvApp(props) {
             onBack={goToList}
           />
         )}
-        <p className="mt-12 text-center text-xs text-stone-400">{t.builtBy}</p>
-      </main>
-    </div>
+    </AppShell>
   );
 }
 
-function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
+function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
   const [query, setQuery] = useState("");
   const count = (level) => patients.filter((p) => p.latest_risk === level).length;
   const shown = patients.filter((p) =>
@@ -113,7 +122,7 @@ function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
         <h1 className="text-2xl font-bold text-stone-800">{t.patients}</h1>
         <button
           onClick={onRegister}
-          className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-700/20 hover:bg-teal-800"
+          className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
         >
           + {t.register}
         </button>
@@ -131,8 +140,6 @@ function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
       </div>
 
       <RemindInPersonList t={t} onOpen={onOpen} />
-      <LessonsPanel t={t} role="chv" userId={userId} />
-      <TrainingPanel t={t} role="chv" userId={userId} />
 
       <input
         value={query}

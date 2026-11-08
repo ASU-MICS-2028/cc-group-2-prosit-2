@@ -20,7 +20,7 @@ export default function StockOutsPanel({ t, forecasts }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
-      <h2 className="text-lg font-semibold text-stone-800">💊 {t.ghsStockTitle}</h2>
+      <h2 className="text-lg font-semibold text-stone-800">{t.ghsStockTitle}</h2>
       <p className="text-xs text-stone-500">{t.ghsStockHint}</p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       {!error && short.length === 0 && <p className="mt-3 text-sm text-stone-500">✓ {t.ghsStockNone}</p>}

@@ -1,4 +1,56 @@
 @import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque";
+
+/* Brand colours. Tailwind names stay (teal, stone) so every screen picks these up. */
+@theme {
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* teal = forest green */
+  --color-teal-50: #edf5ef;
+  --color-teal-100: #d5e8db;
+  --color-teal-200: #add1ba;
+  --color-teal-300: #7db393;
+  --color-teal-400: #4f9570;
+  --color-teal-500: #2f7d57;
+  --color-teal-600: #1f6b48;
+  --color-teal-700: #17583b;
+  --color-teal-800: #11452e;
+  --color-teal-900: #0c3322;
+
+  /* stone = warm paper and ink */
+  --color-stone-50: #faf6ee;
+  --color-stone-100: #f2ecdf;
+  --color-stone-200: #e3dbca;
+  --color-stone-300: #cfc5b0;
+  --color-stone-400: #7f755f;
+  --color-stone-500: #6b624e;
+  --color-stone-600: #5a5240;
+  --color-stone-700: #443d2f;
+  --color-stone-800: #2c271d;
+  --color-stone-900: #1c1913;
+
+  --color-marigold: #f0ae2b;
+
+  /* Tighter corners than the Tailwind defaults */
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.625rem;
+}
+
+@layer base {
+  h1, h2 { font-family: var(--font-display); letter-spacing: -0.015em; }
+}
+
+/* Woven band: an original stripe pattern used as the brand's signature */
+.hc-band {
+  height: 14px;
+  background:
+    repeating-linear-gradient(90deg, #f0ae2b 0 28px, #11452e 28px 36px, #c2452d 36px 64px, #faf6ee 64px 72px, #11452e 72px 104px, #f0ae2b 104px 112px);
+}
+
+/* The heartbeat line draws itself once */
+.hc-draw { stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: hc-draw 2.4s ease-out 0.3s forwards; }
+@keyframes hc-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .hc-draw { animation: none; stroke-dashoffset: 0; } }
 
 /* "Outbreak alert" label beside a map bubble: critical status = icon + label */
 .hc-alert-label {

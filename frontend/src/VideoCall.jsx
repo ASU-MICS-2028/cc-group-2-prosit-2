@@ -143,7 +143,7 @@ export default function VideoCall({ referralId, title, t, onClose }) {
     <div className="fixed inset-0 z-50 flex h-dvh flex-col bg-stone-900 text-white">
       <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <div>
-          <p className="font-semibold">📹 {title}</p>
+          <p className="font-semibold">{title}</p>
           <p className={`text-sm ${status === "error" ? "text-red-300" : "text-stone-300"}`}>{statusText}</p>
         </div>
         <div className="flex items-center gap-2">

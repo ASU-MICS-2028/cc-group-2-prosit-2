@@ -25,7 +25,7 @@ export default function SystemHealthPanel({ t }) {
   return (
     <div className={`mt-6 rounded-2xl border bg-white p-5 ${firing ? "border-red-300 ring-2 ring-red-100" : "border-stone-200"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-stone-800">🩺 {t.healthTitle}</h2>
+        <h2 className="text-lg font-semibold text-stone-800">{t.healthTitle}</h2>
         {health?.available && (
           <button onClick={load} className="text-sm font-medium text-teal-700 hover:underline">
             ↻ {t.healthRefresh}
