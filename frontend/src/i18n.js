@@ -306,6 +306,8 @@ const text = {
     ghsStockForecast: "Needed: outbreak expected here",
     stockOutCount: "out",
     stockLowCount: "low",
+    unknownRole: "This copy of HealthConnect is out of date and does not have your screen yet. Reload to get the latest version.",
+    reloadApp: "Reload",
   },
   tw: {
     appName: "HealthConnect Ghana",
