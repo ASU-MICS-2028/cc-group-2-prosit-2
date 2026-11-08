@@ -33,7 +33,10 @@ export default function Splash({ onSkip }) {
           </svg>
           <div className="absolute inset-0 flex items-center justify-center"><Logo size={64} /></div>
         </div>
-        <p className="hc-name mt-4 font-display text-5xl font-extrabold text-stone-800 sm:text-6xl">HealthConnect</p>
+        <p className="hc-name mt-4 text-[2.8rem] leading-none sm:text-7xl">
+          <span className="font-serif italic text-stone-700">Health</span>
+          <span className="font-display font-extrabold text-teal-700">Connect</span>
+        </p>
       </div>
       <div className="hc-stage-2 absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
         <p className="font-serif text-2xl italic text-stone-600 sm:text-3xl">Developed by</p>
