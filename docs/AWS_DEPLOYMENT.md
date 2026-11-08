@@ -557,8 +557,9 @@ aws s3api put-public-access-block --bucket $WEB_BUCKET --public-access-block-con
 cd frontend
 VITE_API_URL=/api npm run build
 
-# Hashed files: cache for a year
-aws s3 sync dist/ s3://$WEB_BUCKET/ --delete \
+# Hashed files: cache for a year. No --delete: phones may still run an older saved copy (PWA)
+# that asks for last version's file names; deleting them gives those users a blank white page.
+aws s3 sync dist/ s3://$WEB_BUCKET/ \
   --exclude index.html --exclude sw.js --exclude registerSW.js --exclude manifest.webmanifest \
   --cache-control "public,max-age=31536000,immutable"
 # Files that must always be fresh, or phones get stuck on an old version of the PWA
@@ -854,7 +855,8 @@ jobs:
         run: |
           npm ci
           VITE_API_URL=/api npm run build
-          aws s3 sync dist/ s3://${{ vars.WEB_BUCKET }}/ --delete \
+          # No --delete: older saved copies of the PWA still need last version's files
+          aws s3 sync dist/ s3://${{ vars.WEB_BUCKET }}/ \
             --exclude index.html --exclude sw.js --exclude registerSW.js --exclude manifest.webmanifest \
             --cache-control "public,max-age=31536000,immutable"
           for f in index.html sw.js registerSW.js manifest.webmanifest; do
