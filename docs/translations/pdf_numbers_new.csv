@@ -1,0 +1,63 @@
+﻿No.,key,English
+1,unknownRole,This copy of HealthConnect is out of date and does not have your screen yet. Reload to get the latest version.
+2,reloadApp,Reload
+3,prescriptions,Prescriptions
+4,prescribe,Prescribe drugs
+5,chooseDrug,Choose a drug
+6,inStock,in stock
+7,quantity,Quantity
+8,instructionsPlaceholder,"How to take it, e.g. 1 tablet 3 times a day for 5 days"
+9,removeDrug,Remove
+10,addDrug,Add another drug
+11,rxNotesPlaceholder,Note for the pharmacist (optional)
+12,sendToPharmacy,Send to pharmacy
+13,rx_pending,Waiting at pharmacy
+14,rx_dispensed,Dispensed
+15,rx_cancelled,Cancelled
+16,cancelPrescription,Cancel prescription
+17,notEnoughHere,Not enough in stock
+18,pharmacyTitle,Pharmacy
+19,pharmacyHint,"Prescriptions from doctors at your facility, and your drug stock."
+20,waitingRx,Waiting prescriptions
+21,outOfStock,Out of stock
+22,lowStock,Low stock
+23,stockTab,Stock
+24,historyTab,Stock history
+25,noPrescriptions,No prescriptions yet.
+26,prescribedBy,Prescribed by
+27,dispensedBy,dispensed by
+28,dispense,Dispense
+29,reorderAt,Reorder at
+30,stock_ok,OK
+31,stock_low,Low
+32,stock_out,Out
+33,receive,Receive
+34,adjust,Correct count
+35,newCount,Count on shelf
+36,adjustNote,"Why? e.g. 20 expired, recounted"
+37,receivedNote,From where? e.g. Regional Medical Stores (optional)
+38,saveChanges,Save
+39,noStockHistory,No stock changes yet.
+40,move_received,Received
+41,move_dispensed,Dispensed
+42,move_adjusted,Count corrected
+43,by,by
+44,ghsStockTitle,Medicine shortages by district
+45,ghsStockHint,"How many pharmacies are out of or low on each drug. Counts only, no patient data."
+46,ghsStockNone,No district is short of any drug.
+47,pharmaciesReporting,Pharmacies
+48,ghsStockForecast,Needed: outbreak expected here
+49,stockOutCount,out
+50,stockLowCount,low
+51,role_pharmacist,Pharmacist
+52,healthTitle,System health
+53,healthRefresh,Check again
+54,healthAllOk,All systems normal.
+55,healthFiring,alarm(s) need attention
+56,healthOk,OK
+57,healthAlarm,ALARM
+58,healthChecking,Collecting data
+59,healthLocalOnly,System health is only available on the cloud version (AWS CloudWatch).
+60,healthUnreachable,Could not reach AWS CloudWatch. Check again in a minute.
+61,err_chvs_nurses_doctors_and_pharmacists_need,"CHVs, nurses, doctors and pharmacists need a facility"
+62,err_prescription_not_found,Prescription not found

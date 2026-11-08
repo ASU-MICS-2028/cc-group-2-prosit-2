@@ -1,9 +1,11 @@
 """Turn healthconnect_text.csv into a printable PDF for the translator.
 
 Run after extract_text.py:  python docs/translations/make_pdf.py   (needs: pip install reportlab)
+Only lines not translated yet:  python docs/translations/make_pdf.py --new-only
 Numbers in the PDF follow the same order every run, so a translation "No. 42" maps back to one key.
 """
 import csv
+import sys
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -18,6 +20,10 @@ from xml.sax.saxutils import escape
 HERE = Path(__file__).parent
 CSV_FILE = HERE / "healthconnect_text.csv"
 PDF_FILE = HERE / "HealthConnect_English_Text.pdf"
+NEW_PDF_FILE = HERE / "HealthConnect_New_Text.pdf"
+LANGUAGES = ["Twi", "Ewe", "Ga", "Dagbani"]
+# Team decision: these stay in English, so they are never sent for translation again
+KEEP_ENGLISH = {"assess", "history", "noHistory", "bookFollowUp", "bookedFor", "bookedBy", "apptReasonPlaceholder"}
 
 # Arial has the accented and Twi letters a translator may type back
 FONTS = "/System/Library/Fonts/Supplemental/"
@@ -31,6 +37,8 @@ SECTIONS = [
     ("Community Health Volunteer (CHV) screens", ["CHV:", "Possible conditions", "Risk label"]),
     ("Nurse and doctor screens", ["Nurse/doctor", "Appointments", "Patient history"]),
     ("Video call", ["Video call"]),
+    ("Prescriptions (doctor and pharmacist)", ["Doctor and pharmacist"]),
+    ("Pharmacist screens", ["Pharmacist"]),
     ("Ghana Health Service (GHS) officer dashboard", ["GHS officer"]),
     ("System administrator screens", ["System admin"]),
     ("SMS text messages", ["SMS to"]),
@@ -59,6 +67,16 @@ HINTS = {
     "adminPasswordFor": "followed by a username",
     "adminResetConfirm": "followed by a username and ?",
     "checkFor": "followed by a list of illnesses",
+    "inStock": "comes after a number, e.g. 150 in stock",
+    "prescribedBy": "followed by a doctor's name",
+    "dispensedBy": "followed by a pharmacist's name",
+    "by": "followed by a person's name, e.g. Received by Ama",
+    "healthFiring": "comes after a number, e.g. 2 alarm(s) need attention",
+    "pharmaciesReporting": "followed by a number, e.g. Pharmacies: 2",
+    "stockOutCount": "comes after a number of pharmacies, e.g. 1 out",
+    "stockLowCount": "comes after a number of pharmacies, e.g. 2 low",
+    "reorderAt": "followed by an amount, e.g. Reorder at 200 tablets",
+    "quantity": "a box where the number is typed",
 }
 
 # The referral SMS is several labelled lines, so the translator gets each part separately
@@ -66,10 +84,13 @@ REFERRAL_SMS_PARTS = ["HealthConnect Referral", "Ref", "Age", "Visit", "Antenata
                       "Risk", "Check for", "CHV", "Please prepare to receive this patient."]
 
 
-def load_sections():
-    """Group the CSV rows into SECTIONS, skipping strings no screen uses."""
+def load_sections(new_only=False):
+    """Group the CSV rows into SECTIONS, skipping strings no screen uses.
+    new_only: just the lines with no translation in any language yet."""
     with CSV_FILE.open(encoding="utf-8-sig") as f:
         rows = [r for r in csv.DictReader(f) if not r["where it appears"].startswith("Not found")]
+    if new_only:
+        rows = [r for r in rows if r["key"] not in KEEP_ENGLISH and not any(r[lang] for lang in LANGUAGES)]
     grouped = {title: [] for title, _ in SECTIONS}
     for row in rows:
         first_screen = row["where it appears"].split(";")[0]
@@ -81,7 +102,8 @@ def load_sections():
     return grouped
 
 
-def main():
+def main(new_only=False):
+    pdf_file = NEW_PDF_FILE if new_only else PDF_FILE
     body = ParagraphStyle("body", fontName="Arial", fontSize=10, leading=13)
     hint = ParagraphStyle("hint", parent=body, fontSize=8, leading=10, textColor=colors.grey)
     head = ParagraphStyle("head", parent=body, fontName="Arial-Bold", fontSize=12, leading=15,
@@ -91,7 +113,8 @@ def main():
     story = [
         Paragraph("HealthConnect Ghana: English text for translation", title),
         Spacer(1, 8),
-        Paragraph("This is every piece of English text in the HealthConnect app. Please write the "
+        Paragraph(("These are the new lines added to HealthConnect since your last translation. "
+                   if new_only else "This is every piece of English text in the HealthConnect app. ") + "Please write the "
                   "translation of each line in the empty column. Keep the number, so we can put each "
                   "translation in the right place.", body),
         Spacer(1, 4),
@@ -103,7 +126,7 @@ def main():
     ]
 
     number, numbers = 0, [("No.", "key", "English")]  # numbers: to map translations back to keys
-    for section, items in load_sections().items():
+    for section, items in load_sections(new_only).items():
         if not items:
             continue
         story.append(Paragraph(section, head))
@@ -130,14 +153,15 @@ def main():
         canvas.setFont("Arial", 8)
         canvas.drawRightString(A4[0] - 1.5 * cm, 1 * cm, f"HealthConnect Ghana · page {doc.page}")
 
-    doc = SimpleDocTemplate(str(PDF_FILE), pagesize=A4, leftMargin=1.5 * cm, rightMargin=1.5 * cm,
+    doc = SimpleDocTemplate(str(pdf_file), pagesize=A4, leftMargin=1.5 * cm, rightMargin=1.5 * cm,
                             topMargin=1.5 * cm, bottomMargin=1.8 * cm,
                             title="HealthConnect Ghana: English text for translation")
     doc.build(story, onFirstPage=page_number, onLaterPages=page_number)
-    with (HERE / "pdf_numbers.csv").open("w", newline="", encoding="utf-8-sig") as f:
+    numbers_file = HERE / ("pdf_numbers_new.csv" if new_only else "pdf_numbers.csv")
+    with numbers_file.open("w", newline="", encoding="utf-8-sig") as f:
         csv.writer(f).writerows(numbers)
-    print(f"Wrote {number} numbered lines to {PDF_FILE.name}")
+    print(f"Wrote {number} numbered lines to {pdf_file.name} (numbers in {numbers_file.name})")
 
 
 if __name__ == "__main__":
-    main()
+    main(new_only="--new-only" in sys.argv)

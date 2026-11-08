@@ -32,6 +32,10 @@ SCREENS = {
     "GhsApp.jsx": "GHS officer: surveillance dashboard",
     "DistrictMap.jsx": "GHS officer: district map",
     "AdminApp.jsx": "System admin: staff accounts",
+    "SystemHealthPanel.jsx": "System admin: system health",
+    "PharmacistApp.jsx": "Pharmacist: pharmacy",
+    "Prescriptions.jsx": "Doctor and pharmacist: prescriptions",
+    "StockOutsPanel.jsx": "GHS officer: medicine shortages",
     "ChangePassword.jsx": "Change password (first sign-in)",
     "SavedCopyNote.jsx": "Offline note (all users)",
     "main.jsx": "App start-up",
@@ -90,7 +94,7 @@ def screens_for(key, sources):
     for name, code in sources.items():
         direct = re.search(rf"\bt\.{key}\b", code)
         by_prefix = prefix and f't["{prefix}"' in code
-        by_name = re.search(r"t\[\w+\]", code) and f'"{key}"' in code  # e.g. t[name] in a field list
+        by_name = re.search(r"t\[[\w.]+\]", code) and f'"{key}"' in code  # e.g. t[name] in a field list
         if direct or by_prefix or by_name:
             found.append(SCREENS.get(name, name))
     return "; ".join(found) or "Not found in screens (check before translating)"
