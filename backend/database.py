@@ -17,6 +17,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from drug_list import STARTER_DRUGS
+from lesson_list import STARTER_LESSONS
 
 DB_PATH = "healthconnect.db"
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -255,6 +256,20 @@ TABLES = [
         updated_at TEXT,
         UNIQUE (facility, item)
     )""",
+    """
+    -- Health education lessons. reviewed_at stays NULL until a nurse or doctor approves it
+    CREATE TABLE IF NOT EXISTS lessons (
+        id          {id},
+        topic       TEXT NOT NULL,
+        title       TEXT NOT NULL,
+        body        TEXT NOT NULL,
+        language    TEXT NOT NULL,
+        created_by  INTEGER REFERENCES users(id),   -- NULL = starter lesson
+        reviewed_by INTEGER REFERENCES users(id),
+        reviewed_at TEXT,
+        created_at  TEXT NOT NULL DEFAULT {now},
+        UNIQUE (title, language)
+    )""",
 ]
 
 
@@ -323,6 +338,7 @@ def init_db():
         conn.execute(table.format(**dialect))
     migrate(conn)
     add_starter_drugs(conn)
+    add_starter_lessons(conn)
     conn.commit()
     conn.close()
 
@@ -335,6 +351,13 @@ def add_starter_drugs(conn):
             "ON CONFLICT (name) DO NOTHING",
             (name, unit, reorder_level, condition),
         )
+
+
+def add_starter_lessons(conn):
+    # Existing lessons, and any review of them, are left as they are.
+    for topic, title, body in STARTER_LESSONS:
+        conn.execute("INSERT INTO lessons (topic, title, body, language) VALUES (?, ?, ?, 'en') "
+                     "ON CONFLICT (title, language) DO NOTHING", (topic, title, body))
 
 
 def column_exists(conn, table, column):

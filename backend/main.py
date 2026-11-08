@@ -20,6 +20,7 @@ from impact import router as impact_router
 from insurance import router as insurance_router
 from healers import router as healers_router
 from equipment import router as equipment_router
+from education import router as education_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
 from database import get_db, init_db, log_access, new_patient_ref, now_text
@@ -74,6 +75,7 @@ app.include_router(impact_router)  # GHS: SDG 3 progress (impact.py)
 app.include_router(insurance_router)  # community insurance, simulated mobile money (insurance.py)
 app.include_router(healers_router)  # traditional healers working with CHVs (healers.py)
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
+app.include_router(education_router)  # health education lessons (education.py)
 app.include_router(admin_router)  # account management (admin.py)
 app.include_router(pharmacy_router)  # drug stock and e-prescriptions (pharmacy.py)
 app.include_router(monitoring_router)  # admin: CloudWatch alarm states (monitoring.py)

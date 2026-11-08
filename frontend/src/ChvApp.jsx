@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import { ReminderFields, RemindInPersonList } from "./ReminderPreference";
+import LessonsPanel from "./LessonsPanel";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
 import PatientDetail from "./PatientDetail";
@@ -70,7 +71,7 @@ export default function ChvApp(props) {
           </div>
         )}
         {view === "list" && (
-          <PatientList t={t} patients={patients} savedAt={savedAt} onOpen={openPatient} onRegister={() => setView("register")} />
+          <PatientList t={t} userId={user.id} patients={patients} savedAt={savedAt} onOpen={openPatient} onRegister={() => setView("register")} />
         )}
         {view === "register" && <RegisterPatient t={t} onDone={openPatient} onBack={goToList} />}
         {view === "patient" && (
@@ -91,7 +92,7 @@ export default function ChvApp(props) {
   );
 }
 
-function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
+function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
   const [query, setQuery] = useState("");
   const count = (level) => patients.filter((p) => p.latest_risk === level).length;
   const shown = patients.filter((p) =>
@@ -129,6 +130,7 @@ function PatientList({ t, patients, savedAt, onOpen, onRegister }) {
       </div>
 
       <RemindInPersonList t={t} onOpen={onOpen} />
+      <LessonsPanel t={t} role="chv" userId={userId} />
 
       <input
         value={query}
