@@ -1,0 +1,122 @@
+"""Community health insurance with mobile money premiums. SIMULATED: no money moves.
+
+Members pay a small monthly premium into a shared pot (risk pooling). Each payment
+extends the date they are covered until. A real version needs a payment provider account
+(MTN MoMo, Telecel Cash or AT Money) and a licensed scheme; see the report.
+
+No phone or mobile money number is stored: the simulation does not need one (Act 843).
+"""
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from auth import require_role
+from database import get_db, log_access, now_text
+
+router = APIRouter()
+
+MONTHLY_PREMIUM_GHS = 5  # an example amount for the prototype, not an actuarial figure
+DAYS_PER_MONTH = 30
+
+
+class JoinScheme(BaseModel):
+    consent: bool
+
+
+class PremiumPayment(BaseModel):
+    months: int = Field(ge=1, le=12)
+    network: Literal["mtn", "telecel", "at"]
+
+
+def today():
+    return datetime.now(timezone.utc).date()
+
+
+def own_patient(conn, patient_id, user):
+    # Need-to-know: a CHV only reaches their own patients. Others get 404, so existence is not revealed.
+    patient = conn.execute("SELECT id, ref FROM patients WHERE id = ? AND chv_id = ?", (patient_id, user["id"])).fetchone()
+    if not patient:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient
+
+
+def get_member(conn, patient_id):
+    return conn.execute("SELECT paid_until FROM insurance_members WHERE patient_id = ?", (patient_id,)).fetchone()
+
+
+def status(conn, patient_id):
+    member = get_member(conn, patient_id)
+    paid_until = member["paid_until"] if member else None
+    payments = conn.execute(
+        "SELECT months, amount_ghs, network, reference, created_at FROM premium_payments "
+        "WHERE patient_id = ? ORDER BY id DESC", (patient_id,)).fetchall()
+    return {
+        "simulated": True,
+        "monthly_premium_ghs": MONTHLY_PREMIUM_GHS,
+        "member": member is not None,
+        "paid_until": paid_until,
+        "covered": bool(paid_until) and paid_until >= today().isoformat(),
+        "payments": [dict(p) for p in payments],
+    }
+
+
+@router.get("/patients/{patient_id}/insurance")
+def get_insurance(patient_id: int, user=Depends(require_role("chv"))):
+    conn = get_db()
+    patient = own_patient(conn, patient_id, user)
+    result = status(conn, patient_id)
+    log_access(conn, user["id"], "view_insurance", patient["ref"])
+    conn.commit()
+    conn.close()
+    return result
+
+
+@router.post("/patients/{patient_id}/insurance/join")
+def join_scheme(patient_id: int, body: JoinScheme, user=Depends(require_role("chv"))):
+    # Joining is a separate purpose from care, so it needs its own consent (Act 843)
+    if not body.consent:
+        raise HTTPException(status_code=400, detail="The patient must agree to join the scheme")
+    conn = get_db()
+    patient = own_patient(conn, patient_id, user)
+    if get_member(conn, patient_id):
+        conn.close()
+        raise HTTPException(status_code=400, detail="This patient has already joined")
+    conn.execute("INSERT INTO insurance_members (patient_id, enrolled_by, created_at) VALUES (?, ?, ?)",
+                 (patient_id, user["id"], now_text()))
+    log_access(conn, user["id"], "join_insurance", patient["ref"])
+    conn.commit()
+    result = status(conn, patient_id)
+    conn.close()
+    return result
+
+
+@router.post("/patients/{patient_id}/insurance/pay")
+def pay_premium(patient_id: int, body: PremiumPayment, user=Depends(require_role("chv"))):
+    conn = get_db()
+    patient = own_patient(conn, patient_id, user)
+    member = get_member(conn, patient_id)
+    if not member:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Join the scheme before paying")
+
+    # Paying early adds to the time left; paying after a gap starts from today
+    start = today()
+    if member["paid_until"]:
+        start = max(start, datetime.strptime(member["paid_until"], "%Y-%m-%d").date())
+    paid_until = (start + timedelta(days=body.months * DAYS_PER_MONTH)).isoformat()
+    reference = "SIM-" + secrets.token_hex(4).upper()  # clearly not a real transaction id
+    conn.execute(
+        "INSERT INTO premium_payments (patient_id, months, amount_ghs, network, reference, recorded_by, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (patient_id, body.months, body.months * MONTHLY_PREMIUM_GHS, body.network, reference, user["id"], now_text()),
+    )
+    conn.execute("UPDATE insurance_members SET paid_until = ? WHERE patient_id = ?", (paid_until, patient_id))
+    log_access(conn, user["id"], "pay_premium_simulated", f"{patient['ref']} {reference}")
+    conn.commit()
+    result = status(conn, patient_id)
+    conn.close()
+    return result

@@ -17,6 +17,7 @@ from monitoring import router as monitoring_router
 from calls import router as calls_router
 from surveillance import router as surveillance_router
 from impact import router as impact_router
+from insurance import router as insurance_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
 from database import get_db, init_db, log_access, new_patient_ref, now_text
@@ -68,6 +69,7 @@ app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
 app.include_router(calls_router)  # video consult signalling (calls.py)
 app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
 app.include_router(impact_router)  # GHS: SDG 3 progress (impact.py)
+app.include_router(insurance_router)  # community insurance, simulated mobile money (insurance.py)
 app.include_router(admin_router)  # account management (admin.py)
 app.include_router(pharmacy_router)  # drug stock and e-prescriptions (pharmacy.py)
 app.include_router(monitoring_router)  # admin: CloudWatch alarm states (monitoring.py)
@@ -446,6 +448,7 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
     rows = conn.execute("""
         SELECT r.id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
                p.ref, p.full_name, p.age, p.community,
+               (SELECT im.paid_until FROM insurance_members im WHERE im.patient_id = r.patient_id) AS insured_until,
                p.sex, o.visit_type, o.symptoms, o.possible_conditions, o.body_temp, o.heart_rate,
                o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
                o.previous_complications, o.notes,

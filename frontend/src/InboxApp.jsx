@@ -6,6 +6,7 @@ import { VisitSummary } from "./PatientDetail";
 import PatientHistory from "./PatientHistory";
 import { AppointmentsPanel, BookAppointment } from "./AppointmentsPanel";
 import { PrescribePanel } from "./Prescriptions";
+import { CoverageBadge } from "./InsurancePanel";
 import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
@@ -159,7 +160,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
             <RiskBadge level={r.risk_level} t={t} />
           </div>
           <p className="text-sm text-stone-500">
-            <span className="font-mono">{r.ref}</span> · {t[r.sex] || ""} · {t.age} {r.age}
+            <span className="font-mono">{r.ref}</span> · {t[r.sex] || ""} · {t.age} {r.age} <CoverageBadge t={t} until={r.insured_until} />
             {r.community && ` · ${r.community}`}
           </p>
           <p className="mt-1 text-xs font-semibold text-stone-600">

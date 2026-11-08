@@ -201,6 +201,27 @@ TABLES = [
         user_id         INTEGER NOT NULL REFERENCES users(id),
         created_at      TEXT NOT NULL DEFAULT {now}
     )""",
+    """
+    -- FHIR Coverage. Community insurance membership; covered while paid_until is today or later
+    CREATE TABLE IF NOT EXISTS insurance_members (
+        id          {id},
+        patient_id  INTEGER NOT NULL UNIQUE REFERENCES patients(id),
+        enrolled_by INTEGER NOT NULL REFERENCES users(id),
+        paid_until  TEXT,      -- 'YYYY-MM-DD'; NULL = joined but nothing paid yet
+        created_at  TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- FHIR PaymentNotice. SIMULATED mobile money premiums: no money moves, no phone number is kept
+    CREATE TABLE IF NOT EXISTS premium_payments (
+        id          {id},
+        patient_id  INTEGER NOT NULL REFERENCES patients(id),
+        months      INTEGER NOT NULL CHECK (months BETWEEN 1 AND 12),
+        amount_ghs  INTEGER NOT NULL CHECK (amount_ghs > 0),
+        network     TEXT NOT NULL CHECK (network IN ('mtn','telecel','at')),
+        reference   TEXT UNIQUE NOT NULL,
+        recorded_by INTEGER NOT NULL REFERENCES users(id),
+        created_at  TEXT NOT NULL DEFAULT {now}
+    )""",
 ]
 
 
