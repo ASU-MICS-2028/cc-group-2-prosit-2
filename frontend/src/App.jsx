@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import { getText } from "./i18n";
-import Landing from "./Landing";
+import Splash from "./Splash";
 import Login from "./Login";
 import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
@@ -16,11 +16,16 @@ if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) ses
 export default function App() {
   const [lang, setLang] = useState("en");
   const [user, setUser] = useState(null);
-  // An installed app skips the landing page: a volunteer just wants to sign in
-  const [wantsSignIn, setWantsSignIn] = useState(() => window.matchMedia("(display-mode: standalone)").matches);
+  const [splash, setSplash] = useState(true); // the opening fade, once per visit
   // Only need to check with the backend if a token was saved earlier
   const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem("hc_token")));
   const t = getText(lang);
+
+  // Must match the 2.8s fade in index.css
+  useEffect(() => {
+    const timer = setTimeout(() => setSplash(false), 2800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // On page load, ask the backend if the saved token is still valid
   useEffect(() => {
@@ -51,8 +56,14 @@ export default function App() {
 
   if (checking) return null;
 
-  if (!user && !wantsSignIn) return <Landing onSignIn={() => setWantsSignIn(true)} />;
-  if (!user) return <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />;
+  if (!user) {
+    return (
+      <>
+        {splash && <Splash />}
+        <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />
+      </>
+    );
+  }
 
   // Temporary password (new or reset account): must set a new one first
   if (user.must_change_password) {

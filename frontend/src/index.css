@@ -47,10 +47,12 @@
     repeating-linear-gradient(90deg, #f0ae2b 0 28px, #11452e 28px 36px, #c2452d 36px 64px, #faf6ee 64px 72px, #11452e 72px 104px, #f0ae2b 104px 112px);
 }
 
-/* The heartbeat line draws itself once */
-.hc-draw { stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: hc-draw 2.4s ease-out 0.3s forwards; }
-@keyframes hc-draw { to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .hc-draw { animation: none; stroke-dashoffset: 0; } }
+/* Opening screen: the words appear, rest, then everything fades to the login page */
+.hc-splash { animation: hc-splash-out 2.8s ease-in-out forwards; }
+.hc-splash-content { animation: hc-splash-in 1s ease-out both; }
+@keyframes hc-splash-out { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hc-splash-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hc-splash, .hc-splash-content { animation: none; } }
 
 /* "Outbreak alert" label beside a map bubble: critical status = icon + label */
 .hc-alert-label {
