@@ -60,6 +60,7 @@
 .hc-link { stroke-dasharray: 1; stroke-dashoffset: 1; animation: hc-draw 0.5s ease-out forwards; }
 .hc-pulse { stroke-dasharray: 0.08 1; stroke-dashoffset: 0.08; opacity: 0; animation: hc-travel 0.9s linear infinite; }
 .hc-node { transform-box: fill-box; transform-origin: center; animation: hc-pop 0.4s ease-out both; }
+.hc-colour { animation: hc-colour 3s linear infinite; }
 .hc-ring { transform-box: fill-box; transform-origin: center; animation: hc-ring 1.5s ease-out 0.2s infinite; }
 @keyframes hc-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hc-stage-1 { 0%, 52% { opacity: 1; } 62%, 100% { opacity: 0; } }
@@ -68,9 +69,10 @@
 @keyframes hc-draw { to { stroke-dashoffset: 0; } }
 @keyframes hc-travel { 0% { stroke-dashoffset: 0.08; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
 @keyframes hc-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes hc-colour { 0%, 12%, 100% { fill: #7cd5a0; } 17%, 29% { fill: #8cc4f5; } 33%, 45% { fill: #ffb84d; } 50%, 62% { fill: #b79cf2; } 67%, 79% { fill: #f59a8f; } 83%, 95% { fill: #6fd3d6; } }
 @keyframes hc-ring { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .hc-splash, .hc-stage-1, .hc-name, .hc-link, .hc-pulse, .hc-node, .hc-ring { animation: none; }
+  .hc-splash, .hc-stage-1, .hc-name, .hc-link, .hc-pulse, .hc-node, .hc-colour, .hc-ring { animation: none; }
   .hc-link { stroke-dashoffset: 0; }
   .hc-stage-2 { display: none; }
 }

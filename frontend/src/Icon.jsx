@@ -1,5 +1,7 @@
 // Simple line icons for the menu. Inline drawings, so they cost no extra download.
 const PATHS = {
+  doctor: "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21v-2a6 6 0 0 1 6-5h4a6 6 0 0 1 6 5v2M12 15.5v4M10 17.5h4",
+  nurse: "M8 7V4.5L12 3l4 1.5V7zM8 7v2a4 4 0 0 0 8 0V7M4 21v-1a6 6 0 0 1 6-5h4a6 6 0 0 1 6 5v1",
   patients: "M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.8M16 2.2a4 4 0 0 1 0 7.6",
   referrals: "M3 13h5l2 3h4l2-3h5M5 4h14l2 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z",
   calendar: "M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1M3 10h18M8 3v4M16 3v4",
