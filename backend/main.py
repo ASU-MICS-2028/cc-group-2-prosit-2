@@ -18,6 +18,7 @@ from calls import router as calls_router
 from surveillance import router as surveillance_router
 from impact import router as impact_router
 from insurance import router as insurance_router
+from healers import router as healers_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
 from database import get_db, init_db, log_access, new_patient_ref, now_text
@@ -70,6 +71,7 @@ app.include_router(calls_router)  # video consult signalling (calls.py)
 app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
 app.include_router(impact_router)  # GHS: SDG 3 progress (impact.py)
 app.include_router(insurance_router)  # community insurance, simulated mobile money (insurance.py)
+app.include_router(healers_router)  # traditional healers working with CHVs (healers.py)
 app.include_router(admin_router)  # account management (admin.py)
 app.include_router(pharmacy_router)  # drug stock and e-prescriptions (pharmacy.py)
 app.include_router(monitoring_router)  # admin: CloudWatch alarm states (monitoring.py)
@@ -449,6 +451,10 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
         SELECT r.id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
                p.ref, p.full_name, p.age, p.community,
                (SELECT im.paid_until FROM insurance_members im WHERE im.patient_id = r.patient_id) AS insured_until,
+               (SELECT h.full_name FROM healer_referrals hr JOIN healers h ON h.id = hr.healer_id
+                WHERE hr.patient_id = r.patient_id ORDER BY hr.id DESC LIMIT 1) AS healer_name,
+               (SELECT hr.remedy_given FROM healer_referrals hr
+                WHERE hr.patient_id = r.patient_id ORDER BY hr.id DESC LIMIT 1) AS healer_remedy,
                p.sex, o.visit_type, o.symptoms, o.possible_conditions, o.body_temp, o.heart_rate,
                o.risk_level, o.systolic_bp, o.diastolic_bp, o.hemoglobin, o.gestational_age,
                o.previous_complications, o.notes,

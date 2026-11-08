@@ -199,6 +199,13 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
         </p>
       )}
 
+      {r.healer_name && (
+        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          🌿 {t.healerSentBy} <span className="font-semibold">{r.healer_name}</span>
+          {r.healer_remedy && ` · ${t.healerRemedyShort}: ${r.healer_remedy}`}
+        </p>
+      )}
+
       <p className="mt-3 text-xs text-stone-500">
         {t.referredBy} {r.referred_by_name}
         {r.from_facility && ` (${r.from_facility})`}

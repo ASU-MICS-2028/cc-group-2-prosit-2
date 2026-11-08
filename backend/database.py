@@ -222,6 +222,27 @@ TABLES = [
         recorded_by INTEGER NOT NULL REFERENCES users(id),
         created_at  TEXT NOT NULL DEFAULT {now}
     )""",
+    """
+    -- Traditional healers a CHV works with. registration_no is as stated, not verified
+    CREATE TABLE IF NOT EXISTS healers (
+        id              {id},
+        chv_id          INTEGER NOT NULL REFERENCES users(id),
+        full_name       TEXT NOT NULL,
+        community       TEXT,
+        registration_no TEXT,
+        created_at      TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- A healer saw danger signs and sent the patient on; the CHV records it for them
+    CREATE TABLE IF NOT EXISTS healer_referrals (
+        id           {id},
+        patient_id   INTEGER NOT NULL REFERENCES patients(id),
+        healer_id    INTEGER NOT NULL REFERENCES healers(id),
+        signs        TEXT NOT NULL,
+        remedy_given TEXT,      -- so the clinic knows what the patient has already taken
+        recorded_by  INTEGER NOT NULL REFERENCES users(id),
+        created_at   TEXT NOT NULL DEFAULT {now}
+    )""",
 ]
 
 
