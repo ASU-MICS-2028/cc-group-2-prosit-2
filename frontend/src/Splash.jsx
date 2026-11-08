@@ -35,8 +35,10 @@ export default function Splash({ onSkip }) {
         </div>
         <p className="hc-name mt-4 font-display text-5xl font-extrabold text-stone-800 sm:text-6xl">HealthConnect</p>
       </div>
-      <div className="hc-stage-2 absolute inset-0 flex items-center justify-center">
-        <p className="font-display text-5xl font-bold text-teal-700 sm:text-6xl">Storm Surfers</p>
+      <div className="hc-stage-2 absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+        <p className="font-serif text-2xl italic text-stone-600 sm:text-3xl">Developed by</p>
+        <p className="mt-1 font-display text-6xl font-extrabold text-teal-700 sm:text-7xl">Storm Surfers</p>
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.3em] text-stone-500 sm:text-sm">Cloud Computing Prosit 2</p>
       </div>
     </div>
   );
