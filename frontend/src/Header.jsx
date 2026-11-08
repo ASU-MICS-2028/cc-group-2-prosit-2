@@ -6,6 +6,7 @@ const ROLE_NAMES = {
   chv: "Community Health Volunteer",
   nurse: "Facility Nurse / Midwife",
   doctor: "Doctor / Specialist",
+  pharmacist: "Pharmacist",
   ghs: "GHS Officer",
   admin: "System Admin",
 };

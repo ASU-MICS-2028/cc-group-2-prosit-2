@@ -12,5 +12,12 @@ export const REFERRAL_STYLE = {
   completed: "bg-emerald-100 text-emerald-800",
 };
 
+// Prescription progress, set by the pharmacist (or the doctor cancelling)
+export const RX_STYLE = {
+  pending: "bg-amber-100 text-amber-800",
+  dispensed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-stone-100 text-stone-500",
+};
+
 export const inputClass =
   "w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100";

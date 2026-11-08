@@ -21,6 +21,7 @@ USERS = [
     ("nurse1",  "nurse",  "Test Nurse",       "Test Health Centre",     None,         "Bolgatanga Municipal"),
     ("nurse2",  "nurse",  "Test Nurse Two",   "Other Test Clinic",      None,         "Tamale Metropolitan"),
     ("doctor1", "doctor", "Test Doctor",      "Test District Hospital", None,         "Bolgatanga Municipal"),
+    ("pharm1",  "pharmacist", "Test Pharmacist", "Test District Hospital", None,     "Bolgatanga Municipal"),
     ("ghs1",    "ghs",    "Test GHS Officer", "GHS District Office",    None,         None),  # national view
     ("admin1",  "admin",  "Test Admin",       None,                     None,         None),
 ]

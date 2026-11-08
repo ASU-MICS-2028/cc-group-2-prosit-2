@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from auth import hash_password
-from database import get_db, init_db, new_patient_ref
+from database import get_db, init_db, new_patient_ref, now_text
 from general_model import assess_general
 
 DISTRICTS = {
@@ -48,7 +48,11 @@ def demo_data_exists(conn):
 
 def remove_demo_data(conn):
     # Children first. Real test patients are never touched.
-    for table in ["appointments", "referrals", "observations"]:
+    demo_rx = f"SELECT id FROM prescriptions WHERE patient_id IN ({DEMO_PATIENTS})"
+    # Stock history stays (the stock really moved); it just no longer points at the prescription
+    conn.execute(f"UPDATE stock_movements SET prescription_id = NULL WHERE prescription_id IN ({demo_rx})")
+    conn.execute(f"DELETE FROM prescription_items WHERE prescription_id IN ({demo_rx})")
+    for table in ["prescriptions", "appointments", "referrals", "observations"]:
         conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({DEMO_PATIENTS})")
     conn.execute("DELETE FROM patients WHERE full_name LIKE 'Demo Patient%'")
 
@@ -92,6 +96,42 @@ def create_demo_data(conn):
     return count
 
 
+# Demo pharmacy stock: (facility, {drug name start: quantity}). Drugs not listed get a healthy amount.
+# Tamale's clinic is out of ORS and low on zinc, to match its cholera spike.
+DEMO_STOCK = [
+    ("Test District Hospital", {"Amoxicillin": 150, "Artemether": 12, "Oral rehydration": 400, "Paracetamol": 2000}),
+    ("Demo Clinic Tamale", {"Oral rehydration": 0, "Zinc": 40, "Cholera rapid": 3}),
+    ("Demo Clinic Bolgatanga", {"Artemether": 15}),
+    ("Demo Clinic Wa", {"Amoxicillin": 0}),
+    ("Demo Clinic Kumasi", {}),
+    ("Demo Clinic Cape", {}),
+]
+
+
+def create_demo_stock(conn):
+    """Opening stock for the demo pharmacies. Only once: a facility that already has stock
+    is left alone, so a pharmacist's own changes are never overwritten."""
+    drugs = conn.execute("SELECT id, name, default_reorder_level FROM drugs").fetchall()
+    pharmacist = conn.execute("SELECT id FROM users WHERE username = 'pharm1'").fetchone()
+    created = 0
+    for facility_start, amounts in DEMO_STOCK:
+        row = conn.execute("SELECT DISTINCT facility FROM users WHERE facility LIKE ?", (facility_start + "%",)).fetchone()
+        if not row or conn.execute("SELECT 1 FROM stock WHERE facility = ?", (row["facility"],)).fetchone():
+            continue
+        for drug in drugs:
+            quantity = next((q for start, q in amounts.items() if drug["name"].startswith(start)),
+                            drug["default_reorder_level"] * 3)
+            conn.execute("INSERT INTO stock (facility, drug_id, quantity, reorder_level, updated_at) VALUES (?, ?, ?, ?, ?)",
+                         (row["facility"], drug["id"], quantity, drug["default_reorder_level"], now_text()))
+            if pharmacist and row["facility"] == "Test District Hospital" and quantity:
+                conn.execute(
+                    "INSERT INTO stock_movements (facility, drug_id, change, quantity_after, reason, note, user_id, created_at) "
+                    "VALUES (?, ?, ?, ?, 'received', 'Opening stock (demo data)', ?, ?)",
+                    (row["facility"], drug["id"], quantity, quantity, pharmacist["id"], now_text()))
+        created += 1
+    return created
+
+
 def keep_demo_data_current():
     # Re-date the demo visits to "now" (remove + re-create in one transaction,
     # so the dashboard never sees half the data).
@@ -115,4 +155,7 @@ if __name__ == "__main__":
         count = create_demo_data(conn)
         conn.commit()
         print(f"Created {count} fake demo visits across {len(DISTRICTS)} districts (cholera spike in Tamale this week).")
+    pharmacies = create_demo_stock(conn)
+    conn.commit()
+    print(f"Demo stock created for {pharmacies} pharmacies." if pharmacies else "Demo stock already exists. Nothing to do.")
     conn.close()

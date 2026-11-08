@@ -19,7 +19,7 @@ def test_token_required_and_role_checked(client, login):
 
 def test_admin_list_has_no_secrets(client, login):
     data = client.get("/admin/users", headers=login("admin1")).json()
-    assert len(data["users"]) == 7
+    assert len(data["users"]) == 8
     assert all("password_hash" not in u for u in data["users"])
 
 

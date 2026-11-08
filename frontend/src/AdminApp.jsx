@@ -3,7 +3,7 @@ import { api } from "./api";
 import Header from "./Header";
 import { inputClass } from "./styles";
 
-const ROLES = ["chv", "nurse", "doctor", "ghs", "admin"];
+const ROLES = ["chv", "nurse", "doctor", "pharmacist", "ghs", "admin"];
 const EMPTY = { username: "", full_name: "", role: "chv", facility: "", facility_phone: "", district: "" };
 
 // System admin: create and disable staff accounts. Never sees patient data.
@@ -60,7 +60,7 @@ export default function AdminApp(props) {
   };
 
   const field = (name) => ({ value: form[name], onChange: (e) => setForm({ ...form, [name]: e.target.value }) });
-  const needsFacility = ["chv", "nurse", "doctor"].includes(form.role);
+  const needsFacility = ["chv", "nurse", "doctor", "pharmacist"].includes(form.role);
 
   return (
     <div className="min-h-screen bg-stone-50">

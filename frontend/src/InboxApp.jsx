@@ -5,6 +5,7 @@ import RiskBadge from "./RiskBadge";
 import { VisitSummary } from "./PatientDetail";
 import PatientHistory from "./PatientHistory";
 import { AppointmentsPanel, BookAppointment } from "./AppointmentsPanel";
+import { PrescribePanel } from "./Prescriptions";
 import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
@@ -208,6 +209,8 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
       </button>
       {showHistory && <PatientHistory referralId={r.id} t={t} />}
       <BookAppointment referralId={r.id} t={t} onBooked={onBooked} />
+      {/* Prescriptions go to the pharmacy at the doctor's own facility */}
+      {!isNurse && <PrescribePanel referralId={r.id} t={t} />}
       <button onClick={onCall} className="mt-2 block text-sm font-medium text-teal-700 hover:underline">
         📹 {t.videoCall}
       </button>

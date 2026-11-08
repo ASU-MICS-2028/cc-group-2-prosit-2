@@ -13,7 +13,7 @@ class AccountCreate(BaseModel):
     # Admin creates staff accounts. No password here: the server makes a temporary one.
     username: str = Field(pattern=r"^[a-z0-9_]{3,30}$")
     full_name: str = Field(min_length=1, max_length=100)
-    role: Literal["chv", "nurse", "doctor", "ghs", "admin"]
+    role: Literal["chv", "nurse", "doctor", "pharmacist", "ghs", "admin"]
     facility: str = Field("", max_length=100)
     facility_phone: str = Field("", pattern=r"^$|^(0\d{9}|\+?233\d{9})$")  # where CHV referral SMS goes
     district: str = ""
@@ -108,3 +108,29 @@ class AppointmentCreate(BaseModel):
 
 class AppointmentStatus(BaseModel):
     status: Literal["attended", "missed", "cancelled"]
+
+
+class PrescriptionItem(BaseModel):
+    drug_id: int
+    quantity: int = Field(gt=0, le=10000)
+    instructions: str = Field(min_length=3, max_length=200)  # e.g. "1 tablet 3 times a day for 5 days"
+
+
+class PrescriptionCreate(BaseModel):
+    items: list[PrescriptionItem] = Field(min_length=1, max_length=10)
+    notes: str = Field("", max_length=300)
+
+
+class StockReceive(BaseModel):
+    quantity: int = Field(gt=0, le=100000)
+    note: str = Field("", max_length=200)  # e.g. "Delivery from regional medical stores"
+
+
+class StockAdjust(BaseModel):
+    # After a count, or when stock expired or was damaged. The reason is required.
+    new_quantity: int = Field(ge=0, le=100000)
+    note: str = Field(min_length=3, max_length=200)
+
+
+class ReorderLevel(BaseModel):
+    reorder_level: int = Field(ge=0, le=100000)

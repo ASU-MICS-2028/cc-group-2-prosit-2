@@ -4,6 +4,7 @@ import { getText } from "./i18n";
 import Login from "./Login";
 import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
+import PharmacistApp from "./PharmacistApp";
 import GhsApp from "./GhsApp";
 import AdminApp from "./AdminApp";
 import ChangePassword from "./ChangePassword";
@@ -64,6 +65,7 @@ export default function App() {
   const shared = { user, t, lang, setLang, onLogout: handleLogout };
   if (user.role === "chv") return <ChvApp {...shared} />;
   if (user.role === "nurse" || user.role === "doctor") return <InboxApp {...shared} />;
+  if (user.role === "pharmacist") return <PharmacistApp {...shared} />;
   if (user.role === "ghs") return <GhsApp {...shared} />;
   if (user.role === "admin") return <AdminApp {...shared} />;
   return null;

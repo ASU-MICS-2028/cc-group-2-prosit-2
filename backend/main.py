@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from admin import router as admin_router
+from pharmacy import router as pharmacy_router
 from calls import router as calls_router
 from surveillance import router as surveillance_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
@@ -64,6 +65,7 @@ app = FastAPI(title="HealthConnect Ghana API", lifespan=lifespan)
 app.include_router(calls_router)  # video consult signalling (calls.py)
 app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
 app.include_router(admin_router)  # account management (admin.py)
+app.include_router(pharmacy_router)  # drug stock and e-prescriptions (pharmacy.py)
 
 # Only our own frontend may call this API from a browser
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")

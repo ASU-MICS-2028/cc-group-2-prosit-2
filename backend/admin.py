@@ -17,7 +17,7 @@ from surveillance import DISTRICT_CENTRES
 
 router = APIRouter()
 
-NEEDS_FACILITY = ("chv", "nurse", "doctor")  # referrals are routed by facility
+NEEDS_FACILITY = ("chv", "nurse", "doctor", "pharmacist")  # referrals and stock belong to a facility
 
 
 @router.get("/admin/users")
@@ -37,7 +37,7 @@ def list_users(user=Depends(require_role("admin"))):
 @router.post("/admin/users")
 def create_user(body: AccountCreate, user=Depends(require_role("admin"))):
     if body.role in NEEDS_FACILITY and not body.facility:
-        raise HTTPException(status_code=422, detail="CHVs, nurses and doctors need a facility")
+        raise HTTPException(status_code=422, detail="CHVs, nurses, doctors and pharmacists need a facility")
     if body.district and body.district not in DISTRICT_CENTRES:
         raise HTTPException(status_code=422, detail="Unknown district")
 

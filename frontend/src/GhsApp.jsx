@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
+import StockOutsPanel from "./StockOutsPanel";
 import Header from "./Header";
 import DistrictMap from "./DistrictMap";
 
@@ -120,6 +121,8 @@ export default function GhsApp(props) {
         </div>
 
         <ForecastPanel t={t} forecasts={data.forecasts} onSelect={setSelected} />
+
+        <StockOutsPanel t={t} forecasts={data.forecasts} />
 
         <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
 

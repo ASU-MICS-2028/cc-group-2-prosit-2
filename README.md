@@ -182,7 +182,18 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
 - **View patient history**: every earlier visit, reading and referral outcome for that patient, as a timeline. Only for patients referred to their own hospital.
 - **Book a follow-up appointment** (nurse or doctor) and manage the **Upcoming appointments** list: Attended / Missed / Cancel.
-- **Mark as arrived** and **record the outcome**. Video consults come next (Week 2).
+- **Mark as arrived** and **record the outcome**.
+- **Prescribe drugs** on a referral: choose from the drug list (each shows how much the hospital pharmacy has), quantity and instructions. The prescription goes to the pharmacy at the doctor's own facility. A waiting prescription can be cancelled.
+
+### For a pharmacist (`backend/pharmacy.py`, `frontend/src/PharmacistApp.jsx`)
+**Why:** the group added the pharmacist so a prescription can be followed to the moment the drugs are handed over, and so stock-outs are seen before patients are turned away.
+
+- **Prescriptions** from doctors at their own facility, waiting ones first. Shows the patient's name, reference, age and sex (to hand the drugs to the right person), but **not** their visit history or diagnosis notes (need-to-know).
+- **Dispense** is **all-or-nothing**: if any drug is short, nothing changes and the pharmacist sees every shortage at once. Stock goes down automatically. A prescription cannot be dispensed twice.
+- **Stock:** quantity of each drug with **Out / Low / OK** (low = at or below the facility's own "reorder at" level). **Receive** a delivery, **Correct count** (expired, damaged, recount; a reason is required) and set the reorder level.
+- **Stock history:** every change with who, when and why, so any quantity can be explained. Also in the audit log.
+- **GHS officer** sees **medicine shortages by district**: how many pharmacies are out of or low on each drug (counts only, no patients). A shortage of a drug for an outbreak the forecast expects in that district is flagged.
+- **Starter drug list** (`backend/drug_list.py`): 15 items from Ghana's Essential Medicines List that match the conditions the app flags (e.g. ACTs and RDTs for malaria, ORS and zinc for cholera, amoxicillin for pneumonia, methyldopa and magnesium sulphate for high BP in pregnancy). Reorder levels are examples, not GHS guidance.
 
 ### For a system admin: staff accounts (`backend/admin.py`, `frontend/src/AdminApp.jsx`)
 **Why:** new CHVs and nurses join and leave; this replaces editing `seed.py`.
@@ -243,11 +254,12 @@ RBAC (role-based access control) means what you can see and do depends on your r
 |---|---|---|---|
 | **CHV** | Register patients (with consent), record general visits and antenatal checks, refer | Only **their own** patients | ✅ Built |
 | **Facility nurse / midwife** | Mark referrals arrived, treat, refer every patient on to a doctor | Only referrals to **their facility** | ✅ Built |
-| **Doctor / specialist** | Receive referrals, record the **final** outcome (video consults next) | Only referrals to **their hospital** | ✅ Inbox built |
-| **GHS officer** | Surveillance dashboard, outbreak alerts | **Anonymised district totals only, never names** | ✅ Built |
+| **Doctor / specialist** | Receive referrals, record the **final** outcome, video consults, **e-prescriptions** | Only referrals to **their hospital** | ✅ Built |
+| **Pharmacist** | Dispense prescriptions, receive and correct drug stock | Prescriptions and stock of **their facility**; patient name, ref, age, sex only (no history) | ✅ Built |
+| **GHS officer** | Surveillance dashboard, outbreak alerts, medicine shortages | **Anonymised district totals only, never names** | ✅ Built |
 | **System admin** | Create, disable and re-enable staff accounts | Account details only, **no patient data** | ✅ Built |
 
-Not app users: the **patient** (receives care, gives consent), the **pharmacist** and the **traditional healer** (described in the report only).
+Not app users: the **patient** (receives care, gives consent) and the **traditional healer** (described in the report only).
 
 ---
 
@@ -304,6 +316,11 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | `appointments` | Appointment | Follow-up time, facility, reason, status, reminder result |
 | `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
 | `access_log` | AuditEvent | Who did what to which record, and when |
+| `drugs` | Medication | The drug list (name, unit, default reorder level, condition it is for) |
+| `stock` | InventoryItem | Each facility's quantity of each drug and its reorder level (can never go below 0) |
+| `prescriptions` | MedicationRequest | Doctor, patient, referral, pharmacy (facility), status: pending / dispensed / cancelled |
+| `prescription_items` | MedicationRequest.dosageInstruction | Drug, quantity, instructions |
+| `stock_movements` | SupplyDelivery / MedicationDispense | Every stock change: received / dispensed / adjusted, by whom, with the quantity after |
 
 ### Referral flow
 
@@ -451,6 +468,7 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 | `nurse1` | Nurse | Test Health Centre |
 | `nurse2` | Nurse | Other Test Clinic |
 | `doctor1` | Doctor | Test District Hospital |
+| `pharm1` | Pharmacist | Test District Hospital |
 | `ghs1` | GHS officer | GHS District Office |
 | `admin1` | Admin | – |
 
@@ -461,6 +479,11 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 4. Log out → log in as **`nurse1`** → the referral is in **Waiting** → **Mark as arrived** → **Refer to doctor** (choose *Test District Hospital*, write the treatment given).
 5. Log in as **`doctor1`** → it is in **Specialist referrals**, sorted by urgency → **Mark as arrived** → **Record outcome**.
 6. Log in as **`chv1`** again → the visit shows the health centre step, "→ Referred on to Test District Hospital", and the doctor's outcome.
+
+**Prescription and dispensing**
+1. Take a patient to **`doctor1`** (steps 1 to 4 above) → on the card, **💊 Prescribe drugs** → e.g. Amoxicillin `15`, "1 tablet 3 times a day for 5 days" → **Send to pharmacy**.
+2. Log in as **`pharm1`** → the prescription is waiting → **Dispense**. Amoxicillin drops from 150 to 135 and turns **Low**; **Stock history** shows the change.
+3. Log in as **`ghs1`** → **Medicine shortages by district**: Tamale is out of ORS, flagged because cholera is expected there. (Run `python seed_demo_data.py` once to get the demo stock.)
 
 **General visit**
 - Register a fake male patient → **General visit** → tick *Fever* and *Stiff neck*, temperature `39` → **Check visit** → HIGH, "Check for: Malaria, Meningitis".
@@ -521,6 +544,16 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/admin/users` | admin | Create an account; returns a random temporary password **once** |
 | POST | `/admin/users/{id}/active` | admin | Disable (`false`) or re-enable (`true`); a disabled user is locked out on their next request |
 | POST | `/admin/users/{id}/reset-password` | admin | New temporary password (shown once); user must change it at next login |
+| GET | `/drugs` | doctor, pharmacist | Drug list with the quantity at the user's facility |
+| POST | `/referrals/{id}/prescriptions` | doctor | Prescribe (`items`: drug, quantity, instructions; `notes`) for a referral to the doctor's facility |
+| GET | `/referrals/{id}/prescriptions` | doctor | Prescriptions written on that referral, with status |
+| POST | `/prescriptions/{id}/cancel` | doctor | Cancel a prescription still waiting at the pharmacy |
+| GET | `/pharmacy/prescriptions` | pharmacist | Prescriptions at the pharmacist's facility, waiting first, with stock per drug |
+| POST | `/pharmacy/prescriptions/{id}/dispense` | pharmacist | Dispense all items or nothing (409 lists every shortage) |
+| GET | `/pharmacy/stock` | pharmacist | Stock with Out / Low / OK |
+| POST | `/pharmacy/stock/{drug_id}/receive` · `/adjust` · `/reorder-level` | pharmacist | Delivery (+quantity), correct the count (reason required), set reorder level |
+| GET | `/pharmacy/history` | pharmacist | Last 100 stock changes at the facility |
+| GET | `/surveillance/stock` | ghs | Per district: number of pharmacies out of / low on each drug (no patient data) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
@@ -545,6 +578,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── sms.py             # Arkesel SMS sender (referrals + reminders)
 │   ├── reminders.py       # Appointment confirmation + 24h reminder job
 │   ├── calls.py           # Video call signalling (WebRTC introducer)
+│   ├── pharmacy.py        # Drug stock, e-prescriptions, dispensing, GHS shortages
+│   ├── drug_list.py       # Starter drug list (Essential Medicines, linked to conditions)
 │   ├── surveillance.py    # GHS dashboard: anonymised counts, "<5" rule, outbreak alerts
 │   ├── forecast.py        # 2-week outbreak chance: trend + Poisson (statistics, not ML)
 │   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
@@ -572,6 +607,9 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── GhsApp.jsx         # Surveillance dashboard: KPIs, alerts, heatmap, trend, DHIMS2 export
         ├── DistrictMap.jsx    # Leaflet/OpenStreetMap bubble map of districts
         ├── AdminApp.jsx       # Admin: create / disable accounts, reset passwords
+        ├── PharmacistApp.jsx  # Pharmacist: prescriptions, stock, stock history
+        ├── Prescriptions.jsx  # Doctor's "Prescribe drugs" panel + prescription item list
+        ├── StockOutsPanel.jsx # GHS: medicine shortages by district
         ├── ChangePassword.jsx # Forced "set your own password" screen after a temporary password
         ├── api.js             # Backend calls + token
         ├── PatientDetail.jsx  # Patient page: visit switch, history, referral
@@ -601,7 +639,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Encrypt the offline queue (AES-GCM)
 - [x] General visits for any patient (symptoms, triage, possible conditions); antenatal kept as a module
 
-### 🟡 Phase 2: Week 2, Telemedicine and referrals (Henry and Clifford, in progress)
+### ✅ Phase 2: Week 2, Telemedicine and referrals (Henry and Clifford)
 - [x] Referral records and nurse inbox with outcomes
 - [x] CHV can refer MEDIUM cases with a required reason
 - [x] Nurse escalation to a hospital; doctor inbox with outcomes
@@ -609,7 +647,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Doctor workspace: patient history view for referred cases (need-to-know: only via a referral to their facility)
 - [x] Appointments: nurse/doctor books a follow-up; patient gets a confirmation SMS and a reminder ~24h before
 - [x] Low-bandwidth video consults (WebRTC, 1-to-1) for CHV, nurse and doctor on the same referral, with audio-only mode
-- [ ] E-prescriptions (described in the report; pharmacist not an app user)
+- [x] E-prescriptions: doctor prescribes on a referral, **pharmacist** (new role) dispenses all-or-nothing; drug stock with low-stock warnings, stock history, and medicine shortages by district for GHS
 
 ### ⬜ Phase 3: Cloud migration (Alice)
 - [ ] Move the database from SQLite to **AWS RDS** (eu-north-1), encrypted at rest
@@ -665,8 +703,9 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Referral + appointment SMS | **Built**; works only with a valid Arkesel key and a registered sender ID. Without a key, the app still works and shows "SMS not delivered" |
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
+| Pharmacy (stock, e-prescriptions) | **Built** (local and tests). Drug list and reorder levels are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
 | Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
-| Cloud hosting | **Not yet**: runs on a laptop with SQLite |
+| Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. SMS-reminder Lambda and alarms not yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
 | NHIS integration | **Not built**: no access to real systems |
 | Patient data | **Fake test data only** |

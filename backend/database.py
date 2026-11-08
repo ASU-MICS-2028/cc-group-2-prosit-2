@@ -16,6 +16,8 @@ import secrets
 import sqlite3
 from datetime import datetime, timezone
 
+from drug_list import STARTER_DRUGS
+
 DB_PATH = "healthconnect.db"
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -52,22 +54,28 @@ CREATE TABLE IF NOT EXISTS referrals (
 )
 """
 
+ROLES = ("chv", "nurse", "doctor", "pharmacist", "ghs", "admin")
+ROLE_CHECK = "role IN (" + ",".join(f"'{r}'" for r in ROLES) + ")"
+
+# App accounts (RBAC). Kept as a constant so old databases can be rebuilt with it (see migrate)
+USERS_TABLE = """
+CREATE TABLE IF NOT EXISTS {table} (
+    id             {id},
+    username       TEXT UNIQUE NOT NULL,
+    password_hash  TEXT NOT NULL,
+    role           TEXT NOT NULL CHECK (""" + ROLE_CHECK + """),
+    full_name      TEXT NOT NULL,
+    facility       TEXT,
+    facility_phone TEXT,
+    district       TEXT,  -- for surveillance totals (GHS sees districts, never names)
+    active         INTEGER NOT NULL DEFAULT 1,  -- 0 = disabled by admin (kept, never deleted)
+    must_change_password INTEGER NOT NULL DEFAULT 0  -- 1 = still on a temporary password
+)
+"""
+
 # In creation order: a table's foreign keys only point at tables created before it
 TABLES = [
-    """
-    -- App accounts. Roles: chv, nurse, doctor, ghs, admin (RBAC)
-    CREATE TABLE IF NOT EXISTS users (
-        id             {id},
-        username       TEXT UNIQUE NOT NULL,
-        password_hash  TEXT NOT NULL,
-        role           TEXT NOT NULL CHECK (role IN ('chv','nurse','doctor','ghs','admin')),
-        full_name      TEXT NOT NULL,
-        facility       TEXT,
-        facility_phone TEXT,
-        district       TEXT,  -- for surveillance totals (GHS sees districts, never names)
-        active         INTEGER NOT NULL DEFAULT 1,  -- 0 = disabled by admin (kept, never deleted)
-        must_change_password INTEGER NOT NULL DEFAULT 0  -- 1 = still on a temporary password
-    )""",
+    USERS_TABLE.replace("{table}", "users"),
     """
     -- FHIR Patient. Registered by a CHV, only after consent (Act 843)
     CREATE TABLE IF NOT EXISTS patients (
@@ -132,6 +140,64 @@ TABLES = [
         action    TEXT NOT NULL,
         resource  TEXT,
         timestamp TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- FHIR Medication. The drug list every pharmacy chooses from (filled from drug_list.py)
+    CREATE TABLE IF NOT EXISTS drugs (
+        id                    {id},
+        name                  TEXT UNIQUE NOT NULL,
+        unit                  TEXT NOT NULL,              -- what one counts in: tablets, sachets, vials...
+        default_reorder_level INTEGER NOT NULL DEFAULT 0,
+        condition             TEXT                        -- e.g. 'malaria': links stock to surveillance
+    )""",
+    """
+    -- FHIR InventoryItem. How much of each drug a facility's pharmacy has
+    CREATE TABLE IF NOT EXISTS stock (
+        id            {id},
+        facility      TEXT NOT NULL,
+        drug_id       INTEGER NOT NULL REFERENCES drugs(id),
+        quantity      INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),  -- can never go negative
+        reorder_level INTEGER NOT NULL DEFAULT 0 CHECK (reorder_level >= 0),
+        updated_at    TEXT,
+        UNIQUE (facility, drug_id)
+    )""",
+    """
+    -- FHIR MedicationRequest. Written by a doctor on a referral; dispensed by the
+    -- pharmacy at the doctor's own facility
+    CREATE TABLE IF NOT EXISTS prescriptions (
+        id            {id},
+        patient_id    INTEGER NOT NULL REFERENCES patients(id),
+        referral_id   INTEGER NOT NULL REFERENCES referrals(id),
+        prescribed_by INTEGER NOT NULL REFERENCES users(id),
+        facility      TEXT NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','dispensed','cancelled')),
+        notes         TEXT,
+        dispensed_by  INTEGER REFERENCES users(id),
+        dispensed_at  TEXT,
+        created_at    TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- The drugs in one prescription (FHIR MedicationRequest.dosageInstruction)
+    CREATE TABLE IF NOT EXISTS prescription_items (
+        id              {id},
+        prescription_id INTEGER NOT NULL REFERENCES prescriptions(id),
+        drug_id         INTEGER NOT NULL REFERENCES drugs(id),
+        quantity        INTEGER NOT NULL CHECK (quantity > 0),
+        instructions    TEXT NOT NULL      -- e.g. '1 tablet 3 times a day for 5 days'
+    )""",
+    """
+    -- Stock history: every change, who made it and why (FHIR SupplyDelivery / MedicationDispense)
+    CREATE TABLE IF NOT EXISTS stock_movements (
+        id              {id},
+        facility        TEXT NOT NULL,
+        drug_id         INTEGER NOT NULL REFERENCES drugs(id),
+        change          INTEGER NOT NULL,  -- +50 received, -10 dispensed
+        quantity_after  INTEGER NOT NULL,
+        reason          TEXT NOT NULL CHECK (reason IN ('received','dispensed','adjusted')),
+        prescription_id INTEGER REFERENCES prescriptions(id),
+        note            TEXT,
+        user_id         INTEGER NOT NULL REFERENCES users(id),
+        created_at      TEXT NOT NULL DEFAULT {now}
     )""",
 ]
 
@@ -200,8 +266,19 @@ def init_db():
     for table in TABLES:
         conn.execute(table.format(**dialect))
     migrate(conn)
+    add_starter_drugs(conn)
     conn.commit()
     conn.close()
+
+
+def add_starter_drugs(conn):
+    # Reference data, so real deployments get it too. Existing drugs are left as they are.
+    for name, unit, reorder_level, condition in STARTER_DRUGS:
+        conn.execute(
+            "INSERT INTO drugs (name, unit, default_reorder_level, condition) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (name) DO NOTHING",
+            (name, unit, reorder_level, condition),
+        )
 
 
 def column_exists(conn, table, column):
@@ -219,11 +296,39 @@ def add_column_if_missing(conn, table, column, definition):
     return True
 
 
+def allow_all_roles(conn):
+    """Databases made before the pharmacist role only allow the old roles: widen the CHECK."""
+    if is_postgres():
+        row = conn.execute(
+            "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            "WHERE conrelid = 'users'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%role%'"
+        ).fetchone()
+        if row and "pharmacist" not in row["def"]:
+            conn.execute(f'ALTER TABLE users DROP CONSTRAINT "{row["conname"]}"')
+            conn.execute(f"ALTER TABLE users ADD CONSTRAINT users_role_check CHECK ({ROLE_CHECK})")
+        return
+
+    # SQLite cannot change a CHECK, so the table is rebuilt: copy the rows into a new one.
+    # Foreign keys are switched off meanwhile, so other tables' links to users(id) survive.
+    if "pharmacist" in conn.execute("SELECT sql FROM sqlite_master WHERE name = 'users'").fetchone()["sql"]:
+        return
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute(USERS_TABLE.format(table="users_new", **DIALECT["sqlite"]))
+    columns = "id, username, password_hash, role, full_name, facility, facility_phone, district, active, must_change_password"
+    conn.execute(f"INSERT INTO users_new ({columns}) SELECT {columns} FROM users")
+    conn.execute("DROP TABLE users")
+    conn.execute("ALTER TABLE users_new RENAME TO users")
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
 def migrate(conn):
     # Columns added after the first version. A new database already has them all.
     add_column_if_missing(conn, "appointments", "reminder_attempts", "INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing(conn, "appointments", "reminder_claimed_at", "TEXT")
     if is_postgres():
+        allow_all_roles(conn)
         return  # PostgreSQL databases start from the current schema; the steps below are for old laptop files
 
     # Old local SQLite files, from before general visits existed.
@@ -257,6 +362,9 @@ def migrate(conn):
             FROM referrals_old
         """)
         conn.execute("DROP TABLE referrals_old")
+
+    # Last, once the users table has all its columns
+    allow_all_roles(conn)
 
 
 def new_patient_ref(conn):

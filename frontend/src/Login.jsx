@@ -3,7 +3,7 @@ import { api } from "./api";
 import Logo from "./Logo";
 import LanguageSelect from "./LanguageSelect";
 
-const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "ghs1", "admin1"];
+const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "pharm1", "ghs1", "admin1"];
 
 export default function Login({ onLogin, t, lang, setLang }) {
   const [username, setUsername] = useState("");
