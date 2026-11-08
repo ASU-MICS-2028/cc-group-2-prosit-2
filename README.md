@@ -205,7 +205,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Disable / re-enable:** never delete, because patients, referrals and the audit log point to the account. A disabled user is locked out on their next click.
 - **Reset password:** for a forgotten password; gives a new temporary one.
 - **No patient data** on this screen (least privilege). Every action is audit-logged.
-- **System health** (`backend/monitoring.py`, `frontend/src/SystemHealthPanel.jsx`): the state of the 4 AWS CloudWatch alarms (API server errors, API server down, database busy, database disk nearly full), firing alarms first with AWS's reason. The API server's IAM role may only **read** alarms. On a laptop it says "only available on the cloud version". If the API server itself is down this screen cannot load, so serious alarms should also email someone (not set up yet).
+- **System health** (`backend/monitoring.py`, `frontend/src/SystemHealthPanel.jsx`): the state of the 4 AWS CloudWatch alarms (API server errors, API server down, database busy, database disk nearly full), firing alarms first with AWS's reason. The API server's IAM role may only **read** alarms. On a laptop it says "only available on the cloud version". If the API server itself is down this screen cannot load, so the alarms also email the team through SNS.
 
 ### How the checks work
 Both checks are **rule-based** (fixed if/else rules, not machine learning). Each check exists twice: on the server (official) and in the browser (for offline use). The server always re-checks synced data.
@@ -666,7 +666,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Least-privilege IAM role: the API server can only read its two secrets and is denied deleting or changing the database
 - [x] CloudWatch logs from the API server
 - [x] CloudWatch alarms (API errors, API down, database CPU, database disk), shown to the HealthConnect **admin** under **System health**
-- [ ] Alarm emails and budget alert (need an address); SMS reminders as a Lambda function; auto-deploy from GitHub (guide Steps 9 to 11; not needed for the demo)
+- [x] Alarm emails: the 4 alarms notify the team through the `healthconnect-alerts` SNS topic
+- [ ] Budget alert; SMS reminders as a Lambda function; auto-deploy from GitHub (guide Steps 9 to 11; not needed for the demo)
 
 **Free-plan differences from the runbook:** NAT instance `t4g.micro` (not `t4g.nano`); database backups kept 1 day (not 7). The AWS account runs on free-plan credit: stop the database and servers after the presentation (guide Step 13).
 
@@ -720,7 +721,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
 | Pharmacy (stock, e-prescriptions) | **Built** (local and tests). Drug list and reorder levels are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
 | Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
-| Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms are on; alarm emails and the SMS-reminder Lambda are not built yet |
+| Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms email the team through SNS; the SMS-reminder Lambda is not built yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
 | NHIS integration | **Not built**: no access to real systems |
 | Patient data | **Fake test data only** |
