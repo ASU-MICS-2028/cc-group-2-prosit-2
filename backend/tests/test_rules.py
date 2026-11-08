@@ -60,7 +60,7 @@ def test_priority_score():
 def run_js(code):
     if not shutil.which("node"):
         pytest.skip("Node.js not installed")
-    out = subprocess.run(["node", "--input-type=module", "-e", code], capture_output=True, text=True, check=True)
+    out = subprocess.run(["node", "--input-type=module"], input=code, capture_output=True, text=True, check=True)  # stdin: no length limit
     return json.loads(out.stdout)
 
 
