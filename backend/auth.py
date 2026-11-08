@@ -59,7 +59,7 @@ def get_user_allow_temp_password(creds: HTTPAuthorizationCredentials = Depends(b
 
     conn = get_db()
     user = conn.execute(
-        "SELECT id, username, role, full_name, facility, facility_phone, district, must_change_password "
+        "SELECT id, username, role, full_name, facility, facility_phone, district, must_change_password, facility_manager "
         "FROM users WHERE id = ? AND active = 1",
         (int(payload["sub"]),),
     ).fetchone()

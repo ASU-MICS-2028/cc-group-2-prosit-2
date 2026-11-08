@@ -271,6 +271,42 @@ TABLES = [
         UNIQUE (title, language)
     )""",
     """
+    -- A Paystack payment that has started. The amount is kept here so the phone cannot change it
+    CREATE TABLE IF NOT EXISTS premium_checkouts (
+        id           {id},
+        reference    TEXT UNIQUE NOT NULL,
+        patient_id   INTEGER NOT NULL REFERENCES patients(id),
+        months       INTEGER NOT NULL,
+        amount_ghs   INTEGER NOT NULL,
+        network      TEXT NOT NULL,
+        checkout_url TEXT NOT NULL,
+        started_by   INTEGER NOT NULL REFERENCES users(id),
+        completed_at TEXT,
+        created_at   TEXT NOT NULL
+    )""",
+    """
+    -- Consultation and training fees. completed_at is set only after the provider confirms payment
+    CREATE TABLE IF NOT EXISTS fee_payments (
+        id           {id},
+        reference    TEXT UNIQUE NOT NULL,
+        kind         TEXT NOT NULL CHECK (kind IN ('consultation','training')),
+        item         TEXT NOT NULL,
+        facility     TEXT,
+        amount_ghs   INTEGER NOT NULL CHECK (amount_ghs > 0),
+        payer_id     INTEGER NOT NULL REFERENCES users(id),
+        checkout_url TEXT NOT NULL,
+        completed_at TEXT,
+        created_at   TEXT NOT NULL
+    )""",
+    """
+    -- What each health centre decides for itself
+    CREATE TABLE IF NOT EXISTS facility_settings (
+        facility             TEXT PRIMARY KEY,
+        consultation_fee_ghs INTEGER NOT NULL CHECK (consultation_fee_ghs >= 0),
+        updated_by           INTEGER REFERENCES users(id),
+        updated_at           TEXT
+    )""",
+    """
     -- A nurse or doctor approved this training module (the modules live in training_list.py)
     CREATE TABLE IF NOT EXISTS training_reviews (
         module      TEXT PRIMARY KEY,
@@ -443,6 +479,7 @@ def migrate(conn):
     add_column_if_missing(conn, "patients", "reminder_method",
                           "TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','voice','chv'))")
     add_column_if_missing(conn, "patients", "language", "TEXT")
+    add_column_if_missing(conn, "users", "facility_manager", "INTEGER NOT NULL DEFAULT 0")
     if is_postgres():
         allow_all_roles(conn)
         return  # PostgreSQL databases start from the current schema; the steps below are for old laptop files

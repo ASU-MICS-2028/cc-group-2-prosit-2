@@ -23,6 +23,7 @@ os.chdir(BACKEND)  # seed.py and the data files use paths relative to backend/
 # Set before the app is imported: fixed test secret, and never send a real SMS
 os.environ["JWT_SECRET"] = "test-only-" + "0" * 54  # 64 characters: HS256 wants at least 32 bytes
 os.environ["ARKESEL_API_KEY"] = ""
+os.environ["PAYSTACK_SECRET_KEY"] = ""  # tests never contact Paystack
 # Never point tests at a real database by accident: only TEST_DATABASE_URL is used
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 os.environ.pop("DATABASE_URL", None)

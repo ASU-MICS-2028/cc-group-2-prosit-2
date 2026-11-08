@@ -22,6 +22,8 @@ from healers import router as healers_router
 from equipment import router as equipment_router
 from education import router as education_router
 from training import router as training_router
+from fees import router as fees_router
+from facility import router as facility_router
 from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
                   offline_key_for)
 from database import get_db, init_db, log_access, new_patient_ref, now_text
@@ -78,6 +80,8 @@ app.include_router(healers_router)  # traditional healers working with CHVs (hea
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
 app.include_router(training_router)  # health worker training and certificates (training.py)
+app.include_router(fees_router)  # consultation and training fees (fees.py)
+app.include_router(facility_router)  # health centre self-management (facility.py)
 app.include_router(admin_router)  # account management (admin.py)
 app.include_router(pharmacy_router)  # drug stock and e-prescriptions (pharmacy.py)
 app.include_router(monitoring_router)  # admin: CloudWatch alarm states (monitoring.py)

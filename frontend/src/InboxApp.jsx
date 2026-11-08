@@ -10,6 +10,7 @@ import { CoverageBadge } from "./InsurancePanel";
 import EquipmentPanel from "./EquipmentPanel";
 import LessonsPanel from "./LessonsPanel";
 import TrainingPanel from "./TrainingPanel";
+import FacilityPanel from "./FacilityPanel";
 import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
@@ -83,6 +84,8 @@ export default function InboxApp(props) {
         </div>
 
         <AppointmentsPanel t={t} refreshKey={apptKey} />
+
+        <FacilityPanel t={t} />
 
         <EquipmentPanel t={t} />
 

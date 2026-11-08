@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from auth import require_role
 from database import get_db, log_access, now_text
+from fees import training_fee_due
 from training_list import TRAINING_MODULES
 
 router = APIRouter()
@@ -92,6 +93,7 @@ def my_training(user=Depends(require_role(*WORKERS))):
         (user["id"],)).fetchall()}
     certificates = [describe(r) for r in conn.execute(
         f"SELECT {CERT_COLUMNS} {CERT_JOIN} WHERE c.user_id = ? ORDER BY c.id DESC", (user["id"],)).fetchall()]
+    fee_due = {code: training_fee_due(conn, user, code) for code in TRAINING_MODULES}
     conn.close()
 
     modules = []
@@ -106,6 +108,7 @@ def my_training(user=Depends(require_role(*WORKERS))):
             "reviewer_name": reviews[code]["reviewer_name"] if code in reviews else None,
             "best_score": best[code]["best_score"] if code in best else None,
             "tries": best[code]["tries"] if code in best else 0,
+            "fee_due": fee_due[code],
             "certificate": next((c for c in certificates if c["module"] == code), None),
         })
     return {"modules": modules, "certificates": certificates, "pass_percent": PASS_PERCENT, "expiring_days": EXPIRING_DAYS}
@@ -127,6 +130,9 @@ def take_quiz(code: str, body: QuizAnswers, user=Depends(require_role(*WORKERS))
             raise HTTPException(status_code=403, detail="This certificate was revoked. Please contact your GHS officer")
         if latest and latest["status"] == "valid":
             raise HTTPException(status_code=400, detail="Your certificate is still valid. You can renew it close to its expiry date")
+
+        if training_fee_due(conn, user, code):
+            raise HTTPException(status_code=402, detail="Please pay the training fee first")
 
         score = sum(given == q["answer"] for given, q in zip(body.answers, questions))
         passed = score * 100 >= PASS_PERCENT * len(questions)

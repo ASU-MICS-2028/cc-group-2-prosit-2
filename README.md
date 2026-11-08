@@ -698,11 +698,13 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
 - [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS, CHV visit, voice call) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
 
-### ⬜ Phase 7: Week 4, Sustainability (whole team)
-- [ ] Insurance (NHIS) and mobile money: described and costed
-- [ ] Role of traditional medicine and healers: referral pathways
-- [ ] Community ownership model for CHVs
-- [ ] Revenue model and cost estimate for AWS
+### ✅ Phase 7: Week 4, Sustainability (whole team)
+- [x] Community insurance with mobile money premiums through Paystack (NHIS itself is not connected)
+- [x] Traditional healers: referral pathways
+- [x] Community ownership: health centre manager tools
+- [x] Revenue model and cost estimate: [docs/SUSTAINABILITY.md](docs/SUSTAINABILITY.md)
+- [x] Equipment tracking, health education lessons, health worker certificates
+- [x] Open source: MIT licence
 
 ### Deadline
 Report and presentation are due **the Thursday after the mid-semester break**.
@@ -723,6 +725,9 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms email the team through SNS; the SMS-reminder Lambda is not built yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
 | NHIS integration | **Not built**: no access to real systems |
+| Insurance, consultation and training fees | **Built on Paystack.** No key: simulated. A live key needs `PAYSTACK_ALLOW_LIVE=on`, for small team demos only. Running real insurance needs a licence we do not hold. Staff press confirm; webhooks not built |
+| Training certificates | **Built**; HealthConnect records, not GHS qualifications. Modules and quiz content need clinical review |
+| Health centre manager tools | **Built**; not tried at a real centre. Partnerships and capacity building are proposals: [docs/SUSTAINABILITY.md](docs/SUSTAINABILITY.md) |
 | Patient data | **Fake test data only** |
 
 ---

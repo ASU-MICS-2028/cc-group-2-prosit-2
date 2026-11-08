@@ -53,7 +53,7 @@ def remove_demo_data(conn):
     # Stock history stays (the stock really moved); it just no longer points at the prescription
     conn.execute(f"UPDATE stock_movements SET prescription_id = NULL WHERE prescription_id IN ({demo_rx})")
     conn.execute(f"DELETE FROM prescription_items WHERE prescription_id IN ({demo_rx})")
-    for table in ["healer_referrals", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
+    for table in ["healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
         conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({DEMO_PATIENTS})")
     conn.execute("DELETE FROM patients WHERE full_name LIKE 'Demo Patient%'")
 

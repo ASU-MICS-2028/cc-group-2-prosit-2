@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import { inputClass } from "./styles";
+import FeePayment from "./FeePayment";
 
 // Upcoming appointments at this facility (nurse / doctor), soonest first
 export function AppointmentsPanel({ t, refreshKey }) {
@@ -48,6 +49,7 @@ export function AppointmentsPanel({ t, refreshKey }) {
                 {a.reason && `${a.reason} · `}
                 {t.bookedBy} {a.booked_by_name} · <ReminderNote a={a} t={t} />
               </p>
+              <div className="mt-1"><FeePayment t={t} kind="consultation" item={a.id} label={t.feeConsultation} /></div>
             </div>
             <div className="flex gap-1">
               {["attended", "missed", "cancelled"].map((s) => (

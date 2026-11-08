@@ -37,6 +37,7 @@ for username, role, full_name, facility, phone, district in USERS:
     )
     # Accounts created before districts existed get theirs now
     conn.execute("UPDATE users SET district = ? WHERE username = ? AND district IS NULL", (district, username))
+conn.execute("UPDATE users SET facility_manager = 1 WHERE username = 'nurse1'")  # demo manager of Test Health Centre
 conn.execute("UPDATE patients SET district = (SELECT district FROM users WHERE users.id = patients.chv_id) "
              "WHERE district IS NULL")
 conn.commit()

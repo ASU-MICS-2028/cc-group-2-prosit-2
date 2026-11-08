@@ -50,6 +50,16 @@ export default function AdminApp(props) {
     }
   };
 
+  const setManager = async (u) => {
+    setError("");
+    try {
+      await api(`/admin/users/${u.id}/facility-manager`, { method: "POST", body: { manager: !u.facility_manager } });
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const resetPassword = async (u) => {
     if (!window.confirm(`${t.adminResetConfirm} ${u.username}?`)) return;
     setError("");
@@ -167,6 +177,11 @@ export default function AdminApp(props) {
                           >
                             {u.active ? t.adminDisable : t.adminEnable}
                           </button>
+                          {u.active === 1 && ["nurse", "doctor"].includes(u.role) && (
+                            <button onClick={() => setManager(u)} className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800 hover:bg-teal-100">
+                              {u.facility_manager ? t.adminRemoveManager : t.adminMakeManager}
+                            </button>
+                          )}
                           {u.active === 1 && (
                             <button
                               onClick={() => resetPassword(u)}

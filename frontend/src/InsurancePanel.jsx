@@ -18,7 +18,7 @@ export function CoverageBadge({ t, until }) {
   );
 }
 
-// CHV, patient page: join the community scheme and pay premiums. SIMULATED: no money moves.
+// CHV, patient page: join the community scheme and pay premiums through Paystack.
 export default function InsurancePanel({ t, patientId }) {
   const [info, setInfo] = useState(null);
   const [consent, setConsent] = useState(false);
@@ -50,7 +50,9 @@ export default function InsurancePanel({ t, patientId }) {
         <p className="font-semibold text-stone-800">🛡 {t.insTitle}</p>
         {info.member && <CoverageBadge t={t} until={info.paid_until} />}
       </div>
-      <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800">{t.insSimulated}</p>
+      <p className={`mt-1 rounded-lg px-2 py-1 text-xs ${info.live ? "bg-red-50 font-semibold text-red-700" : "bg-amber-50 text-amber-800"}`}>
+        {info.live ? t.insPaystackLive : info.simulated ? t.insSimulated : t.insPaystackTest}
+      </p>
 
       {!info.member && (
         <div className="mt-2 space-y-2">
@@ -82,6 +84,18 @@ export default function InsurancePanel({ t, patientId }) {
           <button onClick={() => send("pay", { months, network })} className={button}>
             {t.insPay} GH₵{months * info.monthly_premium_ghs}
           </button>
+        </div>
+      )}
+
+      {info.pending && (
+        <div className="mt-2 space-y-2 rounded-lg bg-teal-50 p-2">
+          <p className="text-xs text-stone-700">{t.insPendingHint}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href={info.pending.checkout_url} target="_blank" rel="noreferrer" className={button}>{t.insOpenPaystack} GH₵{info.pending.amount_ghs}</a>
+            <button onClick={() => send(`confirm/${info.pending.reference}`)} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">
+              {t.insCheckPaid}
+            </button>
+          </div>
         </div>
       )}
 

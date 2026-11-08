@@ -9,6 +9,7 @@ entries still point to them.
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from auth import hash_password, require_role
 from database import get_db, log_access
@@ -20,12 +21,16 @@ router = APIRouter()
 NEEDS_FACILITY = ("chv", "nurse", "doctor", "pharmacist")  # referrals and stock belong to a facility
 
 
+class FacilityManager(BaseModel):
+    manager: bool
+
+
 @router.get("/admin/users")
 def list_users(user=Depends(require_role("admin"))):
     conn = get_db()
     # Account details only. No password hashes, no patients.
     rows = conn.execute(
-        "SELECT id, username, role, full_name, facility, facility_phone, district, active "
+        "SELECT id, username, role, full_name, facility, facility_phone, district, active, facility_manager "
         "FROM users ORDER BY role, username"
     ).fetchall()
     log_access(conn, user["id"], "list_users")
@@ -73,6 +78,23 @@ def set_active(user_id: int, body: AccountActive, user=Depends(require_role("adm
         raise HTTPException(status_code=404, detail="Account not found")
     conn.execute("UPDATE users SET active = ? WHERE id = ?", (int(body.active), user_id))
     log_access(conn, user["id"], "enable_user" if body.active else "disable_user", target["username"])
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@router.post("/admin/users/{user_id}/facility-manager")
+def set_facility_manager(user_id: int, body: FacilityManager, user=Depends(require_role("admin"))):
+    conn = get_db()
+    target = conn.execute("SELECT username, role, facility FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Account not found")
+    if target["role"] not in ("nurse", "doctor") or not target["facility"]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="A manager must be a nurse or doctor at a facility")
+    conn.execute("UPDATE users SET facility_manager = ? WHERE id = ?", (int(body.manager), user_id))
+    log_access(conn, user["id"], "set_facility_manager", f"{target['username']} {body.manager}")
     conn.commit()
     conn.close()
     return {"success": True}
