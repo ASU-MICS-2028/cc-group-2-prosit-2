@@ -38,6 +38,8 @@ SECTIONS = [
     ("Nurse and doctor screens", ["Nurse/doctor", "Appointments", "Patient history"]),
     ("Video call", ["Video call"]),
     ("Prescriptions (doctor and pharmacist)", ["Doctor and pharmacist"]),
+    ("Community programmes: insurance, healers, lessons, training, fees", ["Community:"]),
+    ("Facility management and equipment", ["Facility:"]),
     ("Pharmacist screens", ["Pharmacist"]),
     ("Ghana Health Service (GHS) officer dashboard", ["GHS officer"]),
     ("System administrator screens", ["System admin"]),
