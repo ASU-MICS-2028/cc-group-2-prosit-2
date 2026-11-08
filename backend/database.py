@@ -243,6 +243,18 @@ TABLES = [
         recorded_by  INTEGER NOT NULL REFERENCES users(id),
         created_at   TEXT NOT NULL DEFAULT {now}
     )""",
+    """
+    -- FHIR Device. How many of each device a facility has, working and broken
+    CREATE TABLE IF NOT EXISTS equipment (
+        id         {id},
+        facility   TEXT NOT NULL,
+        item       TEXT NOT NULL,
+        working    INTEGER NOT NULL DEFAULT 0 CHECK (working >= 0),
+        broken     INTEGER NOT NULL DEFAULT 0 CHECK (broken >= 0),
+        updated_by INTEGER REFERENCES users(id),
+        updated_at TEXT,
+        UNIQUE (facility, item)
+    )""",
 ]
 
 

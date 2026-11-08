@@ -183,6 +183,26 @@ def create_demo_stock(conn):
     return created
 
 
+# Demo equipment: facility name start -> {item: (working, broken)}. Other devices get (2, 0).
+DEMO_EQUIPMENT = {"Demo Clinic Tamale": {"thermometer": (1, 3)}, "Demo Clinic Wa": {"bp_monitor": (0, 2)},
+                  "Demo Clinic Bolgatanga": {"weighing_scale": (1, 1)}, "Demo Clinic Kumasi": {}, "Demo Clinic Cape": {}}
+
+
+def create_demo_equipment(conn):
+    """Only once per facility, so a nurse's own counts are never overwritten."""
+    created = 0
+    for facility_start, amounts in DEMO_EQUIPMENT.items():
+        row = conn.execute("SELECT DISTINCT facility FROM users WHERE facility LIKE ?", (facility_start + "%",)).fetchone()
+        if not row or conn.execute("SELECT 1 FROM equipment WHERE facility = ?", (row["facility"],)).fetchone():
+            continue
+        for item in ["bp_monitor", "thermometer", "weighing_scale"]:
+            working, broken = amounts.get(item, (2, 0))
+            conn.execute("INSERT INTO equipment (facility, item, working, broken, updated_at) VALUES (?, ?, ?, ?, ?)",
+                         (row["facility"], item, working, broken, now_text()))
+        created += 1
+    return created
+
+
 def keep_demo_data_current():
     # Re-date the demo visits to "now" (remove + re-create in one transaction,
     # so the dashboard never sees half the data).
@@ -207,6 +227,7 @@ if __name__ == "__main__":
         conn.commit()
         print(f"Created {count} fake demo visits across {len(DISTRICTS)} districts (cholera spike in Tamale this week).")
     pharmacies = create_demo_stock(conn)
+    create_demo_equipment(conn)
     conn.commit()
     print(f"Demo stock created for {pharmacies} pharmacies." if pharmacies else "Demo stock already exists. Nothing to do.")
     conn.close()

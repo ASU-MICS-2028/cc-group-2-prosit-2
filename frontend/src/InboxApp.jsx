@@ -7,6 +7,7 @@ import PatientHistory from "./PatientHistory";
 import { AppointmentsPanel, BookAppointment } from "./AppointmentsPanel";
 import { PrescribePanel } from "./Prescriptions";
 import { CoverageBadge } from "./InsurancePanel";
+import EquipmentPanel from "./EquipmentPanel";
 import VideoCall from "./VideoCall";
 import IncomingCalls from "./IncomingCalls";
 import { REFERRAL_STYLE, inputClass } from "./styles";
@@ -80,6 +81,8 @@ export default function InboxApp(props) {
         </div>
 
         <AppointmentsPanel t={t} refreshKey={apptKey} />
+
+        <EquipmentPanel t={t} />
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
