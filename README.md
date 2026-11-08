@@ -86,7 +86,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
-| Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 of 254 screen strings per language (human translation by Isaac), dropdown to switch. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
+| Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 60 newer pharmacy and System health labels are English for now. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
@@ -688,7 +688,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Compare them on language coverage, accuracy, cost, offline use and health-data privacy
 - [x] Recommend one, and decide what to translate live vs. fix in `i18n.js` (human translation in the app; no live translation of patient data; see [docs/TRANSLATION.md](docs/TRANSLATION.md))
 - [x] Translate the app into Twi, Ewe, Ga and Dagbani (Isaac), with a language dropdown
-- [ ] Get the translations reviewed by native speakers
+- [x] Get the translations reviewed by native speakers
+- [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
 - [ ] Send SMS in the patient's preferred language (translations ready in `docs/translations/`)
 
 ### ⬜ Phase 7: Week 4, Sustainability (whole team)
@@ -726,7 +727,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
-- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of 254 screen strings (7 left in English); not yet reviewed by native speakers. SMS and error messages are still English only.
+- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of the app's 314 screen strings, reviewed by native speakers. Not yet translated: 7 early lines, and the 60 pharmacy and System health labels added later (they fall back to English). SMS and error messages are still English only.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---

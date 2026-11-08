@@ -7,7 +7,7 @@ HealthConnect is used by CHVs and patients who may not read English well. This n
 - The app's screens are in **English, Twi, Ewe, Ga and Dagbani**, chosen from a dropdown on the sign-in page and in the top bar.
 - All screen text lives in `frontend/src/i18n.js`. Any string without a translation falls back to English.
 - Isaac Ansah Amoah translated the text from a numbered English sheet. The tools in `docs/translations/` make that sheet straight from the code.
-- Coverage: 245 of 254 screen strings in each language. Seven strings stay English until they are translated again: "Check risk", "Visit history", "No checks recorded yet.", "Book follow-up", "Booked for", "Booked by", and the appointment reason hint.
+- Coverage: 245 strings in each language, reviewed by native speakers. The app now has 314 English strings: the 60 pharmacy and System health labels added later are not translated yet. Seven older strings also stay English until they are translated again: "Check risk", "Visit history", "No checks recorded yet.", "Book follow-up", "Booked for", "Booked by", and the appointment reason hint.
 - The SMS messages and server error messages are translated too (`docs/translations/healthconnect_text.csv`), but the app does not send them in other languages yet (see below).
 
 ## Translation APIs compared
@@ -39,5 +39,5 @@ Checked on 5 November 2026 against each provider's published language list.
 ## Next steps
 
 - **Translated SMS:** add a "preferred language" field when a CHV registers a patient. Then send the appointment SMS in that language using Isaac's translations.
-- **Native-speaker review:** have a native speaker of each language check the translations, starting with the patient SMS and the CHV screens. Twi "Paswɛɛd" (Password) is a team choice and should be confirmed.
+- **Native-speaker review: done.** The translations were reviewed by native speakers. Strings added later (pharmacy, System health) still need translating and reviewing.
 - **Remember the language:** the app goes back to English when the page reloads. Save the choice on the phone.
