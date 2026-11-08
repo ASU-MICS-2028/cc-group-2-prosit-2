@@ -88,8 +88,8 @@ TABLES = [
         sex        TEXT CHECK (sex IN ('female','male')),
         pregnant   INTEGER NOT NULL DEFAULT 0,
         phone      TEXT,      -- optional; used ONLY for appointment reminders
-        reminder_method TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','voice','chv')),
-        language   TEXT,      -- language the patient speaks (for a voice call or the CHV's visit)
+        reminder_method TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','chv')),
+        language   TEXT,      -- language the patient speaks, for the CHV's visit
         community  TEXT,
         district   TEXT,      -- copied from the registering CHV
         consent    INTEGER NOT NULL CHECK (consent = 1),
@@ -477,7 +477,9 @@ def migrate(conn):
     add_column_if_missing(conn, "appointments", "reminder_claimed_at", "TEXT")
     # How to remind the patient: many can speak but not read their language, so SMS is not always right
     add_column_if_missing(conn, "patients", "reminder_method",
-                          "TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','voice','chv'))")
+                          "TEXT NOT NULL DEFAULT 'sms' CHECK (reminder_method IN ('sms','chv'))")
+    # Voice-call reminders were dropped (team decision): those patients are reminded by the CHV
+    conn.execute("UPDATE patients SET reminder_method = 'chv' WHERE reminder_method = 'voice'")
     add_column_if_missing(conn, "patients", "language", "TEXT")
     add_column_if_missing(conn, "users", "facility_manager", "INTEGER NOT NULL DEFAULT 0")
     if is_postgres():

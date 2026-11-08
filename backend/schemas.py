@@ -37,14 +37,13 @@ class PatientCreate(BaseModel):
     phone: str = Field("", pattern=r"^$|^(0\d{9}|\+?233\d{9})$")
     community: str = ""
     consent: bool
-    # sms = text message, voice = recorded voice call (designed, not built: the CHV reminds meanwhile),
-    # chv = the CHV reminds the patient in person
-    reminder_method: Literal["sms", "voice", "chv"] = "sms"
+    # sms = text message; chv = the CHV reminds the patient in person (for patients who cannot read)
+    reminder_method: Literal["sms", "chv"] = "sms"
     language: Literal["en", "tw", "ee", "gaa", "dag"] | None = None
 
 
 class ReminderPreference(BaseModel):
-    reminder_method: Literal["sms", "voice", "chv"]
+    reminder_method: Literal["sms", "chv"]
     language: Literal["en", "tw", "ee", "gaa", "dag"] | None = None
 
 

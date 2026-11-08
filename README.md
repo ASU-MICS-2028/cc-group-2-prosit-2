@@ -108,7 +108,7 @@ All of this work is on the **`main`** branch.
 - **Register any patient** (any age, female or male), but only after ticking that the patient has given consent (Data Protection Act, 2012).
   Each patient gets a random reference such as `HC-1D28D0`. Female patients aged 10+ can be marked **pregnant**.
   An optional **phone number** can be added, used **only** for appointment reminders.
-  The CHV also records **how to remind the patient** (text message, CHV visit in person, or voice call in their language) and **the language they speak**, because many patients speak a Ghanaian language but cannot read it. See [docs/REMINDERS.md](docs/REMINDERS.md).
+  The CHV also records **how to remind the patient** (text message, or a CHV visit in person) and **the language they speak**, because many patients speak a Ghanaian language but cannot read it. See [docs/REMINDERS.md](docs/REMINDERS.md).
 - **Record a general visit** for anyone: a symptom checklist (fever, cough, diarrhoea, stiff neck, convulsions…) plus optional temperature, BP and pulse.
   The app gives a triage level and lists **possible conditions to test for** (malaria, cholera, meningitis, measles, pneumonia, hypertension).
 - **Record an antenatal check** for pregnant patients: gestational age, blood pressure, weight, haemoglobin, temperature, heart rate, previous complications.
@@ -118,7 +118,7 @@ All of this work is on the **`main`** branch.
 - **Refer a HIGH-risk patient** to the facility. This creates a referral record and sends an SMS that contains the reference, **not the patient's name**.
 - **Refer a MEDIUM-risk patient** if worried, but a **reason is required** (e.g. "fever not improving after 2 days"). LOW cannot be referred.
 - **See upcoming appointments** on the patient page, with a warning when the patient has no phone so the CHV can remind them in person.
-- **Remind in person** list on the home screen: their patients' appointments in the next 7 days that a text message will not reach (chose a CHV visit or voice call, no phone, or the SMS failed), with the language each patient speaks.
+- **Remind in person** list on the home screen: their patients' appointments in the next 7 days that a text message will not reach (chose a CHV visit, no phone, or the SMS failed), with the language each patient speaks.
 - **Follow the whole chain**: health centre (waiting → arrived → completed), and, if the nurse referred onward, the hospital step and the doctor's outcome.
 
 ### Who starts a referral?
@@ -314,7 +314,7 @@ FHIR is the international standard for exchanging health data. Our tables follow
 | Table | FHIR resource | Holds |
 |---|---|---|
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
-| `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), how to remind them (`sms` / `voice` / `chv`) and the language they speak, community, consent, CHV owner, random reference |
+| `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), how to remind them (`sms` / `chv`) and the language they speak, community, consent, CHV owner, random reference |
 | `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
 | `appointments` | Appointment | Follow-up time, facility, reason, status, reminder result |
 | `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
@@ -529,7 +529,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/patients/{id}/visit` | chv | General visit: symptoms + optional vitals → triage + possible conditions |
 | POST | `/patients/{id}/assess` | chv | Antenatal check (pregnant patients only) → risk score |
 | POST | `/patients/{id}/pregnancy` | chv | Mark a female patient (10+) pregnant / not pregnant |
-| POST | `/patients/{id}/reminder-preference` | chv | How to remind the patient (`sms`, `voice`, `chv`) and the language they speak |
+| POST | `/patients/{id}/reminder-preference` | chv | How to remind the patient (`sms` or `chv`) and the language they speak |
 | GET | `/chv/reminders` | chv | Own patients' appointments in the next 7 days that need an in-person reminder |
 | POST | `/observations/{id}/referral` | chv | Refer a check to the CHV's facility (HIGH; or MEDIUM with `reason`) |
 | GET | `/referrals` | nurse, doctor | Inbox for the user's own facility, sorted by priority score |
@@ -696,7 +696,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Translate the app into Twi, Ewe, Ga and Dagbani (Isaac), with a language dropdown
 - [x] Get the translations reviewed by native speakers
 - [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
-- [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS, CHV visit, voice call) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
+- [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS or CHV visit) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
 
 ### ✅ Phase 7: Week 4, Sustainability (whole team)
 - [x] Community insurance with mobile money premiums through Paystack (NHIS itself is not connected)

@@ -69,7 +69,7 @@ def send_due_reminders(now=None):
         # 2. Send, and record the result
         attempts = a["reminder_attempts"]
         if a["reminder_method"] != "sms":
-            result = "chv"  # voice call (not built yet) or CHV visit: the CHV reminds in person
+            result = "chv"  # the patient chose a CHV visit: the CHV reminds in person
         elif not a["phone"]:
             result = "no_phone"  # the CHV sees it in the app and reminds in person
         elif send_sms(a["phone"], appointment_message("remind", a["facility"], a["scheduled_at"], a["ref"])):

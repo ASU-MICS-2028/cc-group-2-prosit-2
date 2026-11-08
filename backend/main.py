@@ -251,7 +251,7 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
 
 @app.post("/patients/{patient_id}/reminder-preference")
 def set_reminder_preference(patient_id: int, body: ReminderPreference, user=Depends(require_role("chv"))):
-    # How this patient wants to be reminded: SMS, a voice call in their language, or the CHV in person
+    # How this patient wants to be reminded: SMS, or the CHV in person (for patients who cannot read)
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
     conn.execute("UPDATE patients SET reminder_method = ?, language = ? WHERE id = ?",
@@ -265,7 +265,7 @@ def set_reminder_preference(patient_id: int, body: ReminderPreference, user=Depe
 @app.get("/chv/reminders")
 def chv_reminders(user=Depends(require_role("chv"))):
     """The CHV's own patients with an appointment in the next 7 days whom an SMS will not reach:
-    they chose a voice call or a CHV visit, have no phone, or their SMS failed."""
+    they chose a CHV visit, have no phone, or their SMS failed."""
     now = datetime.now(timezone.utc)
     conn = get_db()
     rows = conn.execute("""
@@ -540,7 +540,7 @@ def book_appointment(referral_id: int, body: AppointmentCreate, user=Depends(req
                            (referral["patient_id"],)).fetchone()
     by_sms = patient["reminder_method"] == "sms"
     if not by_sms:
-        # Voice call (designed, not built) or CHV visit: the CHV reminds the patient in person
+        # CHV visit: the CHV reminds the patient in person
         conn.execute("UPDATE appointments SET reminder_status = 'chv' WHERE id = ?", (appointment_id,))
     # Confirmation SMS straight away (the 24-hour reminder comes later from the reminder job)
     confirmed = by_sms and bool(patient["phone"]) and send_sms(

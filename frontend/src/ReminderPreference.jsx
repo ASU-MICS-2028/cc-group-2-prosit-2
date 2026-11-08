@@ -4,9 +4,8 @@ import { LANGUAGES } from "./i18n";
 import { inputClass } from "./styles";
 
 // Many patients speak a Ghanaian language but cannot read it, so an SMS is not always right.
-// sms = text message · voice = recorded voice call in their language (designed, not built yet:
-// the CHV reminds meanwhile) · chv = the CHV reminds the patient in person
-const METHODS = ["sms", "voice", "chv"];
+// sms = text message · chv = the CHV reminds the patient in person
+const METHODS = ["sms", "chv"];
 
 const languageName = (code) => LANGUAGES.find((l) => l.code === code)?.name || "";
 
@@ -35,7 +34,7 @@ export function ReminderFields({ t, value, onChange }) {
           ))}
         </select>
       </div>
-      <p className="col-span-2 -mt-1 text-xs text-stone-500">{value.reminder_method === "voice" ? t.remindVoiceHint : t.remindHint}</p>
+      <p className="col-span-2 -mt-1 text-xs text-stone-500">{t.remindHint}</p>
     </div>
   );
 }

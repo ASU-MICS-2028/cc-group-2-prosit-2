@@ -38,6 +38,6 @@ Checked on 5 November 2026 against each provider's published language list.
 
 ## Next steps
 
-- **Reminders for patients who cannot read: done differently.** Most patients speak but do not read their language, so a translated SMS would not reach them. Instead the CHV records how to remind each patient and the language they speak, and gets a Remind in person list; voice calls are designed. See [REMINDERS.md](REMINDERS.md).
+- **Reminders for patients who cannot read: done differently.** Most patients speak but do not read their language, so a translated SMS would not reach them. Instead the CHV records how to remind each patient and the language they speak, and gets a Remind in person list. See [REMINDERS.md](REMINDERS.md).
 - **Native-speaker review: done.** The translations were reviewed by native speakers. Strings added later (pharmacy, System health) still need translating and reviewing.
 - **Remember the language:** the app goes back to English when the page reloads. Save the choice on the phone.
