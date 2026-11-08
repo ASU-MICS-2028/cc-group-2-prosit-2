@@ -52,12 +52,28 @@
 .hc-tiles-risk > :nth-child(2) { background: #fde8e8; }
 .hc-tiles-risk > :nth-child(4) { background: #e3f6ea; }
 
-/* Opening screen: the words appear, rest, then everything fades to the login page */
-.hc-splash { animation: hc-splash-out 2.8s ease-in-out forwards; }
-.hc-splash-content { animation: hc-splash-in 1s ease-out both; }
-@keyframes hc-splash-out { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes hc-splash-in { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .hc-splash, .hc-splash-content { animation: none; } }
+/* Opening screen, 5.4s in all: the network connects, the name changes, then the login appears */
+.hc-splash { animation: hc-out 5.4s ease-in-out forwards; }
+.hc-stage-1 { animation: hc-stage-1 5.4s ease-in-out forwards; }
+.hc-stage-2 { animation: hc-stage-2 5.4s ease-in-out forwards; }
+.hc-name { animation: hc-appear 0.7s ease-out 1.2s both; }
+.hc-link { stroke-dasharray: 1; stroke-dashoffset: 1; animation: hc-draw 0.5s ease-out forwards; }
+.hc-pulse { stroke-dasharray: 0.08 1; stroke-dashoffset: 0.08; opacity: 0; animation: hc-travel 0.9s linear infinite; }
+.hc-node { transform-box: fill-box; transform-origin: center; animation: hc-pop 0.4s ease-out both; }
+.hc-ring { transform-box: fill-box; transform-origin: center; animation: hc-ring 1.5s ease-out 0.2s infinite; }
+@keyframes hc-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hc-stage-1 { 0%, 52% { opacity: 1; } 62%, 100% { opacity: 0; } }
+@keyframes hc-stage-2 { 0%, 62% { opacity: 0; } 72%, 100% { opacity: 1; } }
+@keyframes hc-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hc-draw { to { stroke-dashoffset: 0; } }
+@keyframes hc-travel { 0% { stroke-dashoffset: 0.08; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
+@keyframes hc-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes hc-ring { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hc-splash, .hc-stage-1, .hc-name, .hc-link, .hc-pulse, .hc-node, .hc-ring { animation: none; }
+  .hc-link { stroke-dashoffset: 0; }
+  .hc-stage-2 { display: none; }
+}
 
 /* "Outbreak alert" label beside a map bubble: critical status = icon + label */
 .hc-alert-label {

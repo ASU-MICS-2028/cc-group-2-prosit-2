@@ -21,9 +21,9 @@ export default function App() {
   const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem("hc_token")));
   const t = getText(lang);
 
-  // Must match the 2.8s fade in index.css
+  // Must match the 5.4s animation in index.css
   useEffect(() => {
-    const timer = setTimeout(() => setSplash(false), 2800);
+    const timer = setTimeout(() => setSplash(false), 5400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -59,7 +59,7 @@ export default function App() {
   if (!user) {
     return (
       <>
-        {splash && <Splash />}
+        {splash && <Splash onSkip={() => setSplash(false)} />}
         <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />
       </>
     );
