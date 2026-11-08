@@ -783,6 +783,15 @@ alarm --alarm-name hc-reminders-errors --namespace AWS/Lambda --metric-name Erro
   --period 900 --evaluation-periods 1 --threshold 1 --comparison-operator GreaterThanOrEqualToThreshold
 ```
 
+**Show the alarms to the HealthConnect admin** (System health panel, `backend/monitoring.py`): give the API role read access to alarms. `DescribeAlarms` is a *list* action, so AWS checks it against `alarm:*` and it cannot be limited to names starting with `hc-`; it is still read-only.
+
+```bash
+# Add this statement to the healthconnect-api policy from Step 5, then put-role-policy again
+{"Sid":"ReadOwnAlarms","Effect":"Allow","Action":"cloudwatch:DescribeAlarms","Resource":"arn:aws:cloudwatch:${AWS_REGION}:${ACCOUNT_ID}:alarm:*"}
+```
+
+Each alarm's `--alarm-description` is the sentence the admin sees, so write it in plain words.
+
 **Budget alert (console):** Billing → Budgets → Create budget → Monthly cost budget, **$40**, email at 80% and 100%. W7: surprise bills come from misconfiguration (a retry loop), not base prices.
 
 **Logs:** API logs are in CloudWatch log group `/healthconnect/api`; Lambda logs are in `/aws/lambda/healthconnect-send-reminders`.

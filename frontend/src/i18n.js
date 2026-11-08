@@ -308,6 +308,16 @@ const text = {
     stockLowCount: "low",
     unknownRole: "This copy of HealthConnect is out of date and does not have your screen yet. Reload to get the latest version.",
     reloadApp: "Reload",
+    // Admin: system health (CloudWatch alarms)
+    healthTitle: "System health",
+    healthRefresh: "Check again",
+    healthAllOk: "All systems normal.",
+    healthFiring: "alarm(s) need attention",
+    healthOk: "OK",
+    healthAlarm: "ALARM",
+    healthChecking: "Collecting data",
+    healthLocalOnly: "System health is only available on the cloud version (AWS CloudWatch).",
+    healthUnreachable: "Could not reach AWS CloudWatch. Check again in a minute.",
   },
   tw: {
     appName: "HealthConnect Ghana",

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
 import { inputClass } from "./styles";
+import SystemHealthPanel from "./SystemHealthPanel";
 
 const ROLES = ["chv", "nurse", "doctor", "pharmacist", "ghs", "admin"];
 const EMPTY = { username: "", full_name: "", role: "chv", facility: "", facility_phone: "", district: "" };
@@ -68,6 +69,8 @@ export default function AdminApp(props) {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="text-2xl font-bold text-stone-800">{t.adminTitle}</h1>
         <p className="mt-1 text-sm text-stone-500">{t.adminHint}</p>
+
+        <SystemHealthPanel t={t} />
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 

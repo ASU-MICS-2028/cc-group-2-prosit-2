@@ -203,6 +203,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Disable / re-enable:** never delete, because patients, referrals and the audit log point to the account. A disabled user is locked out on their next click.
 - **Reset password:** for a forgotten password; gives a new temporary one.
 - **No patient data** on this screen (least privilege). Every action is audit-logged.
+- **System health** (`backend/monitoring.py`, `frontend/src/SystemHealthPanel.jsx`): the state of the 4 AWS CloudWatch alarms (API server errors, API server down, database busy, database disk nearly full), firing alarms first with AWS's reason. The API server's IAM role may only **read** alarms. On a laptop it says "only available on the cloud version". If the API server itself is down this screen cannot load, so serious alarms should also email someone (not set up yet).
 
 ### How the checks work
 Both checks are **rule-based** (fixed if/else rules, not machine learning). Each check exists twice: on the server (official) and in the browser (for offline use). The server always re-checks synced data.
@@ -554,6 +555,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/pharmacy/stock/{drug_id}/receive` · `/adjust` · `/reorder-level` | pharmacist | Delivery (+quantity), correct the count (reason required), set reorder level |
 | GET | `/pharmacy/history` | pharmacist | Last 100 stock changes at the facility |
 | GET | `/surveillance/stock` | ghs | Per district: number of pharmacies out of / low on each drug (no patient data) |
+| GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
 Both check routes accept `recorded_at` for checks done offline and synced later.
@@ -580,6 +582,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 │   ├── calls.py           # Video call signalling (WebRTC introducer)
 │   ├── pharmacy.py        # Drug stock, e-prescriptions, dispensing, GHS shortages
 │   ├── drug_list.py       # Starter drug list (Essential Medicines, linked to conditions)
+│   ├── monitoring.py      # Admin: CloudWatch alarm states (System health)
 │   ├── surveillance.py    # GHS dashboard: anonymised counts, "<5" rule, outbreak alerts
 │   ├── forecast.py        # 2-week outbreak chance: trend + Poisson (statistics, not ML)
 │   ├── seed_demo_data.py  # Fake 8-week surveillance demo data (cholera spike)
@@ -608,6 +611,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
         ├── DistrictMap.jsx    # Leaflet/OpenStreetMap bubble map of districts
         ├── AdminApp.jsx       # Admin: create / disable accounts, reset passwords
         ├── PharmacistApp.jsx  # Pharmacist: prescriptions, stock, stock history
+        ├── SystemHealthPanel.jsx # Admin: CloudWatch alarm states
         ├── Prescriptions.jsx  # Doctor's "Prescribe drugs" panel + prescription item list
         ├── StockOutsPanel.jsx # GHS: medicine shortages by district
         ├── ChangePassword.jsx # Forced "set your own password" screen after a temporary password
@@ -656,7 +660,8 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Secrets in AWS Secrets Manager instead of `.env`
 - [x] Least-privilege IAM role: the API server can only read its two secrets and is denied deleting or changing the database
 - [x] CloudWatch logs from the API server
-- [ ] CloudWatch alarms, SMS reminders as a Lambda function, auto-deploy from GitHub (guide Steps 9 to 11; not needed for the demo)
+- [x] CloudWatch alarms (API errors, API down, database CPU, database disk), shown to the HealthConnect **admin** under **System health**
+- [ ] Alarm emails and budget alert (need an address); SMS reminders as a Lambda function; auto-deploy from GitHub (guide Steps 9 to 11; not needed for the demo)
 
 **Free-plan differences from the runbook:** NAT instance `t4g.micro` (not `t4g.nano`); database backups kept 1 day (not 7). The AWS account runs on free-plan credit: stop the database and servers after the presentation (guide Step 13).
 
