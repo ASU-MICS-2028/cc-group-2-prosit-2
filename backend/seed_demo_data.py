@@ -93,6 +93,57 @@ def create_demo_data(conn):
                     (patient_id, chv_id, temp, ",".join(symptoms), ",".join(conditions), level,
                      when.strftime("%Y-%m-%d %H:%M:%S")),
                 )
+        count = create_demo_care(conn, district, chv_id, now, count)
+    return count
+
+
+# How often a pregnant demo patient gets an antenatal check. Invented, so the SDG 3 panel has
+# something to show: some districts do better, and every district improves a little each week.
+ANTENATAL_RATE = {"Bolgatanga Municipal": 0.5, "Tamale Metropolitan": 0.6, "Wa Municipal": 0.45,
+                  "Kumasi Metropolitan": 0.75, "Cape Coast Metropolitan": 0.7}
+
+
+def create_demo_care(conn, district, chv_id, now, count):
+    """Fake pregnancies, antenatal checks, referrals and appointments for the SDG 3 panel."""
+    facility = f"Demo Clinic {district.split()[0]}"
+    stamp = lambda moment: moment.strftime("%Y-%m-%d %H:%M:%S")
+    for week in range(8):
+        chance = ANTENATAL_RATE[district] + 0.02 * (7 - week)
+        for _ in range(5):
+            count += 1
+            when = now - timedelta(days=week * 7 + random.randint(0, 6), hours=random.randint(1, 23))
+            patient_id = conn.execute(
+                "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, community, district, consent, created_at) "
+                "VALUES (?, ?, ?, ?, 'female', 1, ?, ?, 1, ?) RETURNING id",
+                (new_patient_ref(conn), chv_id, f"Demo Patient {count:04d}", random.randint(16, 42),
+                 "Demo community", district, stamp(when)),
+            ).fetchone()["id"]
+            if random.random() >= chance:
+                continue
+            level = random.choice(["LOW", "MEDIUM", "HIGH"])
+            observation_id = conn.execute(
+                "INSERT INTO observations (patient_id, recorded_by, visit_type, risk_level, created_at) "
+                "VALUES (?, ?, 'antenatal', ?, ?) RETURNING id",
+                (patient_id, chv_id, level, stamp(when)),
+            ).fetchone()["id"]
+            if level == "LOW":
+                continue
+            done = random.random() < 0.8
+            finished = when + timedelta(hours=random.randint(4, 72))
+            referral_id = conn.execute(
+                "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, facility, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                (observation_id, patient_id, chv_id, chv_id, facility, "completed" if done else "pending",
+                 stamp(when), stamp(finished) if done else None),
+            ).fetchone()["id"]
+            # Only an appointment already in the past can have been attended or missed
+            if done and finished + timedelta(days=2) < now:
+                conn.execute(
+                    "INSERT INTO appointments (patient_id, referral_id, booked_by, facility, scheduled_at, status) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (patient_id, referral_id, chv_id, facility, (finished + timedelta(days=2)).strftime("%Y-%m-%d %H:%M"),
+                     "attended" if random.random() < 0.75 else "missed"),
+                )
     return count
 
 
