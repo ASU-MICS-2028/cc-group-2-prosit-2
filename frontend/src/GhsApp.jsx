@@ -77,22 +77,15 @@ export default function GhsApp(props) {
   return (
     <AppShell {...props} items={menu} active={section} onSelect={setSection}>
         {section === "overview" && (<>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold text-stone-800">{t.ghsTitle}</h1>
-          <div className="text-right">
-            <button
-              onClick={exportDhims2}
-              className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
-            >
-              {t.ghsExport}
-            </button>
-            <p className="mt-1 text-[11px] text-stone-400">{t.ghsExportNote}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-stone-800">{t.ghsTitle}</h1>
+            <p className="mt-1 text-sm text-stone-500">{t.ghsHint}</p>
           </div>
+          <button onClick={exportDhims2} className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">
+            {t.ghsExport}
+          </button>
         </div>
-        <p className="mt-1 text-sm text-stone-500">{t.ghsHint}</p>
-        <p className="mt-1 text-xs text-stone-400">
-          {t.ghsPrivacy} · {t.ghsUpdated} {data.generated_at}
-        </p>
 
         {/* KPI row: last 7 days */}
         <div className="hc-tiles mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -104,34 +97,38 @@ export default function GhsApp(props) {
           ))}
         </div>
 
-        {/* Outbreak alerts: critical status = icon + label + colour */}
-        <div className="mt-5 space-y-2">
-          {data.alerts.length === 0 && <p className="text-sm text-stone-500">✓ {t.ghsNoAlerts}</p>}
-          {data.alerts.map((a) => (
-            <button
-              key={a.district + a.condition}
-              onClick={() => setSelected({ district: a.district, condition: a.condition })}
-              className="flex w-full items-center gap-3 rounded-2xl border-l-4 bg-white p-4 text-left shadow-sm hover:shadow-md"
-              style={{ borderLeftColor: "#d03b3b" }}
-            >
-              <span className="text-xl" aria-hidden="true">⚠</span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#d03b3b" }}>
-                  {t.ghsAlertLabel}
-                </p>
-                <p className="font-semibold text-stone-900">
-                  {t["cond_" + a.condition]} · {a.district}
-                </p>
-                <p className="text-sm text-stone-600">
-                  <span className="font-semibold tabular-nums text-stone-900">{a.this_week}</span> {t.ghsThisWeek} ·{" "}
-                  {t.ghsUsual} ~{a.usual}
-                </p>
-              </div>
-            </button>
-          ))}
+        <div className="mt-5 grid items-start gap-5 lg:grid-cols-5">
+          {/* Outbreak alerts: critical status = icon + label + colour */}
+          <div className="space-y-2 lg:col-span-2">
+            <h2 className="text-lg font-semibold text-stone-800">{t.ghsAlerts}</h2>
+            {data.alerts.length === 0 && <p className="text-sm text-stone-500">✓ {t.ghsNoAlerts}</p>}
+            {data.alerts.map((a) => (
+              <button
+                key={a.district + a.condition}
+                onClick={() => {
+                  setSelected({ district: a.district, condition: a.condition });
+                  setSection("map");
+                }}
+                className="flex w-full items-start gap-3 rounded-2xl bg-red-50 p-4 text-left hover:bg-red-100"
+              >
+                <span className="text-lg leading-6 text-red-700" aria-hidden="true">⚠</span>
+                <span>
+                  <span className="block font-semibold text-stone-900">{t["cond_" + a.condition]}</span>
+                  <span className="block text-sm text-stone-600">{a.district}</span>
+                  <span className="mt-1 block text-sm text-stone-700">
+                    <span className="font-bold tabular-nums text-red-700">{a.this_week}</span> {t.ghsThisWeek} · {t.ghsUsual} ~{a.usual}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="lg:col-span-3">
+            <ForecastPanel t={t} forecasts={data.forecasts} onSelect={(sel) => { setSelected(sel); setSection("map"); }} />
+          </div>
         </div>
-
-        <ForecastPanel t={t} forecasts={data.forecasts} onSelect={setSelected} />
+        <p className="mt-6 text-xs text-stone-500">
+          {t.ghsPrivacy} {t.ghsExportNote}. {t.ghsUpdated} {data.generated_at}
+        </p>
         </>)}
         {section === "resources" && (<>
           <StockOutsPanel t={t} forecasts={data.forecasts} />
@@ -141,7 +138,22 @@ export default function GhsApp(props) {
         {section === "workforce" && <WorkerCertificates t={t} />}
 
         {section === "map" && (<>
-        <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
+        <div className="grid items-start gap-x-5 xl:grid-cols-5">
+          <div className="xl:col-span-3">
+            <DistrictMap t={t} districts={data.districts} alerts={data.alerts} conditions={CONDITIONS} onSelect={selectFromMap} />
+          </div>
+          <div className="xl:col-span-2">
+            {selectedRow && (
+              <TrendChart
+                t={t}
+                district={selected.district}
+                condition={selected.condition}
+                series={selectedRow.conditions[selected.condition]}
+                alertUsual={data.alerts.find((a) => a.district === selected.district && a.condition === selected.condition)?.usual}
+              />
+            )}
+          </div>
+        </div>
 
         {/* Heatmap table: districts x conditions, last 7 days */}
         <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
@@ -201,17 +213,6 @@ export default function GhsApp(props) {
           </div>
           <p className="mt-2 h-5 text-xs text-stone-600">{hover || t.ghsHoverHint}</p>
         </div>
-
-        {/* Trend: one district + condition over 8 weeks */}
-        {selectedRow && (
-          <TrendChart
-            t={t}
-            district={selected.district}
-            condition={selected.condition}
-            series={selectedRow.conditions[selected.condition]}
-            alertUsual={data.alerts.find((a) => a.district === selected.district && a.condition === selected.condition)?.usual}
-          />
-        )}
         </>)}
     </AppShell>
   );
@@ -258,11 +259,11 @@ function TrendChart({ t, district, condition, series, alertUsual }) {
                 onFocus={() => setHover(label)}
                 onMouseLeave={() => setHover(null)}
                 aria-label={label}
-                className="flex h-full w-10 flex-col items-center justify-end"
+                className="flex h-full w-8 flex-col items-center justify-end"
               >
                 <span className="mb-1 text-xs font-semibold tabular-nums text-stone-700">{v}</span>
                 <span
-                  className="block w-6 rounded-t transition hover:brightness-110"
+                  className="block w-5 rounded-t transition hover:brightness-110"
                   style={{
                     height: v === "<5" ? 3 : Math.max(numeric(v) ? 3 : 0, (numeric(v) / max) * (H - 24)),
                     background: isNow ? "#2a78d6" : "#c3c2b7",
@@ -298,11 +299,10 @@ function ForecastPanel({ t, forecasts, onSelect }) {
   const percent = (chance) => (chance >= 0.99 ? ">99%" : `${Math.round(chance * 100)}%`);
 
   return (
-    <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
+    <div>
       <h2 className="text-lg font-semibold text-stone-800">{t.ghsForecastTitle}</h2>
-      <p className="text-xs text-stone-500">{t.ghsForecastHint}</p>
-      <div className="mt-3 space-y-2">
-        {shown.length === 0 && <p className="text-sm text-stone-500">✓ {t.ghsForecastNone}</p>}
+      <div className="mt-2 divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        {shown.length === 0 && <p className="p-4 text-sm text-stone-500">✓ {t.ghsForecastNone}</p>}
         {shown.map((f) => {
           const level = f.chance >= 0.6 ? "high" : "possible";
           const expected = f.expected_next_2_weeks;
@@ -310,31 +310,27 @@ function ForecastPanel({ t, forecasts, onSelect }) {
             <button
               key={f.district + f.condition}
               onClick={() => onSelect({ district: f.district, condition: f.condition })}
-              className="flex w-full items-start gap-3 rounded-xl border border-l-4 border-stone-200 p-3 text-left hover:shadow-md"
-              style={{ borderLeftColor: OUTLOOK[level].color }}
+              className="flex w-full items-center gap-4 p-3.5 text-left first:rounded-t-2xl last:rounded-b-2xl hover:bg-stone-50"
             >
-              <span className="text-lg" style={{ color: OUTLOOK[level].color }} aria-hidden="true">
-                {OUTLOOK[level].icon}
-              </span>
-              <div className="text-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-stone-700">
-                  {level === "high" ? t.ghsForecastHigh : t.ghsForecastPossible} · {percent(f.chance)}
-                </p>
-                <p className="font-semibold text-stone-900">
+              <span className="min-w-0 flex-1 text-sm">
+                <span className="block font-semibold text-stone-900">
                   {t["cond_" + f.condition]} · {f.district}
-                </p>
-                <p className="text-stone-600">
-                  {t.ghsForecastExpected} <span className="font-semibold tabular-nums text-stone-900">{expected}</span>{" "}
-                  ({ARROW[f.direction]} {t["trend_" + f.direction]}) · {t.ghsForecastLevel} {f.outbreak_level} {t.ghsPerWeek}
-                </p>
-                <p className="text-stone-600">
-                  {t.ghsForecastPrepare} {expected === "<5" ? t.ghsForecastAFew : `~${expected}`} {t["supply_" + f.condition]}
-                </p>
-              </div>
+                </span>
+                <span className="block text-xs text-stone-600">
+                  {t.ghsForecastExpected} <span className="font-semibold tabular-nums">{expected}</span> {ARROW[f.direction]} · {t.ghsForecastPrepare} {expected === "<5" ? t.ghsForecastAFew : `~${expected}`} {t["supply_" + f.condition]}
+                </span>
+              </span>
+              <span className="w-20 shrink-0 text-right">
+                <span className="text-sm font-bold tabular-nums text-stone-800">{percent(f.chance)}</span>
+                <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-stone-100">
+                  <span className="block h-full rounded-full" style={{ width: `${Math.round(f.chance * 100)}%`, background: OUTLOOK[level].color }} />
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
+      <p className="mt-2 text-xs text-stone-500">{t.ghsForecastHint}</p>
     </div>
   );
 }

@@ -5,31 +5,31 @@
 @theme {
   --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
 
-  /* teal = cobalt blue */
-  --color-teal-50: #eef2ff;
-  --color-teal-100: #dce4ff;
-  --color-teal-200: #b9c8ff;
-  --color-teal-300: #8aa2ff;
-  --color-teal-400: #5b7bf5;
-  --color-teal-500: #3558ea;
-  --color-teal-600: #1f45e0;
-  --color-teal-700: #1738c7;
-  --color-teal-800: #122ca0;
-  --color-teal-900: #0e2180;
+  /* teal = fresh leaf green */
+  --color-teal-50: #ebf9f0;
+  --color-teal-100: #d6f3e0;
+  --color-teal-200: #aee6c3;
+  --color-teal-300: #7cd5a0;
+  --color-teal-400: #45bf78;
+  --color-teal-500: #22a65a;
+  --color-teal-600: #16924b;
+  --color-teal-700: #12803f;
+  --color-teal-800: #0f6a35;
+  --color-teal-900: #0d552c;
 
-  /* stone = clean cool greys */
-  --color-stone-50: #f6f7fb;
-  --color-stone-100: #eceef6;
-  --color-stone-200: #dee2ee;
-  --color-stone-300: #c5cbdc;
-  --color-stone-400: #6e7690;
-  --color-stone-500: #5c6480;
-  --color-stone-600: #49506a;
-  --color-stone-700: #363c54;
-  --color-stone-800: #20253b;
-  --color-stone-900: #12162a;
+  /* stone = soft neutral greys */
+  --color-stone-50: #f8faf9;
+  --color-stone-100: #f1f4f3;
+  --color-stone-200: #e5eae8;
+  --color-stone-300: #d0d8d5;
+  --color-stone-400: #6f7b78;
+  --color-stone-500: #5f6b68;
+  --color-stone-600: #4a5552;
+  --color-stone-700: #37413e;
+  --color-stone-800: #222b29;
+  --color-stone-900: #141b19;
 
-  --color-marigold: #ffc531;
+  --color-marigold: #ffb84d;
 
   /* Friendly, generous corners */
   --radius-xl: 0.875rem;
@@ -40,17 +40,17 @@
   h1, h2 { font-family: var(--font-display); letter-spacing: -0.015em; }
 }
 
-/* Key numbers as solid colour blocks */
-.hc-tiles > * { border-color: transparent; color: #fff; }
-.hc-tiles p { color: inherit; }
-.hc-tiles > :nth-child(1) { background: #1f45e0; }
-.hc-tiles > :nth-child(2) { background: #14c4b2; color: #0e2180; }
-.hc-tiles > :nth-child(3) { background: #ffc531; color: #0e2180; }
-.hc-tiles > :nth-child(4) { background: #7a3ff2; }
-.hc-tiles > button[class*="ring-4"] { outline: 3px solid #0e2180; outline-offset: 2px; }
+/* Key numbers on soft tints, with dark text */
+.hc-tiles > * { border-color: transparent; }
+.hc-tiles > :nth-child(1) { background: #e3f6ea; }
+.hc-tiles > :nth-child(2) { background: #e6f1fd; }
+.hc-tiles > :nth-child(3) { background: #fff3df; }
+.hc-tiles > :nth-child(4) { background: #f1ecfd; }
+.hc-tiles > button[class*="ring-4"] { outline: 2px solid #16924b; outline-offset: 1px; }
 /* Risk numbers keep their medical meaning: red, amber, green */
-.hc-tiles-risk > :nth-child(2) { background: #dc2626; color: #fff; }
-.hc-tiles-risk > :nth-child(4) { background: #0b8a5f; }
+.hc-tiles-risk > :nth-child(1) { background: #f1f4f3; }
+.hc-tiles-risk > :nth-child(2) { background: #fde8e8; }
+.hc-tiles-risk > :nth-child(4) { background: #e3f6ea; }
 
 /* Opening screen: the words appear, rest, then everything fades to the login page */
 .hc-splash { animation: hc-splash-out 2.8s ease-in-out forwards; }

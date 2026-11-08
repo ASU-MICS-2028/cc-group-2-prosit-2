@@ -90,7 +90,7 @@ export default function DistrictMap({ t, districts, alerts, conditions, onSelect
         </select>
       </div>
 
-      <div ref={box} className="relative z-0 mt-3 h-[560px] overflow-hidden rounded-xl" />
+      <div ref={box} className="relative z-0 mt-3 h-[420px] overflow-hidden rounded-xl" />
 
       {/* Legend: bubble size and alert ring */}
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-stone-600">

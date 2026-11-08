@@ -4,7 +4,7 @@ import Icon from "./Icon";
 import LanguageSelect from "./LanguageSelect";
 
 // Each menu item gets its own colour, so people can find it by colour as well as by word
-const ITEM_COLOURS = ["#ffc531", "#ff8a6b", "#2cd4c2", "#ff9fe0", "#b8ec51", "#7cc7ff"];
+const ITEM_COLOURS = ["#d6f3e0", "#dcecfc", "#ffeccb", "#ece5fc", "#fde3e0", "#d5f1f2"];
 
 const ROLE_NAMES = {
   chv: "Community Health Volunteer",
@@ -42,12 +42,12 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
   return (
     <div className="min-h-screen bg-stone-50 lg:pl-64">
       {/* Side menu: computers */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col bg-teal-900 text-stone-100 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-stone-200 bg-white text-stone-700 lg:flex">
         <div className="flex items-center gap-3 px-5 pb-6 pt-6">
           <Logo size={36} />
           <div className="leading-tight">
-            <p className="font-display text-lg font-bold">HealthConnect</p>
-            <p className="text-xs text-teal-200">by Storm Surfers</p>
+            <p className="font-display text-lg font-bold text-stone-800">HealthConnect</p>
+            <p className="text-xs text-stone-500">by Storm Surfers</p>
           </div>
         </div>
         <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
@@ -57,18 +57,18 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
               onClick={() => onSelect(item.key)}
               aria-current={active === item.key ? "page" : undefined}
               className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm font-medium ${
-                active === item.key ? "bg-white font-semibold text-teal-900" : "text-white hover:bg-teal-800"
+                active === item.key ? "bg-teal-50 font-semibold text-teal-800" : "text-stone-600 hover:bg-stone-100"
               }`}
             >
-              <span className="rounded-lg p-1.5 text-teal-900" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={18} /></span>
+              <span className="rounded-lg p-1.5 text-stone-700" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={18} /></span>
               <span className="flex-1">{item.label}</span>
-              {item.count > 0 && <span className="rounded-full bg-marigold px-2 text-xs font-bold text-teal-900">{item.count}</span>}
+              {item.count > 0 && <span className="rounded-full bg-teal-600 px-2 text-xs font-bold text-white">{item.count}</span>}
             </button>
           ))}
         </nav>
-        <div className="space-y-3 border-t border-teal-800 p-5 text-teal-100">
+        <div className="space-y-3 border-t border-stone-200 p-5 text-stone-500">
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-white">{user.full_name}</p>
+            <p className="text-sm font-semibold text-stone-800">{user.full_name}</p>
             <p className="mt-0.5 text-xs">{ROLE_NAMES[user.role]}</p>
             {user.facility && <p className="text-xs">{user.facility}</p>}
           </div>
@@ -76,24 +76,24 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
             {status}
             <LanguageSelect lang={lang} setLang={setLang} className="text-xs" />
           </div>
-          <button onClick={onLogout} className="w-full rounded-xl border border-teal-500 py-1.5 text-xs font-medium hover:bg-teal-800">
+          <button onClick={onLogout} className="w-full rounded-xl border border-stone-300 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100">
             {t.logout}
           </button>
         </div>
       </aside>
 
       {/* Top bar: phones */}
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-teal-900 px-4 py-2.5 text-stone-100 lg:hidden">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-stone-200 bg-white px-4 py-2.5 lg:hidden">
         <div className="flex items-center gap-2">
           <Logo size={30} />
           <div className="leading-none">
-            <p className="font-display font-bold">HealthConnect</p>
-            <div className="mt-1 text-teal-200">{status}</div>
+            <p className="font-display font-bold text-stone-800">HealthConnect</p>
+            <div className="mt-1 text-stone-500">{status}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <LanguageSelect lang={lang} setLang={setLang} className="text-xs" />
-          <button onClick={onLogout} className="border border-teal-600 px-2.5 py-1 text-xs font-medium">{t.logout}</button>
+          <button onClick={onLogout} className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700">{t.logout}</button>
         </div>
       </header>
 
@@ -110,7 +110,7 @@ export default function AppShell({ user, t, lang, setLang, onLogout, items, acti
               active === item.key ? "border-teal-600 font-bold text-teal-700" : "border-transparent text-stone-500"
             }`}
           >
-            <span className="rounded-lg p-1 text-teal-900" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={20} /></span>
+            <span className="rounded-lg p-1 text-stone-700" style={{ background: ITEM_COLOURS[i % ITEM_COLOURS.length] }}><Icon name={item.icon} size={20} /></span>
             {item.label}
             {item.count > 0 && <span className="absolute right-3 top-1 rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{item.count}</span>}
           </button>

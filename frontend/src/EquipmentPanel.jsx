@@ -66,31 +66,44 @@ export function EquipmentByDistrict({ t }) {
       .catch((err) => setError(err.message));
   }, []);
 
+  // Every device type reported anywhere becomes a column
+  const devices = [...new Set(districts.flatMap((d) => d.items.map((i) => i.item)))];
+
   return (
     <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
       <h2 className="text-lg font-semibold text-stone-800">{t.equipDistrictTitle}</h2>
       <p className="text-xs text-stone-500">{t.equipDistrictHint}</p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {districts.map((d) => (
-          <div key={d.district} className="rounded-xl border border-stone-200 p-3">
-            <p className="font-semibold text-stone-900">
-              {d.district} <span className="text-xs font-normal text-stone-500">· {t.equipFacilities}: {d.facilities}</span>
-            </p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {d.items.map((i) => (
-                <li key={i.item} className="flex items-start justify-between gap-2">
-                  <span className="text-stone-700">{t["equip_" + i.item]}</span>
-                  <span className="whitespace-nowrap text-xs tabular-nums">
-                    {i.working} {t.equipWorkingShort}
-                    {i.broken > 0 && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">{i.broken} {t.equipBrokenShort}</span>}
-                    {i.facilities_without > 0 && <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">{i.facilities_without} {t.equipWithout}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: 560 }}>
+          <thead>
+            <tr className="text-left text-xs text-stone-500">
+              <th className="py-1 pr-3 font-medium">{t.impactDistrict}</th>
+              {devices.map((item) => <th key={item} className="py-1 pr-3 font-medium">{t["equip_" + item]}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {districts.map((d) => (
+              <tr key={d.district} className="border-t border-stone-100">
+                <td className="py-2 pr-3 font-medium text-stone-800">{d.district}</td>
+                {devices.map((item) => {
+                  const i = d.items.find((x) => x.item === item);
+                  return (
+                    <td key={item} className="py-2 pr-3 text-xs">
+                      {i ? (
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span className="tabular-nums text-stone-700">{i.working} {t.equipWorkingShort}</span>
+                          {i.broken > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">{i.broken} {t.equipBrokenShort}</span>}
+                          {i.facilities_without > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">{i.facilities_without} {t.equipWithout}</span>}
+                        </span>
+                      ) : "–"}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

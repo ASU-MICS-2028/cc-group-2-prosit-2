@@ -244,8 +244,9 @@ export function WorkerCertificates({ t }) {
         <input placeholder={t.certSearch} value={search} onChange={(e) => setSearch(e.target.value)} className={inputClass} />
         {workers.length === 0 && <p className="text-stone-500">{t.certNoWorkers}</p>}
 
+        <div className="divide-y divide-stone-100">
         {workers.map((w) => (
-          <div key={w.id} className="rounded-xl border border-stone-200 p-3">
+          <div key={w.id} className="py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-semibold text-stone-900">{w.full_name}</p>
@@ -269,6 +270,7 @@ export function WorkerCertificates({ t }) {
             ))}
           </div>
         ))}
+        </div>
         <p className="text-[11px] italic text-stone-500">{t.certDisclaimer}</p>
       </div>
     </div>

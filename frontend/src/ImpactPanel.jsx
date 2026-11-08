@@ -33,11 +33,11 @@ export default function ImpactPanel({ t }) {
   const { current: now, previous: before, gap } = data;
   return (
     <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
-      <h2 className="text-lg font-semibold text-stone-800">🎯 {t.impactTitle}</h2>
+      <h2 className="text-lg font-semibold text-stone-800">{t.impactTitle}</h2>
       <p className="text-xs text-stone-500">{t.impactHint}</p>
       <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{t.impactHonest}</p>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="hc-tiles mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile t={t} label={t.impactAntenatal} now={percent(now.antenatal.percent)} before={percent(before.antenatal.percent)} />
         <Tile t={t} label={t.impactReferrals} now={percent(now.referrals.percent)} before={percent(before.referrals.percent)} />
         <Tile t={t} label={t.impactAttended} now={percent(now.appointments.percent)} before={percent(before.appointments.percent)} />
