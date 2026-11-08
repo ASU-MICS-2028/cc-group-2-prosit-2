@@ -697,7 +697,6 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Get the translations reviewed by native speakers
 - [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
 - [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS, CHV visit, voice call) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
-- [ ] Voice-call reminders in the patient's language: **designed, not built** (needs a paid provider and recordings)
 
 ### ⬜ Phase 7: Week 4, Sustainability (whole team)
 - [ ] Insurance (NHIS) and mobile money: described and costed
