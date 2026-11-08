@@ -87,7 +87,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 of 254 screen strings per language (human translation by Isaac), dropdown to switch. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
-| Cloud deployment (AWS eu-north-1) | ⬜ Not started (runs locally for now) |
+| Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
 | ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
@@ -649,13 +649,16 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Low-bandwidth video consults (WebRTC, 1-to-1) for CHV, nurse and doctor on the same referral, with audio-only mode
 - [x] E-prescriptions: doctor prescribes on a referral, **pharmacist** (new role) dispenses all-or-nothing; drug stock with low-stock warnings, stock history, and medicine shortages by district for GHS
 
-### ⬜ Phase 3: Cloud migration (Alice)
-- [ ] Move the database from SQLite to **AWS RDS** (eu-north-1), encrypted at rest
-- [ ] Host the API (e.g. EC2 / App Runner / Lambda) behind **HTTPS (TLS)**
-- [ ] Host the PWA on S3 + CloudFront
-- [ ] Secrets in AWS Secrets Manager instead of `.env`
-- [ ] Least-privilege IAM role (from Clifford's Lab 6)
-- [ ] CloudWatch logs and alarms
+### ✅ Phase 3: Cloud migration (code and runbook: Clifford; deployment: Henry)
+- [x] Move the database from SQLite to **AWS RDS PostgreSQL** (eu-north-1): encrypted at rest, TLS forced, not public, deletion protection; password created and rotated by RDS
+- [x] Host the API on **EC2** (Auto Scaling group of 1, replaced automatically if unhealthy) behind an **internal** load balancer, reached only through CloudFront over **HTTPS**
+- [x] Host the PWA on a **private** S3 bucket + CloudFront (HTTP redirected to HTTPS)
+- [x] Secrets in AWS Secrets Manager instead of `.env`
+- [x] Least-privilege IAM role: the API server can only read its two secrets and is denied deleting or changing the database
+- [x] CloudWatch logs from the API server
+- [ ] CloudWatch alarms, SMS reminders as a Lambda function, auto-deploy from GitHub (guide Steps 9 to 11; not needed for the demo)
+
+**Free-plan differences from the runbook:** NAT instance `t4g.micro` (not `t4g.nano`); database backups kept 1 day (not 7). The AWS account runs on free-plan credit: stop the database and servers after the presentation (guide Step 13).
 
 **Notes for the migration:**
 - **Background jobs** (SMS reminders, demo refresh) run inside the API every 10 minutes. If the cloud runs **2+ copies** of the API, each copy runs them (double reminders, doubled demo data). Run **one copy**, or move both jobs to **one AWS EventBridge Scheduler** rule that calls them once.
@@ -714,7 +717,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 
 ## 14. Known limitations
 
-- **Local only**: SQLite on a laptop; the database file itself is not encrypted yet (planned: RDS with encryption at rest).
+- **Two set-ups**: laptops still use an unencrypted SQLite file for development; the cloud copy uses encrypted RDS PostgreSQL. The cloud copy holds demo data only.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
