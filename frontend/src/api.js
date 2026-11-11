@@ -24,10 +24,15 @@ export async function api(path, { method = "GET", body } = {}) {
   return data;
 }
 
-// Photos come back as image bytes, not JSON: fetch with the token and make a local URL for <img>
-export async function apiImageUrl(path) {
+// Photos and lesson audio come back as bytes, not JSON: fetch with the token and make a
+// local URL for <img> or <audio>. On failure, show the server's reason.
+export async function apiBlobUrl(path) {
   const token = sessionStorage.getItem("hc_token");
   const res = await fetch(API_URL + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (!res.ok) throw new Error("Could not load the photo");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(typeof data.detail === "string" ? data.detail : "Could not load this file");
+  }
   return URL.createObjectURL(await res.blob());
 }
+export const apiImageUrl = apiBlobUrl;

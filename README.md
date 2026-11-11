@@ -90,6 +90,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
 | Emergency auto-escalation | ✅ Done: an urgent case (HIGH + danger sign) not marked arrived within 30 minutes is sent to a hospital doctor automatically, with an SMS ([backend/escalation.py](backend/escalation.py)) |
 | Child immunisation tracking | ✅ Done: Ghana EPI schedule from the child's date of birth, CHV records doses, "Vaccines due" list, GHS coverage by district ([backend/immunisation.py](backend/immunisation.py)). Schedule to be checked against the current GHS record book |
+| Spoken health lessons (text-to-speech) | ✅ Built: "🔊 Listen" reads a lesson aloud with [Abena AI](https://abena.mobobi.com/playground/sdk/docs/) in Twi, Ewe or Ghanaian English (no Ga or Dagbani voice yet). Key kept on the server (`ABENA_API_KEY`); each lesson is spoken once and stored, so replays cost nothing ([backend/tts.py](backend/tts.py)). Needs Abena credits |
 | Household health surveys | ✅ Done: 6 yes/no questions, no names; GHS sees district percentages ([backend/survey.py](backend/survey.py)) |
 | Community health alert SMS | ✅ Done: GHS sends one SMS to a district's facilities and to residents who agreed (separate consent tick box); GHS never sees numbers ([backend/community_alerts.py](backend/community_alerts.py)). Delivery needs a valid Arkesel key |
 | Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 209 labels added later (pharmacy, System health, community and facility tools) are English for now; a Google Translate draft script is ready for Isaac to review. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
@@ -577,6 +578,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET, DELETE | `/auth/passkeys` | any signed-in user | List / remove your passkeys |
 | GET, POST | `/patients/{id}/photos` | chv, nurse, doctor | List / add a photo (need-to-know along the referral chain; consent required) |
 | GET, DELETE | `/photos/{id}` | chv, nurse, doctor | The image itself (`Cache-Control: no-store`) / delete (uploader only) |
+| GET | `/lessons/{id}/audio` | chv, nurse, doctor | The lesson spoken aloud (WAV), made once by Abena AI and then reused |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
@@ -731,7 +733,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 |---|---|
 | Health records (Week 1) | Voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
 | Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
-| Surveillance (Week 3) | Recorded audio/video in lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
+| Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
 

@@ -3,9 +3,12 @@ import { api } from "./api";
 import { LANGUAGES } from "./i18n";
 import { cachedApi } from "./patientCache";
 import LessonSlides from "./LessonSlides";
+import ListenButton from "./ListenButton";
 import { inputClass } from "./styles";
 
 const TOPICS = ["malaria", "maternal", "cholera", "general"];
+// Languages Abena AI can speak (backend/tts.py). Ga and Dagbani have no voice yet.
+const SPOKEN = ["tw", "ee", "en"];
 const BLANK = { topic: "general", title: "", body: "", language: "tw" };
 const languageName = (code) => LANGUAGES.find((l) => l.code === code)?.name || code;
 
@@ -93,6 +96,7 @@ export default function LessonsPanel({ t, role, userId }) {
               </button>
               {shown === l.id && (
                 <div className="mt-2">
+                  {SPOKEN.includes(l.language) ? <ListenButton t={t} lessonId={l.id} /> : <p className="mb-2 text-xs text-stone-500">{t.listenNoVoice}</p>}
                   <LessonSlides t={t} body={l.body} />
                   <p className="mt-2 whitespace-pre-wrap text-xs text-stone-500">{l.body}</p>
                   {l.reviewer_name && <p className="mt-1 text-xs text-stone-500">{t.lessonsReviewedBy} {l.reviewer_name}</p>}

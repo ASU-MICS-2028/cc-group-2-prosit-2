@@ -53,6 +53,7 @@ SCREENS = {
     "CommunityAlertPanel.jsx": "GHS officer: community health alert SMS",
     "Fingerprint.jsx": "Sign-in page and top bar: fingerprint sign-in",
     "PhotosPanel.jsx": "CHV: patient photos (also nurse, doctor)",
+    "ListenButton.jsx": "Community: health education lessons",
     "main.jsx": "App start-up",
 }
 
