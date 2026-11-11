@@ -242,18 +242,6 @@ TABLES = [
         UNIQUE (patient_id, vaccine)
     )""",
     """
-    -- Spoken lessons (tts.py): made once by Abena AI, then replayed for free.
-    -- text_hash changes when the lesson text changes, so an edited lesson is spoken again.
-    CREATE TABLE IF NOT EXISTS lesson_audio (
-        id         {id},
-        lesson_id  INTEGER NOT NULL REFERENCES lessons(id),
-        voice      TEXT NOT NULL,
-        text_hash  TEXT NOT NULL,
-        audio      {blob} NOT NULL,     -- WAV
-        created_at TEXT NOT NULL DEFAULT {now},
-        UNIQUE (lesson_id, voice, text_hash)
-    )""",
-    """
     -- Clinical photos: wounds, skin, X-rays, lab results (photos.py). Shrunk on the phone first.
     -- Kept in the encrypted database with the rest of the record (S3 is the next step at scale).
     CREATE TABLE IF NOT EXISTS photos (
@@ -392,6 +380,18 @@ TABLES = [
         reviewed_at TEXT,
         created_at  TEXT NOT NULL DEFAULT {now},
         UNIQUE (title, language)
+    )""",
+    """
+    -- Spoken lessons (tts.py). After lessons: PostgreSQL needs lessons to exist first: made once by Abena AI, then replayed for free.
+    -- text_hash changes when the lesson text changes, so an edited lesson is spoken again.
+    CREATE TABLE IF NOT EXISTS lesson_audio (
+        id         {id},
+        lesson_id  INTEGER NOT NULL REFERENCES lessons(id),
+        voice      TEXT NOT NULL,
+        text_hash  TEXT NOT NULL,
+        audio      {blob} NOT NULL,     -- WAV
+        created_at TEXT NOT NULL DEFAULT {now},
+        UNIQUE (lesson_id, voice, text_hash)
     )""",
     """
     -- A Paystack payment that has started. The amount is kept here so the phone cannot change it
