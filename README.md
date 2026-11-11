@@ -85,6 +85,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
 | Patient history for nurses/doctors (referred patients only) | ✅ Done |
 | Photo documentation and image sharing | ✅ Done: CHV photographs wounds or skin conditions, nurses/doctors add X-rays or lab results; shrunk on the phone (1280 px, ~150-250 KB; 800 px, ~100-130 KB when the phone reports 2G); separate patient consent per photo; seen only by the patient's CHV and the facilities they were referred to; every view audited ([backend/photos.py](backend/photos.py)). Stored in the encrypted database; S3 is the next step at scale |
+| Medical scans (DICOM: the hospital X-ray / CT / ultrasound file format) | ✅ Done: nurses and doctors upload the `.dcm` file from the scan machine (up to 25 MB, consent required). The server **removes the patient's name, ID, birth date, address, staff and hospital names** and puts our patient code instead, keeps the file at full quality (e.g. 4,096 grey levels instead of a JPEG's 256), and makes a small phone preview. Doctors change the contrast (window/level: CT presets for soft tissue, lung, bone, or sliders) and can download the `.dcm` for a hospital DICOM viewer; the patient's CHV sees the preview only. Same need-to-know rules and audit log as photos ([backend/scans.py](backend/scans.py)). Reads uncompressed, RLE, JPEG and JPEG 2000 files. Not built: viewing a whole CT series slice by slice, a link to a hospital PACS (scan archive) |
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
@@ -581,6 +582,10 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET, DELETE | `/auth/passkeys` | any signed-in user | List / remove your passkeys |
 | GET, POST | `/patients/{id}/photos` | chv, nurse, doctor | List / add a photo (need-to-know along the referral chain; consent required) |
 | GET, DELETE | `/photos/{id}` | chv, nurse, doctor | The image itself (`Cache-Control: no-store`) / delete (uploader only) |
+| GET, POST | `/patients/{id}/scans` | GET: chv, nurse, doctor · POST: nurse, doctor | List / add a DICOM scan (de-identified on upload; consent required) |
+| GET | `/scans/{id}/preview?center=&width=` | chv, nurse, doctor | JPEG preview; with `center` + `width`, the chosen contrast (window/level) |
+| GET | `/scans/{id}/dicom` | nurse, doctor | The full-quality de-identified `.dcm` file |
+| DELETE | `/scans/{id}` | nurse, doctor | Delete (uploader only) |
 | GET | `/lessons/{id}/audio` | chv, nurse, doctor | The lesson spoken aloud (WAV), made once by Abena AI and then reused |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
@@ -735,7 +740,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 | Area | Not built yet |
 |---|---|
 | Health records (Week 1) | Voice-to-text notes; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Telemedicine (Week 2) | Whole DICOM series viewer and hospital PACS link (single DICOM images are built); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); stronger prescription fraud checks; links to outside pharmacies and hospitals |
 | Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |

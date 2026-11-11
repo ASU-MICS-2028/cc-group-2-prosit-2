@@ -16,6 +16,7 @@ import InsurancePanel from "./InsurancePanel";
 import HealerPanel from "./HealerPanel";
 import ImmunisationPanel from "./ImmunisationPanel";
 import PhotosPanel from "./PhotosPanel";
+import ScansPanel from "./ScansPanel";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
   const [data, setData] = useState(null);
@@ -161,6 +162,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
       <HealerPanel t={t} patientId={patient.id} />
       {(patient.age < 5 || patient.birth_date) && <ImmunisationPanel t={t} patientId={patient.id} />}
       <PhotosPanel t={t} patientId={patient.id} userId={user.id} />
+      <ScansPanel t={t} patientId={patient.id} userId={user.id} canUpload={false} />
 
       {appointments.length > 0 && (
         <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">

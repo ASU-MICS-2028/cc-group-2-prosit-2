@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import PhotosPanel from "./PhotosPanel";
+import ScansPanel from "./ScansPanel";
 import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
@@ -239,6 +240,7 @@ function ReferralCard({ r, t, userId, isNurse, hospitals, onChanged, onBooked, o
       </button>
       {showHistory && <PatientHistory referralId={r.id} t={t} />}
       {showHistory && <PhotosPanel t={t} patientId={r.patient_id} userId={userId} />}
+      {showHistory && <ScansPanel t={t} patientId={r.patient_id} userId={userId} canUpload />}
       <BookAppointment referralId={r.id} t={t} onBooked={onBooked} />
       {/* Prescriptions go to the pharmacy at the doctor's own facility */}
       {!isNurse && <PrescribePanel referralId={r.id} t={t} />}

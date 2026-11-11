@@ -267,6 +267,31 @@ TABLES = [
         created_at   TEXT NOT NULL DEFAULT {now}
     )""",
     """
+    -- Medical scans in DICOM, the hospital scan format (scans.py): X-ray, CT, ultrasound.
+    -- The file is kept at full quality with the patient's name, ID and birth date removed;
+    -- preview is a small JPEG for phones. Uploaded by nurses and doctors only.
+    CREATE TABLE IF NOT EXISTS scans (
+        id           {id},
+        patient_id   INTEGER NOT NULL REFERENCES patients(id),
+        uploaded_by  INTEGER NOT NULL REFERENCES users(id),
+        caption      TEXT,
+        modality     TEXT,              -- CR/DX X-ray, CT, US ultrasound, MR ...
+        body_part    TEXT,
+        study_date   TEXT,
+        width        INTEGER NOT NULL,
+        height       INTEGER NOT NULL,
+        frames       INTEGER NOT NULL DEFAULT 1,
+        win_center   {real},            -- default contrast (window/level) the machine suggested
+        win_width    {real},
+        value_min    {real},            -- range of grey values, for the contrast sliders
+        value_max    {real},
+        burned_in    INTEGER NOT NULL DEFAULT 0,  -- the file says text is drawn into the image
+        size         INTEGER NOT NULL,
+        dicom        {blob} NOT NULL,   -- de-identified DICOM file
+        preview      {blob} NOT NULL,   -- JPEG, default contrast
+        created_at   TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
     -- Passkeys: sign in with the phone's fingerprint, face or PIN (WebAuthn, passkeys.py).
     -- Only the PUBLIC key is stored; the private key never leaves the phone.
     CREATE TABLE IF NOT EXISTS passkeys (

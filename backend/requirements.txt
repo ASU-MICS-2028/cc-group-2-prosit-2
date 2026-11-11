@@ -7,3 +7,6 @@ pyjwt
 psycopg[binary]  # PostgreSQL (AWS RDS); not used when running on SQLite locally
 boto3            # reads secrets from AWS Secrets Manager in the cloud
 webauthn>=2.5,<3  # fingerprint / face / PIN sign-in (passkeys.py)
+pydicom>=3,<4    # DICOM medical scans (scans.py)
+numpy            # scan pixels
+pillow           # scan previews (JPEG)
