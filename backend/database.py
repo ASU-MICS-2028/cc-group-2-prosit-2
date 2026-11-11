@@ -239,6 +239,28 @@ TABLES = [
         UNIQUE (patient_id, vaccine)
     )""",
     """
+    -- Passkeys: sign in with the phone's fingerprint, face or PIN (WebAuthn, passkeys.py).
+    -- Only the PUBLIC key is stored; the private key never leaves the phone.
+    CREATE TABLE IF NOT EXISTS passkeys (
+        id            {id},
+        user_id       INTEGER NOT NULL REFERENCES users(id),
+        credential_id TEXT UNIQUE NOT NULL,   -- base64url
+        public_key    TEXT NOT NULL,          -- base64url
+        sign_count    INTEGER NOT NULL DEFAULT 0,
+        label         TEXT,
+        created_at    TEXT NOT NULL DEFAULT {now},
+        last_used_at  TEXT
+    )""",
+    """
+    -- One-time WebAuthn challenges (5 minutes), kept in the database so any server can check them
+    CREATE TABLE IF NOT EXISTS passkey_challenges (
+        id         {id},
+        challenge  TEXT UNIQUE NOT NULL,      -- base64url
+        user_id    INTEGER REFERENCES users(id),
+        purpose    TEXT NOT NULL CHECK (purpose IN ('register','login')),
+        expires_at TEXT NOT NULL
+    )""",
+    """
     -- Community health alert SMS sent by GHS to a district (community_alerts.py). Counts only, no numbers
     CREATE TABLE IF NOT EXISTS community_alerts (
         id         {id},

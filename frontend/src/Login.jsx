@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "./api";
 import Logo from "./Logo";
 import LanguageSelect from "./LanguageSelect";
+import { FingerprintSignIn } from "./Fingerprint";
 
 const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "pharm1", "ghs1", "admin1"];
 
@@ -98,6 +99,7 @@ export default function Login({ onLogin, t, lang, setLang }) {
               {loading ? t.signingIn : t.login}
             </button>
           </form>
+          <FingerprintSignIn t={t} onLogin={onLogin} setError={setError} />
 
           {/* Only shown when running locally (npm run dev), never in a production build */}
           {import.meta.env.DEV && (

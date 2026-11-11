@@ -51,6 +51,7 @@ SCREENS = {
     "ImmunisationPanel.jsx": "CHV: child vaccinations (GHS sees totals)",
     "SurveyPanel.jsx": "CHV: household survey (GHS sees totals)",
     "CommunityAlertPanel.jsx": "GHS officer: community health alert SMS",
+    "Fingerprint.jsx": "Sign-in page and top bar: fingerprint sign-in",
     "main.jsx": "App start-up",
 }
 

@@ -50,6 +50,22 @@ def create_token(user) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
+def login_response(user):
+    """What a successful sign-in returns, by password or by fingerprint."""
+    return {
+        "token": create_token(user),
+        "offline_key": offline_key_for(user["id"]),  # encrypts checks queued on the phone
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "role": user["role"],
+            "full_name": user["full_name"],
+            "facility": user["facility"],
+            "must_change_password": bool(user["must_change_password"]),
+        },
+    }
+
+
 def get_user_allow_temp_password(creds: HTTPAuthorizationCredentials = Depends(bearer)):
     # Reject missing, tampered or expired tokens
     try:

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "./Logo";
 import LanguageSelect from "./LanguageSelect";
+import { FingerprintSetup } from "./Fingerprint";
 
 const ROLE_NAMES = {
   chv: "Community Health Volunteer",
@@ -46,6 +47,7 @@ export default function Header({ user, t, lang, setLang, onLogout }) {
             {isOnline ? t.online : t.offline}
           </span>
           <LanguageSelect lang={lang} setLang={setLang} className="text-xs" />
+          <FingerprintSetup t={t} />
           <div className="hidden text-right leading-tight md:block">
             <p className="text-sm font-medium text-stone-800">{user.full_name}</p>
             <p className="text-xs text-stone-500">{user.facility}</p>

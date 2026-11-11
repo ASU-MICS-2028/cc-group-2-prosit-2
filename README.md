@@ -72,6 +72,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Area | Status |
 |---|---|
 | Real login (username + password) | ✅ Done |
+| Fingerprint / face / PIN sign-in (passkeys) | ✅ Done: after one password sign-in, "👆 Fingerprint" in the top bar turns it on for that phone; then "Sign in with fingerprint". WebAuthn: the fingerprint never leaves the phone, the server stores only a public key ([backend/passkeys.py](backend/passkeys.py)). For staff (CHVs); patients do not use the app. Needs HTTPS (works on the AWS site) |
 | Role-based access control (RBAC) | ✅ Done for all six roles: CHV, nurse, doctor, pharmacist, GHS officer and admin |
 | Patient registration with consent | ✅ Done |
 | General visit for any patient (symptoms, vitals incl. weight and height, triage, possible conditions) | ✅ Done |
@@ -570,6 +571,9 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/surveys` | chv | Household survey (6 yes/no answers, no names) |
 | GET | `/surveillance/surveys` | ghs | Per district: % of households answering yes to each question |
 | GET, POST | `/alerts/community` | ghs | Send a health alert SMS to a district / list sent alerts (counts only); `/alerts/community/preview` shows how many it will reach |
+| POST | `/auth/passkey/register/options`, `/auth/passkey/register/verify` | any signed-in user | Turn on fingerprint sign-in for this phone (WebAuthn) |
+| POST | `/auth/passkey/login/options`, `/auth/passkey/login/verify` | anyone | Sign in with fingerprint: the phone signs a one-time challenge |
+| GET, DELETE | `/auth/passkeys` | any signed-in user | List / remove your passkeys |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
@@ -722,7 +726,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 
 | Area | Not built yet |
 |---|---|
-| Health records (Week 1) | Photo documentation; fingerprint login for patients who cannot read; voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
+| Health records (Week 1) | Photo documentation; voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
 | Telemedicine (Week 2) | Medical image sharing (X-rays, lab results); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
 | Surveillance (Week 3) | Recorded audio/video in lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |

@@ -22,12 +22,13 @@ from healers import router as healers_router
 from immunisation import router as immunisation_router
 from survey import router as survey_router
 from community_alerts import router as community_alerts_router
+from passkeys import router as passkeys_router
 from equipment import router as equipment_router
 from education import router as education_router
 from training import router as training_router
 from fees import router as fees_router
 from facility import router as facility_router
-from auth import (verify_password, hash_password, create_token, get_user_allow_temp_password, require_role,
+from auth import (verify_password, hash_password, create_token, login_response, get_user_allow_temp_password, require_role,
                   offline_key_for)
 from database import get_db, init_db, log_access, new_patient_ref, now_text
 from general_model import assess_general, advice_for
@@ -86,6 +87,7 @@ app.include_router(healers_router)  # traditional healers working with CHVs (hea
 app.include_router(immunisation_router)  # child immunisation tracking (immunisation.py)
 app.include_router(survey_router)  # household health surveys (survey.py)
 app.include_router(community_alerts_router)  # GHS health alert SMS to a district
+app.include_router(passkeys_router)  # fingerprint / face / PIN sign-in (passkeys.py)
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
 app.include_router(training_router)  # health worker training and certificates (training.py)
@@ -154,18 +156,7 @@ def login(body: LoginRequest):
     log_access(conn, user["id"], "login")
     conn.commit()
     conn.close()
-    return {
-        "token": create_token(user),
-        "offline_key": offline_key_for(user["id"]),  # encrypts checks queued on the phone
-        "user": {
-            "id": user["id"],
-            "username": user["username"],
-            "role": user["role"],
-            "full_name": user["full_name"],
-            "facility": user["facility"],
-            "must_change_password": bool(user["must_change_password"]),
-        },
-    }
+    return login_response(user)
 
 
 @app.get("/auth/me")
