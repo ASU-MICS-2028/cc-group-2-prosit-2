@@ -6,10 +6,19 @@ const KINDS = ["wound", "skin", "xray", "lab", "other"];
 const MAX_SIDE = 1280; // pixels: enough to see a wound or read an X-ray, small enough for 2G
 const MAX_BYTES = 380_000;
 
+const SLOW_MAX_SIDE = 800; // on 2G: about a third of the bytes, still clear enough for a wound or rash
+
+// Android phones say when they are on 2G (Network Information API). Our 2G test: a 1280 px
+// photo took about 105 s on GPRS, so on 2G we send a smaller one. Other phones: normal size.
+function onSlowNetwork() {
+  return ["slow-2g", "2g"].includes(navigator.connection?.effectiveType);
+}
+
 // Shrink a camera photo on the phone before sending: draw it smaller, save as JPEG
 async function shrink(file) {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const maxSide = onSlowNetwork() ? SLOW_MAX_SIDE : MAX_SIDE;
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);

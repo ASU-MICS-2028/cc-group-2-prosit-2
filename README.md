@@ -84,7 +84,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Nurse referral inbox + outcomes | ✅ Done |
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
 | Patient history for nurses/doctors (referred patients only) | ✅ Done |
-| Photo documentation and image sharing | ✅ Done: CHV photographs wounds or skin conditions, nurses/doctors add X-rays or lab results; shrunk on the phone (~100-150 KB, for 2G); separate patient consent per photo; seen only by the patient's CHV and the facilities they were referred to; every view audited ([backend/photos.py](backend/photos.py)). Stored in the encrypted database; S3 is the next step at scale |
+| Photo documentation and image sharing | ✅ Done: CHV photographs wounds or skin conditions, nurses/doctors add X-rays or lab results; shrunk on the phone (1280 px, ~150-250 KB; 800 px, ~100-130 KB when the phone reports 2G); separate patient consent per photo; seen only by the patient's CHV and the facilities they were referred to; every view audited ([backend/photos.py](backend/photos.py)). Stored in the encrypted database; S3 is the next step at scale |
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
@@ -95,6 +95,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Community health alert SMS | ✅ Done: GHS sends one SMS to a district's facilities and to residents who agreed (separate consent tick box); GHS never sees numbers ([backend/community_alerts.py](backend/community_alerts.py)). Delivery needs a valid Arkesel key |
 | Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 209 labels added later (pharmacy, System health, community and facility tools) are English for now; a Google Translate draft script is ready for Isaac to review. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
+| Slow-network (2G) test | ✅ Simulated: the app works on 2G EDGE and even GPRS (sign in ~4 s, open a patient <1 s, opens with no signal); photos are made smaller on 2G; video needs EDGE, audio-only on 2G. Real-phone field test still to do. See [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done. TURN relay for networks that block direct calls: code done and tested with coturn on a laptop (a relay-only call connected); the AWS relay server is set up at the final deployment ([Step 12](docs/AWS_DEPLOYMENT.md#step-12-turn-relay-for-video-calls)) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
 | ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
@@ -734,7 +735,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 | Area | Not built yet |
 |---|---|
 | Health records (Week 1) | Voice-to-text notes; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; testing on real 2G networks; stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); stronger prescription fraud checks; links to outside pharmacies and hospitals |
 | Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
