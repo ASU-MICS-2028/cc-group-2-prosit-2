@@ -74,7 +74,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Real login (username + password) | ✅ Done |
 | Role-based access control (RBAC) | ✅ Done for all six roles: CHV, nurse, doctor, pharmacist, GHS officer and admin |
 | Patient registration with consent | ✅ Done |
-| General visit for any patient (symptoms, vitals, triage, possible conditions) | ✅ Done |
+| General visit for any patient (symptoms, vitals incl. weight and height, triage, possible conditions) | ✅ Done |
 | Antenatal risk check (pregnant patients) | ✅ Done |
 | Risk check works **offline** | ✅ Done |
 | Offline data **encrypted** on the phone | ✅ Done |
@@ -86,7 +86,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
-| Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 60 newer pharmacy and System health labels are English for now. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
+| Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 209 labels added later (pharmacy, System health, community and facility tools) are English for now; a Google Translate draft script is ready for Isaac to review. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
@@ -163,7 +163,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 **Why:** the patient may be hours from the hospital. A live call lets the doctor (or nurse) see and hear the patient and decide "treat there" or "send now", so fewer sick patients travel and doctors can review many cases remotely.
 
 - **Who:** anyone on the same referral chain: the patient's **CHV**, the **nurse** at the health centre, the **doctor** at the hospital. Calls are **1-to-1**; a third person sees "Call busy".
-- **Start:** tap **📹 Video call** on the referral (inbox card or CHV visit history). The other side gets a banner: *"📞 Test CHV One is calling about Yaw: Join call"*.
+- **Start:** tap **📹 Video call** on the referral (inbox card or CHV visit history). The other side gets a banner: *"📞 Grace Atanga is calling about Yaw: Join call"*.
 - **Low bandwidth:** 320×240 video at 15 fps, capped at ~150 kbps, plus an **Audio only** button for very weak signal.
 - **How it works:** **WebRTC** sends video **directly between the two browsers**. Our server is only the *introducer* (**signalling**): it passes the setup messages (offer, answer, network addresses) and nothing else. A public **STUN** server helps each side find its public address.
 - **Limits (honest):** no **TURN** relay, so some strict mobile networks may fail to connect; call rooms live in server memory (one server only; in the cloud use Redis or API Gateway WebSockets); real phones need **HTTPS** for camera access (comes with the cloud deployment). Calls are not recorded.
@@ -178,7 +178,7 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Screen:** KPI tiles (last 7 days), alert cards, a **map** (bubble area = cases at each district capital, red ring = alert), a district × condition **heatmap** (darker = more), and an **8-week trend** for the selected cell with the usual level as a dashed line.
 - **Export for DHIMS2:** downloads last complete week's totals in the national system's DHIS2 format. Simulated: not sent anywhere. See [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md).
 - **Districts:** each CHV has a district; each patient takes the district of the CHV who registered them. District names are real, all data is fake.
-- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients are named "Demo Patient NNNN". With `DEMO_MODE=on` in `.env`, the backend **re-dates these demo records at start-up and every 10 minutes**, so the dashboard looks the same on any day (spike always "this week"). Only "Demo Patient" records are touched. **Off by default**, so a cloud or real deployment never does this unless switched on.
+- **Demo data:** `python seed_demo_data.py` creates ~800 fake visits over 8 weeks in 5 districts, with a cholera spike in Tamale this week (for the presentation). Patients have invented names typical of each region (e.g. Amina Alhassan in Tamale) and live in real communities of the district; every person and record is invented. With `DEMO_MODE=on` in `.env`, the backend **re-dates these demo records at start-up and every 10 minutes**, so the dashboard looks the same on any day (spike always "this week"). Only patients of the demo CHV accounts (`demo_chv_...`) are touched. **Off by default**, so a cloud or real deployment never does this unless switched on.
 
 ### For a doctor / specialist
 - **Specialist referrals** inbox for their hospital only: patients referred on by nurses, with the nurse's reason, the original CHV, and the readings.
@@ -315,7 +315,7 @@ FHIR is the international standard for exchanging health data. Our tables follow
 |---|---|---|
 | `users` | Practitioner (simplified) | Staff accounts, role, facility |
 | `patients` | Patient | Name, age, sex, pregnant flag, optional phone (reminders only), how to remind them (`sms` / `chv`) and the language they speak, community, consent, CHV owner, random reference |
-| `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals, possible conditions) or `antenatal` (pregnancy vitals + score) |
+| `observations` | Observation | One check, `visit_type` = `general` (symptoms, vitals incl. optional weight and height, possible conditions) or `antenatal` (pregnancy vitals + score; height optional, not scored) |
 | `appointments` | Appointment | Follow-up time, facility, reason, status, reminder result |
 | `referrals` | ServiceRequest | CHV → health centre or nurse → hospital (`parent_id` links the chain); reason, status, outcome |
 | `access_log` | AuditEvent | Who did what to which record, and when |
@@ -493,7 +493,7 @@ All demo accounts use the password **`Demo@1234`** (fake, local testing only). I
 
 **Video call (two browser windows)**
 1. Window 1: log in as **`chv1`** → open a referred patient → **📹 Video call about this patient** → allow camera.
-2. Window 2 (a *new* window, not a duplicated tab): log in as **`nurse1`** → the green **"📞 Test CHV One is calling about …"** banner → **Join call**.
+2. Window 2 (a *new* window, not a duplicated tab): log in as **`nurse1`** → the green **"📞 Grace Atanga is calling about …"** banner → **Join call**.
 3. Try **Audio only**, **Mute**, and **Hang up** (the other side sees "The other person hung up").
 
 **Access control checks**
@@ -695,7 +695,7 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Recommend one, and decide what to translate live vs. fix in `i18n.js` (human translation in the app; no live translation of patient data; see [docs/TRANSLATION.md](docs/TRANSLATION.md))
 - [x] Translate the app into Twi, Ewe, Ga and Dagbani (Isaac), with a language dropdown
 - [x] Get the translations reviewed by native speakers
-- [ ] Translate the 60 labels added later (pharmacy, System health); they show in English until then
+- [ ] Translate the 209 labels added later (pharmacy, System health, community and facility tools); they show in English until then. `docs/translations/machine_draft.py` makes a Google Translate draft (Twi, Ewe, Ga; no Dagbani) for Isaac to review
 - [x] Reach patients who cannot read: the CHV records how to remind each patient (SMS or CHV visit) and the language they speak; a **Remind in person** list replaces "SMS in the patient's language" (most patients speak but do not read their language). See [docs/REMINDERS.md](docs/REMINDERS.md)
 
 ### ✅ Phase 7: Week 4, Sustainability (whole team)
@@ -705,6 +705,17 @@ Status codes: **401** not logged in / bad token · **403** wrong role · **404**
 - [x] Revenue model and cost estimate: [docs/SUSTAINABILITY.md](docs/SUSTAINABILITY.md)
 - [x] Equipment tracking, health education lessons, health worker certificates
 - [x] Open source: MIT licence
+
+### Future work (in the brief, not built)
+Designed or planned, but not built in this PROSIT. Listed so the report is honest about scope.
+
+| Area | Not built yet |
+|---|---|
+| Health records (Week 1) | Photo documentation; fingerprint login for patients who cannot read; voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
+| Telemedicine (Week 2) | Medical image sharing (X-rays, lab results); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; automatic emergency escalation; stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Surveillance (Week 3) | Mobile health surveys; automatic SMS outbreak alerts to communities; child and immunisation tracking; audio and video health lessons; machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
+| Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
+| Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
 
 ### Deadline
 Report and presentation are due **the Thursday after the mid-semester break**.
@@ -738,7 +749,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 - **Offline needs one online login and visit**: logging in needs signal (the key comes from the server), and a patient page must have been opened online once to be saved. The saved copy can be out of date; the amber note shows when it was saved.
 - **Rules in two places**: the risk rules live in Python (server) and JavaScript (offline). Change both: `pytest` fails if they disagree.
 - **Key tied to server secret**: changing `JWT_SECRET` makes unsynced offline checks unreadable. Sync before rotating.
-- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of the app's 314 screen strings, reviewed by native speakers. Not yet translated: 7 early lines, and the 60 pharmacy and System health labels added later (they fall back to English). SMS stay in English on purpose (see [docs/REMINDERS.md](docs/REMINDERS.md)); error messages are English only.
+- **Languages:** Twi, Ewe, Ga and Dagbani cover 245 of the app's 463 screen strings, reviewed by native speakers. Not yet translated: 7 early lines, and the 209 labels added later (they fall back to English). SMS stay in English on purpose (see [docs/REMINDERS.md](docs/REMINDERS.md)); error messages are English only.
 - **Demo accounts** share one known password. Run `prepare_real_use.py` before any real deployment (see §7).
 
 ---

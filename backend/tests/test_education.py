@@ -23,7 +23,7 @@ def test_new_lesson_needs_review_by_someone_else(client, login):
     assert client.post(f"/lessons/{lesson_id}/review", headers=doctor).status_code == 200
     assert client.post(f"/lessons/{lesson_id}/review", headers=doctor).status_code == 400  # only once
     saved = next(x for x in client.get("/lessons", headers=chv).json() if x["id"] == lesson_id)
-    assert saved["reviewer_name"] == "Test Doctor" and saved["reviewed_at"]
+    assert saved["reviewer_name"] == "Dr Emmanuel Abugri" and saved["reviewed_at"]
 
 
 def test_validation_and_duplicates(client, login):

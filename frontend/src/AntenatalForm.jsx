@@ -10,7 +10,9 @@ const VITALS = [
   ["hemoglobin", "g/dL", "11.5"],
   ["body_temp", "°C", "36.8"],
   ["heart_rate", "bpm", "80"],
+  ["height", "cm", "160"],
 ];
+const OPTIONAL = ["height"]; // not used in the risk score, so the check never waits for it
 
 export default function AntenatalForm({ t, loading, onSubmit }) {
   const [vitals, setVitals] = useState({ previous_complications: false });
@@ -18,7 +20,7 @@ export default function AntenatalForm({ t, loading, onSubmit }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const body = { previous_complications: vitals.previous_complications };
-    VITALS.forEach(([name]) => (body[name] = Number(vitals[name])));
+    VITALS.forEach(([name]) => (body[name] = vitals[name] ? Number(vitals[name]) : null));
     onSubmit(body);
   };
 
@@ -30,7 +32,7 @@ export default function AntenatalForm({ t, loading, onSubmit }) {
             <label className="mb-1 block text-xs font-medium text-stone-600">{t[name]}</label>
             <div className="relative">
               <input
-                required
+                required={!OPTIONAL.includes(name)}
                 type="number"
                 step="any"
                 placeholder={example}

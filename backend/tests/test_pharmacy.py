@@ -27,7 +27,7 @@ def doctor_referral(client, login, make_patient):
 
 def test_admin_can_create_pharmacist_with_facility(client, login):
     admin = login("admin1")
-    body = {"username": "pharm9", "full_name": "Test Pharmacist Nine", "role": "pharmacist"}
+    body = {"username": "pharm9", "full_name": "Pharmacist Nine", "role": "pharmacist"}
     assert client.post("/admin/users", headers=admin, json=body).status_code == 422  # no facility
     body["facility"] = "Test District Hospital"
     assert client.post("/admin/users", headers=admin, json=body).status_code == 200
@@ -137,4 +137,4 @@ def test_ghs_sees_stock_outs_by_district_only(client, login):
     ors = next(x for x in tamale["drugs"] if x["name"].startswith("Oral rehydration"))
     assert ors["out"] == 1 and ors["condition"] == "cholera"
     text = str(data)
-    assert "Demo Patient" not in text and "Test Pharmacist" not in text  # facilities counted, nobody named
+    assert "Demo Patient" not in text and "Comfort Azure" not in text  # facilities counted, nobody named

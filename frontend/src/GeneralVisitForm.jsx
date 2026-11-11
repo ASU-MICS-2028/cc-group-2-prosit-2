@@ -8,6 +8,8 @@ const VITALS = [
   ["heart_rate", "heart_rate", "bpm", "80"],
   ["systolic_bp", "systolic_bp", "mmHg", "120"],
   ["diastolic_bp", "diastolic_bp", "mmHg", "80"],
+  ["weight", "weight", "kg", "60"],
+  ["height", "height", "cm", "165"],
 ];
 
 export default function GeneralVisitForm({ t, loading, onSubmit }) {

@@ -109,6 +109,7 @@ TABLES = [
         systolic_bp            INTEGER,
         diastolic_bp           INTEGER,
         weight                 {real},
+        height                 {real},    -- cm
         hemoglobin             {real},
         body_temp              {real},
         heart_rate             INTEGER,
@@ -482,6 +483,8 @@ def migrate(conn):
     conn.execute("UPDATE patients SET reminder_method = 'chv' WHERE reminder_method = 'voice'")
     add_column_if_missing(conn, "patients", "language", "TEXT")
     add_column_if_missing(conn, "users", "facility_manager", "INTEGER NOT NULL DEFAULT 0")
+    # Height (cm), asked for in the brief's vital signs
+    add_column_if_missing(conn, "observations", "height", DIALECT["postgres" if is_postgres() else "sqlite"]["real"])
     if is_postgres():
         allow_all_roles(conn)
         return  # PostgreSQL databases start from the current schema; the steps below are for old laptop files

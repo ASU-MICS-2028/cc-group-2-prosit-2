@@ -64,6 +64,8 @@ class VisitIn(BaseModel):
     systolic_bp: int | None = Field(None, ge=50, le=260)
     diastolic_bp: int | None = Field(None, ge=30, le=160)
     heart_rate: int | None = Field(None, ge=20, le=250)
+    weight: float | None = Field(None, gt=0, le=300)    # kg
+    height: float | None = Field(None, ge=30, le=250)   # cm
     symptoms: list[Symptom] = []
     notes: str = Field("", max_length=500)
     recorded_at: datetime | None = None
@@ -91,6 +93,7 @@ class VitalsIn(BaseModel):
     body_temp: float
     heart_rate: int
     previous_complications: bool
+    height: float | None = Field(None, ge=100, le=220)  # cm, optional; not used in the risk score
     # Set by the phone when the check was done offline and synced later (UTC)
     recorded_at: datetime | None = None
 

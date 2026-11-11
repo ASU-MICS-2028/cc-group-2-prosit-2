@@ -338,6 +338,8 @@ export function VisitSummary({ o, t }) {
     return (
       <p className="mt-2 text-sm text-stone-700">
         BP {o.systolic_bp}/{o.diastolic_bp} · Hb {o.hemoglobin} · {o.gestational_age} wks
+        {o.weight != null && ` · ${o.weight} kg`}
+        {o.height != null && ` · ${o.height} cm`}
       </p>
     );
   }
@@ -345,6 +347,8 @@ export function VisitSummary({ o, t }) {
     o.body_temp != null && `${o.body_temp}°C`,
     o.systolic_bp != null && `BP ${o.systolic_bp}/${o.diastolic_bp ?? "?"}`,
     o.heart_rate != null && `${o.heart_rate} bpm`,
+    o.weight != null && `${o.weight} kg`,
+    o.height != null && `${o.height} cm`,
   ].filter(Boolean);
   const symptoms = (o.symptoms || "").split(",").filter(Boolean).map((s) => t["sym_" + s] || s);
   return (

@@ -94,3 +94,20 @@ def test_other_kinds_of_case(client, login, make_patient):
     assert visit(client, chv, patient, symptoms=["snake_bite"])["risk_level"] == "HIGH"
     assert visit(client, chv, patient, symptoms=["other"], notes="Swollen painful knee")["risk_level"] == "MEDIUM"
     assert visit(client, chv, patient, symptoms=["abdominal_pain"])["risk_level"] == "LOW"
+
+
+def test_weight_and_height_recorded(client, login, make_patient):
+    # The brief's vital signs include weight and height; neither changes the risk score
+    chv = login("chv1")
+    child = make_patient(chv, age=4, sex="male")
+    obs = visit(client, chv, child, weight=16.5, height=102)
+    assert (obs["weight"], obs["height"], obs["risk_level"]) == (16.5, 102, "LOW")
+    assert client.post(f"/patients/{child['id']}/visit", headers=chv, json={"height": 900}).status_code == 422
+
+    mother = make_patient(chv, pregnant=True)
+    check = {"gestational_age": 28, "systolic_bp": 115, "diastolic_bp": 75, "weight": 64, "hemoglobin": 12,
+             "body_temp": 36.8, "heart_rate": 80, "previous_complications": False}
+    without = client.post(f"/patients/{mother['id']}/assess", headers=chv, json=check).json()["observation"]
+    withh = client.post(f"/patients/{mother['id']}/assess", headers=chv, json={**check, "height": 158}).json()["observation"]
+    assert without["height"] is None and withh["height"] == 158  # optional: older offline checks still sync
+    assert without["risk_level"] == withh["risk_level"]

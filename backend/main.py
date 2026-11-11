@@ -332,7 +332,7 @@ def to_db_time(recorded_at):
 
 @app.post("/patients/{patient_id}/visit")
 def general_visit(patient_id: int, visit: VisitIn, user=Depends(require_role("chv"))):
-    vitals = [visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate]
+    vitals = [visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate, visit.weight, visit.height]
     if not visit.symptoms and all(v is None for v in vitals):
         raise HTTPException(status_code=400, detail="Enter at least one symptom or vital sign")
     conn = get_db()
@@ -343,10 +343,11 @@ def general_visit(patient_id: int, visit: VisitIn, user=Depends(require_role("ch
     )
     observation = conn.execute("""
         INSERT INTO observations (patient_id, recorded_by, visit_type, body_temp, systolic_bp, diastolic_bp,
-            heart_rate, symptoms, possible_conditions, notes, risk_level, created_at)
-        VALUES (?, ?, 'general', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            heart_rate, weight, height, symptoms, possible_conditions, notes, risk_level, created_at)
+        VALUES (?, ?, 'general', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING *
     """, (patient_id, user["id"], visit.temperature, visit.systolic_bp, visit.diastolic_bp, visit.heart_rate,
+          visit.weight, visit.height,
           ",".join(visit.symptoms), ",".join(conditions), visit.notes.strip(), risk_level,
           to_db_time(visit.recorded_at))).fetchone()
     log_access(conn, user["id"], "sync_offline_visit" if visit.recorded_at else "general_visit", patient["ref"])
@@ -364,16 +365,16 @@ def assess(patient_id: int, vitals: VitalsIn, user=Depends(require_role("chv")))
         raise HTTPException(status_code=400, detail="Antenatal checks are only for pregnant patients")
 
     # The server always re-scores, even for offline checks: its result is the official one
-    risk_score, risk_level = predict_risk(PatientData(age=patient["age"], **vitals.model_dump()))
+    risk_score, risk_level = predict_risk(PatientData(age=patient["age"], **vitals.model_dump(exclude={"height", "recorded_at"})))
 
     observation = conn.execute("""
         INSERT INTO observations (patient_id, recorded_by, gestational_age, systolic_bp, diastolic_bp,
-            weight, hemoglobin, body_temp, heart_rate, previous_complications, risk_score, risk_level,
+            weight, height, hemoglobin, body_temp, heart_rate, previous_complications, risk_score, risk_level,
             created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING *
     """, (patient_id, user["id"], vitals.gestational_age, vitals.systolic_bp, vitals.diastolic_bp,
-          vitals.weight, vitals.hemoglobin, vitals.body_temp, vitals.heart_rate,
+          vitals.weight, vitals.height, vitals.hemoglobin, vitals.body_temp, vitals.heart_rate,
           int(vitals.previous_complications), risk_score, risk_level,
           to_db_time(vitals.recorded_at))).fetchone()
     log_access(conn, user["id"], "sync_offline_check" if vitals.recorded_at else "assess_patient", patient["ref"])

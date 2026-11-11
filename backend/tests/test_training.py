@@ -73,15 +73,15 @@ def test_ghs_issue_and_revoke(client, login, audit):
     ghs, chv = login("ghs1"), login("chv1")
     data = client.get("/training/workers", headers=ghs).json()
     names = [w["full_name"] for w in data["workers"]]
-    assert "Test CHV One" in names and "Test Admin" not in names and "Test GHS Officer" not in names
-    worker = next(w for w in data["workers"] if w["full_name"] == "Test CHV One")
+    assert "Grace Atanga" in names and "Kojo Ofori" not in names and "Selorm Dzokoto" not in names
+    worker = next(w for w in data["workers"] if w["full_name"] == "Grace Atanga")
     issue = f"/training/workers/{worker['id']}/certificates"
 
     body = {"module": CODE, "note": "Completed in-person training"}
     assert client.post(issue, headers=ghs, json=body).status_code == 200
     assert client.post(issue, headers=ghs, json=body).status_code == 400  # already valid
     cert = module(client, chv)["certificate"]
-    assert cert["source"] == "ghs" and cert["issued_by_name"] == "Test GHS Officer"
+    assert cert["source"] == "ghs" and cert["issued_by_name"] == "Selorm Dzokoto"
 
     revoke = f"/training/certificates/{cert['id']}/revoke"
     assert client.post(revoke, headers=ghs, json={"reason": "no"}).status_code == 422  # a reason is required

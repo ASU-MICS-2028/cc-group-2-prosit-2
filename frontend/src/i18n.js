@@ -40,6 +40,7 @@ const text = {
     systolic_bp: "Systolic BP",
     diastolic_bp: "Diastolic BP",
     weight: "Weight",
+    height: "Height",
     hemoglobin: "Haemoglobin",
     body_temp: "Temperature",
     heart_rate: "Heart rate",

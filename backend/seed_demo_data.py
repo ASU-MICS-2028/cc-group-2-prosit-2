@@ -7,7 +7,10 @@ every 10 minutes (keep_demo_data_current), but ONLY when DEMO_MODE=on in .env.
 The fixed random seed makes every re-creation identical. Off by default, so a
 cloud/real deployment never touches this unless someone deliberately turns it on.
 
-Every patient is "Demo Patient NNNN". District names are real; all data is invented.
+Districts and communities are real places; every person and every health record is invented.
+Names are typical of each region (Dagbani names in Tamale, Fante names in Cape Coast...) so the
+demo looks realistic; any match with a real person is coincidence. Demo patients are recognised
+by their demo CHV (usernames demo_chv_...), so never register real patients under those accounts.
 """
 import os
 import random
@@ -23,13 +26,52 @@ from general_model import assess_general
 from training_list import TRAINING_MODULES
 
 DISTRICTS = {
-    # district: (demo CHV username, typical visits per week)
-    "Bolgatanga Municipal": ("demo_chv_bolga", 18),
-    "Tamale Metropolitan": ("demo_chv_tamale", 22),
-    "Wa Municipal": ("demo_chv_wa", 14),
-    "Kumasi Metropolitan": ("demo_chv_kumasi", 25),
-    "Cape Coast Metropolitan": ("demo_chv_capecoast", 16),
+    # district: (demo CHV username, demo CHV name, typical visits per week)
+    "Bolgatanga Municipal": ("demo_chv_bolga", "Patience Akolgo", 18),
+    "Tamale Metropolitan": ("demo_chv_tamale", "Salamatu Iddrisu", 22),
+    "Wa Municipal": ("demo_chv_wa", "Bernice Dery", 14),
+    "Kumasi Metropolitan": ("demo_chv_kumasi", "Akosua Owusu", 25),
+    "Cape Coast Metropolitan": ("demo_chv_capecoast", "Efua Quansah", 16),
 }
+
+# Invented names typical of each region: (female first names, male first names, surnames), communities
+NAMES = {
+    "Bolgatanga Municipal": (
+        ["Grace", "Agnes", "Asibi", "Awinpoka", "Felicia", "Joyce", "Ayinbisa", "Lydia", "Atampoka", "Mary"],
+        ["Atinga", "Joseph", "Francis", "Akolbire", "Awuni", "Daniel", "Anaba", "Moses", "Peter", "Ayine"],
+        ["Atanga", "Ayamga", "Akolgo", "Abugri", "Azure", "Anaba", "Atia", "Awuni", "Asaah", "Ayine"]),
+    "Tamale Metropolitan": (
+        ["Amina", "Salamatu", "Fati", "Mariama", "Zenabu", "Rahinatu", "Ayishetu", "Hawa", "Memunatu", "Sana"],
+        ["Abdulai", "Fuseini", "Iddrisu", "Alhassan", "Mohammed", "Yakubu", "Issah", "Abukari", "Sulemana", "Mustapha"],
+        ["Alhassan", "Iddrisu", "Abdulai", "Yakubu", "Fuseini", "Mohammed", "Issah", "Abukari", "Sulemana", "Salifu"]),
+    "Wa Municipal": (
+        ["Bernice", "Sakina", "Ayisha", "Faustina", "Magdalene", "Hawawu", "Gifty", "Asana", "Mwinbong", "Rita"],
+        ["Mwinkaara", "Francis", "Sumaila", "Yahaya", "Bernard", "Saaka", "Anthony", "Issahaku", "Lambert", "Dominic"],
+        ["Dery", "Bayor", "Kuuire", "Issahaku", "Bakuri", "Sumaila", "Saaka", "Yahaya", "Dabuo", "Bakor"]),
+    "Kumasi Metropolitan": (
+        ["Akosua", "Ama", "Abena", "Adwoa", "Afua", "Yaa", "Akua", "Comfort", "Gifty", "Esther"],
+        ["Kwame", "Kofi", "Kwaku", "Yaw", "Kwabena", "Kwasi", "Kwadwo", "Samuel", "Isaac", "Michael"],
+        ["Asante", "Boateng", "Owusu", "Osei", "Mensah", "Agyeman", "Frimpong", "Appiah", "Ofori", "Opoku"]),
+    "Cape Coast Metropolitan": (
+        ["Esi", "Efua", "Araba", "Ekua", "Aba", "Adwoa", "Ama", "Abena", "Mercy", "Elizabeth"],
+        ["Kweku", "Ekow", "Kobina", "Kwesi", "Kojo", "Fiifi", "Kwamena", "Ebo", "Joseph", "Paul"],
+        ["Quansah", "Arhin", "Essel", "Eshun", "Amissah", "Ansah", "Baidoo", "Turkson", "Ackah", "Hagan"]),
+}
+COMMUNITIES = {
+    "Bolgatanga Municipal": ["Zuarungu", "Sumbrungu", "Yikene", "Sherigu", "Gambibgo", "Zaare"],
+    "Tamale Metropolitan": ["Lamashegu", "Kalpohin", "Vittin", "Choggu", "Sagnarigu", "Gumani"],
+    "Wa Municipal": ["Kpongu", "Busa", "Charia", "Dobile", "Kperisi", "Danko"],
+    "Kumasi Metropolitan": ["Asawase", "Aboabo", "Suame", "Bantama", "Kwadaso", "Asokwa"],
+    "Cape Coast Metropolitan": ["Kakumdo", "Abura", "Ola", "Pedu", "Amamoma", "Ekon"],
+}
+
+
+def demo_person(names, district, sex):
+    """An invented name and a real community from the district. A separate random generator,
+    so adding names never changes the visits themselves (the cholera spike stays the same)."""
+    female, male, surnames = NAMES[district]
+    first = names.choice(female if sex == "female" else male)
+    return f"{first} {names.choice(surnames)}", names.choice(COMMUNITIES[district])
 
 # Everyday visits: (symptoms, temperature) picked at random
 COMMON = [
@@ -40,7 +82,10 @@ CHOLERA_LIKE = (["diarrhoea", "vomiting"], 37.6)
 # A few serious visits (danger signs) so the HIGH-risk numbers are realistic
 SERIOUS = [(["cough", "fever", "difficulty_breathing"], 39.0), (["fever", "convulsions"], 39.8), (["fever"], 39.7)]
 
-DEMO_PATIENTS = "SELECT id FROM patients WHERE full_name LIKE 'Demo Patient%'"
+DEMO_CHVS = ", ".join(f"'{username}'" for username, _, _ in DISTRICTS.values())
+# Demo patients belong to a demo CHV. "Demo Patient NNNN" catches data made by older versions.
+DEMO_PATIENTS = (f"SELECT id FROM patients WHERE chv_id IN (SELECT id FROM users WHERE username IN ({DEMO_CHVS})) "
+                 "OR full_name LIKE 'Demo Patient%'")
 
 
 def demo_data_exists(conn):
@@ -55,21 +100,24 @@ def remove_demo_data(conn):
     conn.execute(f"DELETE FROM prescription_items WHERE prescription_id IN ({demo_rx})")
     for table in ["healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
         conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({DEMO_PATIENTS})")
-    conn.execute("DELETE FROM patients WHERE full_name LIKE 'Demo Patient%'")
+    conn.execute(f"DELETE FROM patients WHERE id IN ({DEMO_PATIENTS})")
 
 
 def create_demo_data(conn):
     random.seed(42)  # same "random" data every time
+    names = random.Random(7)  # names and communities, separate so the visits never change
     now = datetime.now(timezone.utc)
     count = 0
-    for district, (username, per_week) in DISTRICTS.items():
+    for district, (username, chv_name, per_week) in DISTRICTS.items():
         if not conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
             conn.execute(
                 "INSERT INTO users (username, password_hash, role, full_name, facility, district) "
                 "VALUES (?, ?, 'chv', ?, ?, ?)",
-                (username, hash_password("Demo@1234"), f"Demo CHV {district.split()[0]}",
-                 f"Demo Clinic {district.split()[0]}", district),
+                (username, hash_password("Demo@1234"), chv_name, f"Demo Clinic {district.split()[0]}", district),
             )
+        # Accounts made by older versions were called "Demo CHV ..."
+        conn.execute("UPDATE users SET full_name = ? WHERE username = ? AND full_name LIKE 'Demo CHV%'",
+                     (chv_name, username))
         chv_id = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()["id"]
 
         for week in range(8):
@@ -80,11 +128,12 @@ def create_demo_data(conn):
                 visits += [CHOLERA_LIKE] * (14 if week == 0 else random.randint(1, 3))
             for symptoms, temp in visits:
                 count += 1
+                age, sex = random.randint(1, 80), random.choice(["female", "male"])
+                full_name, community = demo_person(names, district, sex)
                 patient_id = conn.execute(
                     "INSERT INTO patients (ref, chv_id, full_name, age, sex, community, district, consent) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, 1) RETURNING id",
-                    (new_patient_ref(conn), chv_id, f"Demo Patient {count:04d}",
-                     random.randint(1, 80), random.choice(["female", "male"]), "Demo community", district),
+                    (new_patient_ref(conn), chv_id, full_name, age, sex, community, district),
                 ).fetchone()["id"]
                 level, conditions = assess_general(temp, None, None, None, symptoms)
                 when = now - timedelta(days=week * 7 + random.randint(0, 6), hours=random.randint(0, 23))
@@ -94,7 +143,7 @@ def create_demo_data(conn):
                     (patient_id, chv_id, temp, ",".join(symptoms), ",".join(conditions), level,
                      when.strftime("%Y-%m-%d %H:%M:%S")),
                 )
-        count = create_demo_care(conn, district, chv_id, now, count)
+        count = create_demo_care(conn, district, chv_id, now, count, names)
     return count
 
 
@@ -104,7 +153,7 @@ ANTENATAL_RATE = {"Bolgatanga Municipal": 0.5, "Tamale Metropolitan": 0.6, "Wa M
                   "Kumasi Metropolitan": 0.75, "Cape Coast Metropolitan": 0.7}
 
 
-def create_demo_care(conn, district, chv_id, now, count):
+def create_demo_care(conn, district, chv_id, now, count, names):
     """Fake pregnancies, antenatal checks, referrals and appointments for the SDG 3 panel."""
     facility = f"Demo Clinic {district.split()[0]}"
     stamp = lambda moment: moment.strftime("%Y-%m-%d %H:%M:%S")
@@ -113,11 +162,11 @@ def create_demo_care(conn, district, chv_id, now, count):
         for _ in range(5):
             count += 1
             when = now - timedelta(days=week * 7 + random.randint(0, 6), hours=random.randint(1, 23))
+            full_name, community = demo_person(names, district, "female")
             patient_id = conn.execute(
                 "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, community, district, consent, created_at) "
                 "VALUES (?, ?, ?, ?, 'female', 1, ?, ?, 1, ?) RETURNING id",
-                (new_patient_ref(conn), chv_id, f"Demo Patient {count:04d}", random.randint(16, 42),
-                 "Demo community", district, stamp(when)),
+                (new_patient_ref(conn), chv_id, full_name, random.randint(16, 42), community, district, stamp(when)),
             ).fetchone()["id"]
             if random.random() >= chance:
                 continue

@@ -34,4 +34,4 @@ def test_ghs_sees_district_totals_only(client, login):
     bolga = next(d for d in data["districts"] if d["district"] == "Bolgatanga Municipal")
     item = next(i for i in bolga["items"] if i["item"] == "bp_monitor")
     assert (item["working"], item["broken"], item["facilities_without"]) == (0, 2, 1)
-    assert "Test Nurse" not in json.dumps(data) and "Test Health Centre" not in json.dumps(data)
+    assert "Mercy Akolgo" not in json.dumps(data) and "Test Health Centre" not in json.dumps(data)

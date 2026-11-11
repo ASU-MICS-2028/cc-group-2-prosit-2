@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 
-// "Test CHV One is calling about Yaw: Join" banner. Checks every 5 seconds.
+// "Grace Atanga is calling about Yaw: Join" banner. Checks every 5 seconds.
 export default function IncomingCalls({ t, onJoin }) {
   const [calls, setCalls] = useState([]);
 

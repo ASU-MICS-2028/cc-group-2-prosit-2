@@ -1,239 +1,240 @@
 ﻿No.,key,English
 1,unknownRole,This copy of HealthConnect is out of date and does not have your screen yet. Reload to get the latest version.
 2,reloadApp,Reload
-3,sym_chest_pain,Chest pain
-4,sym_snake_bite,Snake bite
-5,sym_animal_bite,Dog or animal bite
-6,sym_injury,Injury or wound
-7,sym_burn,Burn
-8,sym_abdominal_pain,Stomach pain
-9,sym_mental_distress,Mental distress
-10,sym_other,Other (describe below)
-11,describeCase,Describe the case (required for Other)
-12,needDescription,Please describe the case in the box below.
-13,remindHow,How to remind this patient
-14,remind_sms,Text message (SMS)
-15,remind_chv,CHV visits in person
-16,speaksLanguage,Language they speak
-17,speaksShort,speaks
-18,remindHint,Choose a CHV visit if the patient cannot read messages and nobody at home can read them out.
-19,change,Change
-20,remindInPerson,Remind in person
-21,remindInPersonHint,Appointments in the next 7 days that a text message will not reach. Please visit or call these patients.
-22,remindWhy_chv,asked for a CHV visit
-23,remindWhy_no_phone,no phone
-24,remindWhy_failed,SMS failed
-25,healerSentBy,Sent on by traditional healer
-26,feeConsultation,Consultation fee
-27,chvRemind,CHV to remind in person
-28,prescriptions,Prescriptions
-29,prescribe,Prescribe drugs
-30,chooseDrug,Choose a drug
-31,inStock,in stock
-32,quantity,Quantity
-33,instructionsPlaceholder,"How to take it, e.g. 1 tablet 3 times a day for 5 days"
-34,removeDrug,Remove
-35,addDrug,Add another drug
-36,rxNotesPlaceholder,Note for the pharmacist (optional)
-37,sendToPharmacy,Send to pharmacy
-38,rx_pending,Waiting at pharmacy
-39,rx_dispensed,Dispensed
-40,rx_cancelled,Cancelled
-41,cancelPrescription,Cancel prescription
-42,notEnoughHere,Not enough in stock
-43,lessonsTitle,Health education lessons
-44,trainingTitle,My training and certificates
-45,trainingProgress,Current certificates
-46,trainingNotDone,Not started
-47,trainingBest,Best score
-48,trainingTries,Tries
-49,trainingNeedsReview,A nurse or doctor must approve this module before the quiz opens.
-50,trainingRevokedHint,This certificate was revoked. Please contact your GHS officer.
-51,trainingRenewLater,You can renew this when it has this many days left:
-52,trainingMyCertificates,All my certificates
-53,quizHint,Answer every question. Pass mark:
-54,quizSubmit,Submit answers
-55,quizScore,Your score
-56,quizPassed,"Well done, you passed. Your certificate is ready."
-57,quizFailed,Not yet a pass. Read the module again and retry.
-58,cert_all,All
-59,cert_valid,Valid
-60,cert_expiring,Expiring soon
-61,cert_expired,Expired
-62,cert_revoked,Revoked
-63,cert_no_certificate,No certificate
-64,certCode,Code
-65,certIssuedOn,Issued
-66,certExpiresOn,Expires
-67,certExpiredOn,Expired on
-68,certDaysLeft,days left
-69,certIssuedBy,Issued by
-70,certRevokedReason,Revoked because
-71,certDisclaimer,HealthConnect training record (simulated). Not a Ghana Health Service qualification.
-72,certGhsTitle,Health worker certificates
-73,certGhsHint,Staff records only. Patient data stays anonymous here.
-74,certSearch,"Search by name, facility, district or code"
-75,certNoWorkers,No health workers match.
-76,certIssue,Issue certificate
-77,certRevoke,Revoke
-78,certCancel,Cancel
-79,certIssueNote,"Why, e.g. completed in-person training"
-80,certRevokeReason,Reason for revoking
-81,lessonsStep,Step
-82,lessonsPlay,Play
-83,lessonsPause,Pause
-84,lessonsHint,Short lessons to read out or show in the community. Not reviewed means a nurse or doctor has not approved it yet.
-85,lessonsAllLanguages,All languages
-86,lessonsWrite,Write a lesson
-87,lessonsTitleField,Lesson title
-88,lessonsBodyField,What people should know and do
-89,lessonsReviewed,Reviewed
-90,lessonsNotReviewed,Not reviewed
-91,lessonsReviewedBy,Reviewed by
-92,lessonsApprove,Approve after checking
-93,lessonTopic_malaria,Malaria
-94,lessonTopic_maternal,Pregnancy
-95,lessonTopic_cholera,Cholera and diarrhoea
-96,lessonTopic_general,General
-97,healerTitle,Traditional healer referral
-98,healerRecord,Record a referral from a healer
-99,healerAddHint,Register a healer you work with. The registration number is as they state it; it is not checked.
-100,healerName,Healer's name
-101,healerCommunity,Community
-102,healerRegistration,Registration number (if any)
-103,healerAdd,Add healer
-104,healerChoose,Choose a healer
-105,healerSigns,Danger signs the healer saw
-106,healerRemedy,Remedy already given (if any)
-107,healerRemedyShort,Remedy given
-108,insTitle,Community health insurance
-109,feeTraining,Training fee
-110,feePay,Start payment
-111,feePaid,Fee paid or none due
-112,feeLive,LIVE: real money
-113,feeSimulated,Simulated
-114,insPaystackTest,Paystack test mode: no real money moves.
-115,insPaystackLive,LIVE payment: real money will be charged to the phone used.
-116,insPendingHint,"Open Paystack to pay. When finished, come back and press the button to confirm."
-117,insOpenPaystack,Pay on Paystack
-118,insCheckPaid,I have paid: confirm
-119,insSimulated,Simulated: no real money moves and no mobile money account is charged.
-120,insExplain,Members pay GH₵{amount} a month into a shared pot that helps pay for care (example amount).
-121,insConsent,The patient has agreed to join the scheme.
-122,insJoin,Join the scheme
-123,insMonths,Months
-124,insMonthsShort,mo
-125,insNetwork,Network
-126,insPay,Pay (simulated)
-127,insCovered,Covered until
-128,insNotCovered,Not covered
-129,role_pharmacist,Pharmacist
-130,saveChanges,Save
-131,equipTitle,Equipment at this facility
-132,equipHint,Record how many of each device work and how many are broken.
-133,equip_bp_monitor,Blood pressure monitor
-134,equip_thermometer,Thermometer
-135,equip_weighing_scale,Weighing scale
-136,equipWorking,Working
-137,equipBroken,Broken
-138,equipWorkingShort,working
-139,equipBrokenShort,broken
-140,equipWithout,with none working
-141,equipFacilities,Facilities
-142,equipDistrictTitle,Equipment by district
-143,equipDistrictHint,"Devices working and broken at facilities that have reported. Counts only, no patient data."
-144,facilityTitle,Manage your health centre
-145,facilityHint,"Your community runs this centre's system. Totals only, no patient records."
-146,facilityStaff,Staff at this centre
-147,facilityFee,Consultation fee
-148,facility_visits,Visits this month
-149,facility_referrals,Referrals this month
-150,facility_appointments,Appointments this month
-151,facility_consultation_fees_ghs,Fees collected (GH₵)
-152,facility_premiums_ghs,Premiums collected (GH₵)
-153,pharmacyTitle,Pharmacy
-154,pharmacyHint,"Prescriptions from doctors at your facility, and your drug stock."
-155,waitingRx,Waiting prescriptions
-156,outOfStock,Out of stock
-157,lowStock,Low stock
-158,stockTab,Stock
-159,historyTab,Stock history
-160,noPrescriptions,No prescriptions yet.
-161,prescribedBy,Prescribed by
-162,dispensedBy,dispensed by
-163,dispense,Dispense
-164,reorderAt,Reorder at
-165,stock_ok,OK
-166,stock_low,Low
-167,stock_out,Out
-168,receive,Receive
-169,adjust,Correct count
-170,newCount,Count on shelf
-171,adjustNote,"Why? e.g. 20 expired, recounted"
-172,receivedNote,From where? e.g. Regional Medical Stores (optional)
-173,noStockHistory,No stock changes yet.
-174,move_received,Received
-175,move_dispensed,Dispensed
-176,move_adjusted,Count corrected
-177,by,by
-178,impactTitle,SDG 3 progress: is care reaching people?
-179,impactHint,"Last 4 weeks compared with the 4 weeks before. District totals only, no names."
-180,impactHonest,Prototype with test data only. These numbers count care delivered; they do not prove that health has improved.
-181,impactBefore,4 weeks before
-182,impactAntenatal,Pregnant patients checked
-183,impactReferrals,Referrals completed
-184,impactAttended,Appointments attended
-185,impactHours,Average hours to complete a referral
-186,impactGap,"Gap between districts (visits, last 4 weeks)"
-187,impactDifference,difference
-188,impactGapHint,"Raw counts, not per person: real use needs each district's population."
-189,impactDistrict,District
-190,impactVisits,Visits
-191,ghsStockTitle,Medicine shortages by district
-192,ghsStockHint,"How many pharmacies are out of or low on each drug. Counts only, no patient data."
-193,ghsStockNone,No district is short of any drug.
-194,pharmaciesReporting,Pharmacies
-195,ghsStockForecast,Needed: outbreak expected here
-196,stockOutCount,out
-197,stockLowCount,low
-198,adminMakeManager,Make centre manager
-199,adminRemoveManager,Remove manager
-200,healthTitle,System health
-201,healthRefresh,Check again
-202,healthAllOk,All systems normal.
-203,healthFiring,alarm(s) need attention
-204,healthOk,OK
-205,healthAlarm,ALARM
-206,healthChecking,Collecting data
-207,healthLocalOnly,System health is only available on the cloud version (AWS CloudWatch).
-208,healthUnreachable,Could not reach AWS CloudWatch. Check again in a minute.
-209,err_chvs_nurses_doctors_and_pharmacists_need,"CHVs, nurses, doctors and pharmacists need a facility"
-210,err_a_manager_must_be_a_nurse_or_doctor_at_a,A manager must be a nurse or doctor at a facility
-211,err_a_lesson_with_this_title_already_exists_,A lesson with this title already exists in this language
-212,err_lesson_not_found,Lesson not found
-213,err_another_nurse_or_doctor_must_review_your,Another nurse or doctor must review your lesson
-214,err_this_lesson_has_already_been_reviewed,This lesson has already been reviewed
-215,err_unknown_equipment,Unknown equipment
-216,err_only_this_centre_s_manager_can_do_this,Only this centre's manager can do this
-217,err_staff_member_not_found_at_this_centre,Staff member not found at this centre
-218,err_no_fee_is_due_for_this_consultation,No fee is due for this consultation
-219,err_training_module_not_found,Training module not found
-220,err_no_fee_is_due_for_this_module,No fee is due for this module
-221,err_payment_not_found,Payment not found
-222,err_paystack_has_not_received_this_payment_y,Paystack has not received this payment yet
-223,err_healer_not_found,Healer not found
-224,err_the_patient_must_agree_to_join_the_schem,The patient must agree to join the scheme
-225,err_this_patient_has_already_joined,This patient has already joined
-226,err_join_the_scheme_before_paying,Join the scheme before paying
-227,err_could_not_reach_paystack_please_try_agai,Could not reach Paystack. Please try again
-228,err_prescription_not_found,Prescription not found
-229,err_please_answer_every_question,Please answer every question
-230,err_a_nurse_or_doctor_must_approve_this_modu,A nurse or doctor must approve this module first
-231,err_this_certificate_was_revoked_please_cont,This certificate was revoked. Please contact your GHS officer
-232,err_your_certificate_is_still_valid_you_can_,Your certificate is still valid. You can renew it close to its expiry date
-233,err_please_pay_the_training_fee_first,Please pay the training fee first
-234,err_this_module_has_already_been_approved,This module has already been approved
-235,err_health_worker_not_found,Health worker not found
-236,err_this_worker_already_holds_a_valid_certif,This worker already holds a valid certificate for this module
-237,err_certificate_not_found,Certificate not found
-238,err_this_certificate_is_already_revoked,This certificate is already revoked
+3,height,Height
+4,sym_chest_pain,Chest pain
+5,sym_snake_bite,Snake bite
+6,sym_animal_bite,Dog or animal bite
+7,sym_injury,Injury or wound
+8,sym_burn,Burn
+9,sym_abdominal_pain,Stomach pain
+10,sym_mental_distress,Mental distress
+11,sym_other,Other (describe below)
+12,describeCase,Describe the case (required for Other)
+13,needDescription,Please describe the case in the box below.
+14,remindHow,How to remind this patient
+15,remind_sms,Text message (SMS)
+16,remind_chv,CHV visits in person
+17,speaksLanguage,Language they speak
+18,speaksShort,speaks
+19,remindHint,Choose a CHV visit if the patient cannot read messages and nobody at home can read them out.
+20,change,Change
+21,remindInPerson,Remind in person
+22,remindInPersonHint,Appointments in the next 7 days that a text message will not reach. Please visit or call these patients.
+23,remindWhy_chv,asked for a CHV visit
+24,remindWhy_no_phone,no phone
+25,remindWhy_failed,SMS failed
+26,healerSentBy,Sent on by traditional healer
+27,feeConsultation,Consultation fee
+28,chvRemind,CHV to remind in person
+29,prescriptions,Prescriptions
+30,prescribe,Prescribe drugs
+31,chooseDrug,Choose a drug
+32,inStock,in stock
+33,quantity,Quantity
+34,instructionsPlaceholder,"How to take it, e.g. 1 tablet 3 times a day for 5 days"
+35,removeDrug,Remove
+36,addDrug,Add another drug
+37,rxNotesPlaceholder,Note for the pharmacist (optional)
+38,sendToPharmacy,Send to pharmacy
+39,rx_pending,Waiting at pharmacy
+40,rx_dispensed,Dispensed
+41,rx_cancelled,Cancelled
+42,cancelPrescription,Cancel prescription
+43,notEnoughHere,Not enough in stock
+44,lessonsTitle,Health education lessons
+45,trainingTitle,My training and certificates
+46,trainingProgress,Current certificates
+47,trainingNotDone,Not started
+48,trainingBest,Best score
+49,trainingTries,Tries
+50,trainingNeedsReview,A nurse or doctor must approve this module before the quiz opens.
+51,trainingRevokedHint,This certificate was revoked. Please contact your GHS officer.
+52,trainingRenewLater,You can renew this when it has this many days left:
+53,trainingMyCertificates,All my certificates
+54,quizHint,Answer every question. Pass mark:
+55,quizSubmit,Submit answers
+56,quizScore,Your score
+57,quizPassed,"Well done, you passed. Your certificate is ready."
+58,quizFailed,Not yet a pass. Read the module again and retry.
+59,cert_all,All
+60,cert_valid,Valid
+61,cert_expiring,Expiring soon
+62,cert_expired,Expired
+63,cert_revoked,Revoked
+64,cert_no_certificate,No certificate
+65,certCode,Code
+66,certIssuedOn,Issued
+67,certExpiresOn,Expires
+68,certExpiredOn,Expired on
+69,certDaysLeft,days left
+70,certIssuedBy,Issued by
+71,certRevokedReason,Revoked because
+72,certDisclaimer,HealthConnect training record (simulated). Not a Ghana Health Service qualification.
+73,certGhsTitle,Health worker certificates
+74,certGhsHint,Staff records only. Patient data stays anonymous here.
+75,certSearch,"Search by name, facility, district or code"
+76,certNoWorkers,No health workers match.
+77,certIssue,Issue certificate
+78,certRevoke,Revoke
+79,certCancel,Cancel
+80,certIssueNote,"Why, e.g. completed in-person training"
+81,certRevokeReason,Reason for revoking
+82,lessonsStep,Step
+83,lessonsPlay,Play
+84,lessonsPause,Pause
+85,lessonsHint,Short lessons to read out or show in the community. Not reviewed means a nurse or doctor has not approved it yet.
+86,lessonsAllLanguages,All languages
+87,lessonsWrite,Write a lesson
+88,lessonsTitleField,Lesson title
+89,lessonsBodyField,What people should know and do
+90,lessonsReviewed,Reviewed
+91,lessonsNotReviewed,Not reviewed
+92,lessonsReviewedBy,Reviewed by
+93,lessonsApprove,Approve after checking
+94,lessonTopic_malaria,Malaria
+95,lessonTopic_maternal,Pregnancy
+96,lessonTopic_cholera,Cholera and diarrhoea
+97,lessonTopic_general,General
+98,healerTitle,Traditional healer referral
+99,healerRecord,Record a referral from a healer
+100,healerAddHint,Register a healer you work with. The registration number is as they state it; it is not checked.
+101,healerName,Healer's name
+102,healerCommunity,Community
+103,healerRegistration,Registration number (if any)
+104,healerAdd,Add healer
+105,healerChoose,Choose a healer
+106,healerSigns,Danger signs the healer saw
+107,healerRemedy,Remedy already given (if any)
+108,healerRemedyShort,Remedy given
+109,insTitle,Community health insurance
+110,feeTraining,Training fee
+111,feePay,Start payment
+112,feePaid,Fee paid or none due
+113,feeLive,LIVE: real money
+114,feeSimulated,Simulated
+115,insPaystackTest,Paystack test mode: no real money moves.
+116,insPaystackLive,LIVE payment: real money will be charged to the phone used.
+117,insPendingHint,"Open Paystack to pay. When finished, come back and press the button to confirm."
+118,insOpenPaystack,Pay on Paystack
+119,insCheckPaid,I have paid: confirm
+120,insSimulated,Simulated: no real money moves and no mobile money account is charged.
+121,insExplain,Members pay GH₵{amount} a month into a shared pot that helps pay for care (example amount).
+122,insConsent,The patient has agreed to join the scheme.
+123,insJoin,Join the scheme
+124,insMonths,Months
+125,insMonthsShort,mo
+126,insNetwork,Network
+127,insPay,Pay (simulated)
+128,insCovered,Covered until
+129,insNotCovered,Not covered
+130,role_pharmacist,Pharmacist
+131,saveChanges,Save
+132,equipTitle,Equipment at this facility
+133,equipHint,Record how many of each device work and how many are broken.
+134,equip_bp_monitor,Blood pressure monitor
+135,equip_thermometer,Thermometer
+136,equip_weighing_scale,Weighing scale
+137,equipWorking,Working
+138,equipBroken,Broken
+139,equipWorkingShort,working
+140,equipBrokenShort,broken
+141,equipWithout,with none working
+142,equipFacilities,Facilities
+143,equipDistrictTitle,Equipment by district
+144,equipDistrictHint,"Devices working and broken at facilities that have reported. Counts only, no patient data."
+145,facilityTitle,Manage your health centre
+146,facilityHint,"Your community runs this centre's system. Totals only, no patient records."
+147,facilityStaff,Staff at this centre
+148,facilityFee,Consultation fee
+149,facility_visits,Visits this month
+150,facility_referrals,Referrals this month
+151,facility_appointments,Appointments this month
+152,facility_consultation_fees_ghs,Fees collected (GH₵)
+153,facility_premiums_ghs,Premiums collected (GH₵)
+154,pharmacyTitle,Pharmacy
+155,pharmacyHint,"Prescriptions from doctors at your facility, and your drug stock."
+156,waitingRx,Waiting prescriptions
+157,outOfStock,Out of stock
+158,lowStock,Low stock
+159,stockTab,Stock
+160,historyTab,Stock history
+161,noPrescriptions,No prescriptions yet.
+162,prescribedBy,Prescribed by
+163,dispensedBy,dispensed by
+164,dispense,Dispense
+165,reorderAt,Reorder at
+166,stock_ok,OK
+167,stock_low,Low
+168,stock_out,Out
+169,receive,Receive
+170,adjust,Correct count
+171,newCount,Count on shelf
+172,adjustNote,"Why? e.g. 20 expired, recounted"
+173,receivedNote,From where? e.g. Regional Medical Stores (optional)
+174,noStockHistory,No stock changes yet.
+175,move_received,Received
+176,move_dispensed,Dispensed
+177,move_adjusted,Count corrected
+178,by,by
+179,impactTitle,SDG 3 progress: is care reaching people?
+180,impactHint,"Last 4 weeks compared with the 4 weeks before. District totals only, no names."
+181,impactHonest,Prototype with test data only. These numbers count care delivered; they do not prove that health has improved.
+182,impactBefore,4 weeks before
+183,impactAntenatal,Pregnant patients checked
+184,impactReferrals,Referrals completed
+185,impactAttended,Appointments attended
+186,impactHours,Average hours to complete a referral
+187,impactGap,"Gap between districts (visits, last 4 weeks)"
+188,impactDifference,difference
+189,impactGapHint,"Raw counts, not per person: real use needs each district's population."
+190,impactDistrict,District
+191,impactVisits,Visits
+192,ghsStockTitle,Medicine shortages by district
+193,ghsStockHint,"How many pharmacies are out of or low on each drug. Counts only, no patient data."
+194,ghsStockNone,No district is short of any drug.
+195,pharmaciesReporting,Pharmacies
+196,ghsStockForecast,Needed: outbreak expected here
+197,stockOutCount,out
+198,stockLowCount,low
+199,adminMakeManager,Make centre manager
+200,adminRemoveManager,Remove manager
+201,healthTitle,System health
+202,healthRefresh,Check again
+203,healthAllOk,All systems normal.
+204,healthFiring,alarm(s) need attention
+205,healthOk,OK
+206,healthAlarm,ALARM
+207,healthChecking,Collecting data
+208,healthLocalOnly,System health is only available on the cloud version (AWS CloudWatch).
+209,healthUnreachable,Could not reach AWS CloudWatch. Check again in a minute.
+210,err_chvs_nurses_doctors_and_pharmacists_need,"CHVs, nurses, doctors and pharmacists need a facility"
+211,err_a_manager_must_be_a_nurse_or_doctor_at_a,A manager must be a nurse or doctor at a facility
+212,err_a_lesson_with_this_title_already_exists_,A lesson with this title already exists in this language
+213,err_lesson_not_found,Lesson not found
+214,err_another_nurse_or_doctor_must_review_your,Another nurse or doctor must review your lesson
+215,err_this_lesson_has_already_been_reviewed,This lesson has already been reviewed
+216,err_unknown_equipment,Unknown equipment
+217,err_only_this_centre_s_manager_can_do_this,Only this centre's manager can do this
+218,err_staff_member_not_found_at_this_centre,Staff member not found at this centre
+219,err_no_fee_is_due_for_this_consultation,No fee is due for this consultation
+220,err_training_module_not_found,Training module not found
+221,err_no_fee_is_due_for_this_module,No fee is due for this module
+222,err_payment_not_found,Payment not found
+223,err_paystack_has_not_received_this_payment_y,Paystack has not received this payment yet
+224,err_healer_not_found,Healer not found
+225,err_the_patient_must_agree_to_join_the_schem,The patient must agree to join the scheme
+226,err_this_patient_has_already_joined,This patient has already joined
+227,err_join_the_scheme_before_paying,Join the scheme before paying
+228,err_could_not_reach_paystack_please_try_agai,Could not reach Paystack. Please try again
+229,err_prescription_not_found,Prescription not found
+230,err_please_answer_every_question,Please answer every question
+231,err_a_nurse_or_doctor_must_approve_this_modu,A nurse or doctor must approve this module first
+232,err_this_certificate_was_revoked_please_cont,This certificate was revoked. Please contact your GHS officer
+233,err_your_certificate_is_still_valid_you_can_,Your certificate is still valid. You can renew it close to its expiry date
+234,err_please_pay_the_training_fee_first,Please pay the training fee first
+235,err_this_module_has_already_been_approved,This module has already been approved
+236,err_health_worker_not_found,Health worker not found
+237,err_this_worker_already_holds_a_valid_certif,This worker already holds a valid certificate for this module
+238,err_certificate_not_found,Certificate not found
+239,err_this_certificate_is_already_revoked,This certificate is already revoked

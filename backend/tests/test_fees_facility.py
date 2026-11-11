@@ -72,14 +72,14 @@ def test_manager_only_and_totals_only(client, login):
     assert client.get("/facility/overview", headers=login("doctor1")).status_code == 403  # not a manager
     assert client.get("/facility/overview", headers=login("chv1")).status_code == 403
     data = client.get("/facility/overview", headers=login("nurse1")).json()
-    assert data["facility"] == "Test Health Centre" and {"Test CHV One", "Test Nurse"} <= {s["full_name"] for s in data["staff"]}
+    assert data["facility"] == "Test Health Centre" and {"Grace Atanga", "Mercy Akolgo"} <= {s["full_name"] for s in data["staff"]}
     assert "Patient" not in str(data)
 
 
 def test_manager_can_only_manage_own_centre(client, login):
     manager = login("nurse1")
     staff = client.get("/facility/overview", headers=manager).json()["staff"]
-    chv2 = next(s for s in staff if s["full_name"] == "Test CHV Two")
+    chv2 = next(s for s in staff if s["full_name"] == "Joseph Ayamga")
     me = next(s for s in staff if s["is_you"])
     assert client.post(f"/facility/staff/{me['id']}/active", headers=manager, json={"active": False}).status_code == 400
     assert client.post(f"/facility/staff/{chv2['id']}/active", headers=manager, json={"active": False}).status_code == 200
