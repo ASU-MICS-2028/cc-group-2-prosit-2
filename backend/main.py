@@ -23,6 +23,7 @@ from immunisation import router as immunisation_router
 from survey import router as survey_router
 from community_alerts import router as community_alerts_router
 from passkeys import router as passkeys_router
+from photos import router as photos_router
 from equipment import router as equipment_router
 from education import router as education_router
 from training import router as training_router
@@ -88,6 +89,7 @@ app.include_router(immunisation_router)  # child immunisation tracking (immunisa
 app.include_router(survey_router)  # household health surveys (survey.py)
 app.include_router(community_alerts_router)  # GHS health alert SMS to a district
 app.include_router(passkeys_router)  # fingerprint / face / PIN sign-in (passkeys.py)
+app.include_router(photos_router)  # clinical photos and image sharing (photos.py)
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
 app.include_router(training_router)  # health worker training and certificates (training.py)
@@ -460,7 +462,7 @@ def list_referrals(user=Depends(require_role("nurse", "doctor"))):
     conn = get_db()
     escalate_overdue(conn)  # opening any inbox also checks for urgent cases nobody has seen
     rows = conn.execute("""
-        SELECT r.id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
+        SELECT r.id, r.patient_id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
                r.auto_escalated_at, (r.parent_id IS NOT NULL AND r.referred_by IS NULL) AS auto_escalated,
                p.ref, p.full_name, p.age, p.community,
                (SELECT im.paid_until FROM insurance_members im WHERE im.patient_id = r.patient_id) AS insured_until,

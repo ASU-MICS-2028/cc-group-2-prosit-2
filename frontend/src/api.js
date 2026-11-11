@@ -23,3 +23,11 @@ export async function api(path, { method = "GET", body } = {}) {
   }
   return data;
 }
+
+// Photos come back as image bytes, not JSON: fetch with the token and make a local URL for <img>
+export async function apiImageUrl(path) {
+  const token = sessionStorage.getItem("hc_token");
+  const res = await fetch(API_URL + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("Could not load the photo");
+  return URL.createObjectURL(await res.blob());
+}

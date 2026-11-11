@@ -84,6 +84,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Nurse referral inbox + outcomes | ✅ Done |
 | Nurse escalation to a hospital doctor + doctor inbox | ✅ Done |
 | Patient history for nurses/doctors (referred patients only) | ✅ Done |
+| Photo documentation and image sharing | ✅ Done: CHV photographs wounds or skin conditions, nurses/doctors add X-rays or lab results; shrunk on the phone (~100-150 KB, for 2G); separate patient consent per photo; seen only by the patient's CHV and the facilities they were referred to; every view audited ([backend/photos.py](backend/photos.py)). Stored in the encrypted database; S3 is the next step at scale |
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
@@ -574,6 +575,8 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/auth/passkey/register/options`, `/auth/passkey/register/verify` | any signed-in user | Turn on fingerprint sign-in for this phone (WebAuthn) |
 | POST | `/auth/passkey/login/options`, `/auth/passkey/login/verify` | anyone | Sign in with fingerprint: the phone signs a one-time challenge |
 | GET, DELETE | `/auth/passkeys` | any signed-in user | List / remove your passkeys |
+| GET, POST | `/patients/{id}/photos` | chv, nurse, doctor | List / add a photo (need-to-know along the referral chain; consent required) |
+| GET, DELETE | `/photos/{id}` | chv, nurse, doctor | The image itself (`Cache-Control: no-store`) / delete (uploader only) |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
@@ -726,8 +729,8 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 
 | Area | Not built yet |
 |---|---|
-| Health records (Week 1) | Photo documentation; voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | Medical image sharing (X-rays, lab results); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Health records (Week 1) | Voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
+| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
 | Surveillance (Week 3) | Recorded audio/video in lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |

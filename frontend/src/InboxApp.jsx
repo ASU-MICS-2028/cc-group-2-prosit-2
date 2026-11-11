@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PhotosPanel from "./PhotosPanel";
 import { api } from "./api";
 import Header from "./Header";
 import RiskBadge from "./RiskBadge";
@@ -102,7 +103,7 @@ export default function InboxApp(props) {
             </div>
           )}
           {shown.map((r) => (
-            <ReferralCard key={r.id} r={r} t={t} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} onCall={() => setCall({ referralId: r.id, title: r.full_name })} />
+            <ReferralCard key={r.id} r={r} t={t} userId={user.id} isNurse={isNurse} hospitals={hospitals} onChanged={load} onBooked={() => setApptKey((k) => k + 1)} onCall={() => setCall({ referralId: r.id, title: r.full_name })} />
           ))}
         </div>
 
@@ -112,7 +113,7 @@ export default function InboxApp(props) {
   );
 }
 
-function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall }) {
+function ReferralCard({ r, t, userId, isNurse, hospitals, onChanged, onBooked, onCall }) {
   const [mode, setMode] = useState(null); // null | "outcome" (doctor writing the outcome)
   const [showHistory, setShowHistory] = useState(false);
   const [outcome, setOutcome] = useState("");
@@ -237,6 +238,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
         {showHistory ? `▾ ${t.hideHistory}` : `▸ ${t.viewHistory}`}
       </button>
       {showHistory && <PatientHistory referralId={r.id} t={t} />}
+      {showHistory && <PhotosPanel t={t} patientId={r.patient_id} userId={userId} />}
       <BookAppointment referralId={r.id} t={t} onBooked={onBooked} />
       {/* Prescriptions go to the pharmacy at the doctor's own facility */}
       {!isNurse && <PrescribePanel referralId={r.id} t={t} />}
