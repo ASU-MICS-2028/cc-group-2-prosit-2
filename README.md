@@ -95,7 +95,7 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Community health alert SMS | ✅ Done: GHS sends one SMS to a district's facilities and to residents who agreed (separate consent tick box); GHS never sees numbers ([backend/community_alerts.py](backend/community_alerts.py)). Delivery needs a valid Arkesel key |
 | Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 209 labels added later (pharmacy, System health, community and facility tools) are English for now; a Google Translate draft script is ready for Isaac to review. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
-| Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
+| Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done. TURN relay for networks that block direct calls: code done and tested with coturn on a laptop (a relay-only call connected); the AWS relay server is set up at the final deployment ([Step 12](docs/AWS_DEPLOYMENT.md#step-12-turn-relay-for-video-calls)) |
 | GHS surveillance dashboard (anonymised, alerts, trends, map) | ✅ Done |
 | ML model evaluation | ✅ Done: decision **not** to use XGBoost yet |
 | 2-week outbreak forecast | ✅ Built with **statistics, not ML** (trend + Poisson chance); trained ML planned once ~1 year of real data exists |
@@ -173,7 +173,8 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 - **Start:** tap **📹 Video call** on the referral (inbox card or CHV visit history). The other side gets a banner: *"📞 Grace Atanga is calling about Yaw: Join call"*.
 - **Low bandwidth:** 320×240 video at 15 fps, capped at ~150 kbps, plus an **Audio only** button for very weak signal.
 - **How it works:** **WebRTC** sends video **directly between the two browsers**. Our server is only the *introducer* (**signalling**): it passes the setup messages (offer, answer, network addresses) and nothing else. A public **STUN** server helps each side find its public address.
-- **Limits (honest):** no **TURN** relay, so some strict mobile networks may fail to connect; call rooms live in server memory (one server only; in the cloud use Redis or API Gateway WebSockets); real phones need **HTTPS** for camera access (comes with the cloud deployment). Calls are not recorded.
+- **TURN relay** (a server that passes the video along when two phones cannot reach each other directly, common on mobile networks): `GET /calls/ice-servers` gives each caller a relay password that expires after 4 hours, made from `TURN_SECRET` with HMAC-SHA1 (the coturn "REST API" scheme), so no relay password is ever stored or reused. Without `TURN_HOST` set, calls use STUN only.
+- **Limits (honest):** the relay was tested on a laptop with coturn, not yet on Ghanaian mobile networks; call rooms live in server memory (one server only; in the cloud use Redis or API Gateway WebSockets); real phones need **HTTPS** for camera access (comes with the cloud deployment). Calls are not recorded.
 
 ### For a GHS officer: surveillance dashboard (`backend/surveillance.py`, `frontend/src/GhsApp.jsx`)
 **Why:** spot outbreaks within days. Every general visit records possible conditions (malaria, cholera, meningitis…); counted by district and week, they show unusual rises early (**syndromic surveillance**).
@@ -546,6 +547,7 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET | `/surveillance/summary?weeks=8` | ghs | Anonymised district × condition × week counts, district map positions, KPI totals, outbreak alerts |
 | GET | `/surveillance/dhims2-export` | ghs | Last complete ISO week as a DHIS2 `dataValueSet` (simulated, placeholder IDs) |
 | GET | `/calls/active` | any | Calls waiting for this user (incoming-call banner) |
+| GET | `/calls/ice-servers` | CHV, nurse, doctor | STUN address and, when set up, a TURN relay with a 4-hour password |
 | POST | `/calls/{referral_id}/join` · `/leave` | chv, nurse, doctor on that referral | Enter / leave the 1-to-1 call room |
 | POST/GET | `/calls/{referral_id}/signal` | same | Send / collect WebRTC setup messages (offer, answer, ice, bye) |
 | POST | `/referrals/{id}/appointments` | nurse, doctor | Book a follow-up for the referred patient (`scheduled_at`, `reason`); sends confirmation SMS |
@@ -731,8 +733,8 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 
 | Area | Not built yet |
 |---|---|
-| Health records (Week 1) | Voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Health records (Week 1) | Voice-to-text notes; true end-to-end encryption (we have encryption in transit and at rest) |
+| Telemedicine (Week 2) | DICOM-quality medical imaging (photos of X-rays only); consultation recording and quality monitoring; testing on real 2G networks; stronger prescription fraud checks; links to outside pharmacies and hospitals |
 | Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
@@ -752,7 +754,7 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
 | Pharmacy (stock, e-prescriptions) | **Built** (local and tests). Drug list and reorder levels are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
-| Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally; no TURN relay, so some real mobile networks may not connect |
+| Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally. TURN relay built and tested locally with coturn (relay-only call connected); the AWS relay server is part of the final deployment |
 | Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms email the team through SNS; the SMS-reminder Lambda is not built yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |
 | NHIS integration | **Not built**: no access to real systems |

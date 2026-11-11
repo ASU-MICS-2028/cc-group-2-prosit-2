@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 
-// Free public STUN server: helps each phone discover its public network address.
-// (Some strict networks also need a TURN relay server; described in the report, not built.)
-const ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
+// STUN tells each phone its public network address. When a mobile network blocks a direct
+// phone-to-phone link, the TURN relay passes the video along. The server gives us short-lived
+// relay credentials (GET /calls/ice-servers); if it can't be reached we still try STUN.
+const FALLBACK_ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
 const MAX_VIDEO_BITRATE = 150_000; // ~150 kbps: workable on weak 3G
 
 // Full-screen 1-to-1 video consult for one referral (CHV, nurse or doctor).
@@ -42,7 +43,14 @@ export default function VideoCall({ referralId, title, t, onClose }) {
       localVideo.current.srcObject = stream;
 
       // 2. Connection object: sends my tracks, shows theirs
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      let iceServers = FALLBACK_ICE_SERVERS;
+      try {
+        iceServers = (await api("/calls/ice-servers")).ice_servers;
+      } catch {
+        // keep the fallback: direct calls still work on most networks
+      }
+      if (cancelled) return;
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       pc.ontrack = (e) => (remoteVideo.current.srcObject = e.streams[0]);

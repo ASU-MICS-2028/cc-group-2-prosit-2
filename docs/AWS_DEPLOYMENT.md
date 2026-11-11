@@ -91,7 +91,7 @@ What was built, in short:
 - `GET /health`, `Cache-Control: no-store` on every response, `REMINDERS_IN_PROCESS=off` for the cloud.
 - `backend/reminders.py`: claim-before-send (idempotent), 3 attempts, stale claims released after 15 minutes. `backend/lambda_handler.py` for Step 9.
 - CI: backend tests on both databases, `pip-audit` and `npm audit --audit-level=high` (high-severity frontend issues fixed with `npm audit fix`).
-- Not done yet: 1.11 (TURN credentials endpoint), needed only for Step 12.
+- 1.11 (TURN credentials endpoint) is done: `GET /calls/ice-servers`, tested against a local coturn. Step 12 sets up the relay server on AWS.
 
 The table below is the original plan, kept for the report.
 

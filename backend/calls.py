@@ -13,7 +13,19 @@ Calls are 1-to-1: two people at a time.
 
 Rooms live in memory, which is fine for one server. With several cloud servers you would
 keep them in a shared store (e.g. Redis) or use API Gateway WebSockets instead.
+
+TURN relay: on many mobile networks two phones cannot reach each other directly. A TURN
+server (coturn on AWS) then passes the video along. Its password is never stored or sent
+to phones: the server makes a short-lived one from TURN_SECRET (the "TURN REST API" scheme):
+  username   = "<expiry time>:<user id>"
+  credential = base64( HMAC-SHA1(TURN_SECRET, username) )
+coturn holds the same secret, recomputes the HMAC and checks the expiry. A leaked
+credential stops working after TURN_TTL_SECONDS.
 """
+import base64
+import hashlib
+import hmac
+import os
 import threading
 import time
 from typing import Any, Literal
@@ -26,6 +38,8 @@ from database import get_db, log_access
 
 router = APIRouter()
 
+STUN_URL = "stun:stun.l.google.com:19302"  # free: tells a phone its public address
+TURN_TTL_SECONDS = 4 * 3600  # long enough for a consult, short enough to be useless if copied
 STALE_SECONDS = 15  # someone who stops polling for 15 s (closed tab, lost signal) is removed
 rooms = {}  # root referral id -> {user id: {"name", "role", "seen", "inbox": [messages]}}
 lock = threading.Lock()  # requests run in parallel threads; only one may change rooms at a time
@@ -80,6 +94,28 @@ def audit(user_id, action, resource):
     log_access(conn, user_id, action, resource)
     conn.commit()
     conn.close()
+
+
+def turn_credentials(user_id, now=None):
+    expiry = int(now or time.time()) + TURN_TTL_SECONDS
+    username = f"{expiry}:{user_id}"
+    digest = hmac.new(os.environ["TURN_SECRET"].encode(), username.encode(), hashlib.sha1).digest()
+    return username, base64.b64encode(digest).decode()
+
+
+@router.get("/calls/ice-servers")
+def ice_servers(user=Depends(get_current_user)):
+    """Where a phone can find its public address (STUN) and, if set up, the TURN relay."""
+    if user["role"] not in ("chv", "nurse", "doctor"):
+        raise HTTPException(status_code=403, detail="Only CHVs, nurses and doctors make video calls")
+    servers = [{"urls": STUN_URL}]
+    host = os.getenv("TURN_HOST")
+    if host and os.getenv("TURN_SECRET"):
+        username, credential = turn_credentials(user["id"])
+        # UDP is fastest; TCP gets through networks that block UDP
+        servers.append({"urls": [f"turn:{host}:3478?transport=udp", f"turn:{host}:3478?transport=tcp"],
+                        "username": username, "credential": credential})
+    return {"ice_servers": servers, "relay": len(servers) > 1}
 
 
 @router.get("/calls/active")
