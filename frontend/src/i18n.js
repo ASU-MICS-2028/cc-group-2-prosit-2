@@ -140,6 +140,8 @@ const text = {
     immTooFew: "too few",
     listen: "Listen",
     listenPause: "Pause",
+    voice_female: "Female voice",
+    voice_male: "Male voice",
     listenLoading: "Preparing audio (the first time takes up to 30 seconds)...",
     listenNoVoice: "No voice for this language yet: read it out to the household.",
     photosTitle: "Photos",

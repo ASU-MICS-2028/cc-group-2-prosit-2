@@ -48,3 +48,34 @@ def test_no_voice_and_service_down(client, login, monkeypatch):
     res = client.get(f"/lessons/{english}/audio", headers=chv)
     assert res.status_code == 503 and "credits" in res.json()["detail"]
     assert client.get(f"/lessons/{english}/audio", headers=login("ghs1")).status_code == 403
+
+
+def test_all_abena_languages_and_voice_choice(client, login, monkeypatch):
+    used = []
+    monkeypatch.setattr(tts, "speak", lambda text, voice: used.append(voice) or tone())
+    chv = login("chv1")
+    for code in ["gpe", "ha", "pcm", "yo", "sw"]:
+        body = {"topic": "general", "title": f"Lesson {code}", "body": "A short test lesson body here.", "language": code}
+        assert client.post("/lessons", headers=chv, json=body).status_code == 200
+    lessons = {l["title"]: l["id"] for l in client.get("/lessons", headers=chv).json()}
+    for code in ["gpe", "ha", "pcm", "yo", "sw"]:
+        assert client.get(f"/lessons/{lessons['Lesson ' + code]}/audio", headers=chv).status_code == 200
+    assert used == ["kobby_gpe_high", "abubakar_hau", "james_pcm_high", "folami_yor", "amani_swh"]
+    english = lessons["Preventing malaria"]
+    client.get(f"/lessons/{english}/audio?gender=male", headers=chv)
+    assert used[-1] == "kwabena_eng_high"
+
+
+def test_busy_service_is_retried(monkeypatch):
+    replies = [(503, {"retry_after_seconds": 0}), (503, {"retry_after_seconds": 0}), (200, {"audio_base64": "UklGRg=="})]
+
+    class Reply:
+        def __init__(self, code, data):
+            self.status_code, self._data = code, data
+
+        def json(self):
+            return self._data
+
+    monkeypatch.setattr(tts.requests, "post", lambda *a, **k: Reply(*replies.pop(0)))
+    monkeypatch.setattr(tts.time, "sleep", lambda s: None)
+    assert tts.speak("Hello", "akua_eng_high") == b"RIFF"

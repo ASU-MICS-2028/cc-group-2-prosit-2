@@ -18,7 +18,8 @@ class LessonCreate(BaseModel):
     topic: Literal["malaria", "maternal", "cholera", "general"]
     title: str = Field(min_length=3, max_length=120)
     body: str = Field(min_length=20, max_length=2000)
-    language: Literal["en", "tw", "ee", "gaa", "dag"]
+    # App languages, plus the other languages Abena AI can speak (tts.py)
+    language: Literal["en", "tw", "ee", "gaa", "dag", "gpe", "ha", "pcm", "yo", "sw"]
 
 
 LESSON_COLUMNS = """l.id, l.topic, l.title, l.body, l.language, l.reviewed_at, l.created_at,

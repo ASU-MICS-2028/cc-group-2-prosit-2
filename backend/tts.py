@@ -1,4 +1,5 @@
-"""Spoken health lessons: Abena AI reads a lesson aloud in Twi, Ewe or Ghanaian English.
+"""Spoken health lessons: Abena AI reads a lesson aloud in every language it can speak:
+Twi, Ewe, Ghanaian English, Ghanaian Pidgin, Hausa, Nigerian Pidgin, Yoruba and Swahili.
 
 Why: many people in rural Ghana speak Twi or Ewe but cannot read them. A CHV plays the lesson
 on the phone, so the household hears it in its own language.
@@ -9,12 +10,14 @@ on the phone, so the household hears it in its own language.
 - Abena takes up to 500 characters per request, so a long lesson is split at sentence ends
   and the WAV pieces are joined into one file.
 - Ga and Dagbani have no Abena voice yet, so those lessons have no audio.
+- When Abena is busy (503 "at capacity") we wait and retry, as its documentation asks.
 """
 import base64
 import hashlib
 import io
 import os
 import re
+import time
 import wave
 
 import requests
@@ -25,7 +28,18 @@ from database import get_db, log_access, now_text
 
 router = APIRouter()
 URL = "https://abena.mobobi.com/playground/api/v1/tts/synthesize/"
-VOICES = {"tw": "abena_twi_high", "ee": "mawuli_ewe", "en": "akua_eng_high"}  # lesson language -> Abena voice
+# Lesson language -> Abena voices as (voice id, gender). The first is the default.
+VOICES = {
+    "tw": [("abena_twi_high", "female"), ("kofi_twi_high", "male")],     # Twi
+    "en": [("akua_eng_high", "female"), ("kwabena_eng_high", "male")],   # English, Ghanaian accent
+    "ee": [("mawuli_ewe", "male")],                                      # Ewe
+    "gpe": [("kobby_gpe_high", "male")],                                 # Ghanaian Pidgin
+    "ha": [("abubakar_hau", "male")],                                    # Hausa
+    "pcm": [("james_pcm_high", "male")],                                 # Nigerian Pidgin
+    "yo": [("folami_yor", "female")],                                    # Yoruba
+    "sw": [("amani_swh", "female")],                                     # Swahili
+}
+BUSY_RETRIES = 3  # Abena answers 503 when its voice servers are full
 MAX_CHARS = 480  # Abena's limit is 500
 
 
@@ -54,11 +68,17 @@ def speak(text, voice):
     """One Abena request -> WAV bytes."""
     key = os.getenv("ABENA_API_KEY")
     headers = {"Content-Type": "application/json", **({"Authorization": f"Bearer {key}"} if key else {})}
-    try:
-        res = requests.post(URL, json={"text": text, "voice": voice}, headers=headers, timeout=120)
-        data = res.json()
-    except (requests.RequestException, ValueError):
-        raise SpeechError("Could not reach the speech service")
+    for attempt in range(BUSY_RETRIES + 1):
+        try:
+            res = requests.post(URL, json={"text": text, "voice": voice}, headers=headers, timeout=120)
+            data = res.json()
+        except (requests.RequestException, ValueError):
+            raise SpeechError("Could not reach the speech service")
+        if res.status_code != 503 or attempt == BUSY_RETRIES:
+            break
+        time.sleep(min(int(data.get("retry_after_seconds") or 5), 10))  # busy: wait as Abena asks, then retry
+    if res.status_code == 503:
+        raise SpeechError("The voice service is busy. Please try again in a minute")
     if res.status_code != 200 or "audio_base64" not in data:
         print("ABENA STATUS:", res.status_code, data.get("error"))  # never print the key
         raise SpeechError(data.get("message") or "Speech service error")
@@ -78,16 +98,17 @@ def join_wavs(clips):
 
 
 @router.get("/lessons/{lesson_id}/audio")
-def lesson_audio(lesson_id: int, user=Depends(require_role("chv", "nurse", "doctor"))):
+def lesson_audio(lesson_id: int, gender: str | None = None, user=Depends(require_role("chv", "nurse", "doctor"))):
     conn = get_db()
     lesson = conn.execute("SELECT id, title, body, language FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
     if not lesson:
         conn.close()
         raise HTTPException(status_code=404, detail="Lesson not found")
-    voice = VOICES.get(lesson["language"])
-    if not voice:
+    voices = VOICES.get(lesson["language"])
+    if not voices:
         conn.close()
         raise HTTPException(status_code=400, detail="No voice for this language yet")
+    voice = next((v for v, g in voices if g == gender), voices[0][0])  # chosen gender, else the default
     text = f"{lesson['title']}. {lesson['body']}"
     text_hash = hashlib.sha256(text.encode()).hexdigest()
     saved = conn.execute("SELECT audio FROM lesson_audio WHERE lesson_id = ? AND voice = ? AND text_hash = ?",

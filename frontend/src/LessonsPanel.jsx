@@ -7,10 +7,19 @@ import ListenButton from "./ListenButton";
 import { inputClass } from "./styles";
 
 const TOPICS = ["malaria", "maternal", "cholera", "general"];
-// Languages Abena AI can speak (backend/tts.py). Ga and Dagbani have no voice yet.
-const SPOKEN = ["tw", "ee", "en"];
+// Lessons can be in the app's languages and in every other language Abena AI can speak.
+const LESSON_LANGUAGES = [
+  ...LANGUAGES,
+  { code: "gpe", name: "Ghanaian Pidgin" },
+  { code: "ha", name: "Hausa" },
+  { code: "pcm", name: "Nigerian Pidgin" },
+  { code: "yo", name: "Yoruba" },
+  { code: "sw", name: "Swahili" },
+];
+// Languages Abena AI can speak (backend/tts.py), and whether a male voice exists too. Ga and Dagbani: no voice yet.
+const SPOKEN = { tw: true, en: true, ee: false, gpe: false, ha: false, pcm: false, yo: false, sw: false };
 const BLANK = { topic: "general", title: "", body: "", language: "tw" };
-const languageName = (code) => LANGUAGES.find((l) => l.code === code)?.name || code;
+const languageName = (code) => LESSON_LANGUAGES.find((l) => l.code === code)?.name || code;
 
 // Short health lessons a CHV can read out or show. Not reviewed until a nurse or doctor approves.
 export default function LessonsPanel({ t, role, userId }) {
@@ -55,7 +64,7 @@ export default function LessonsPanel({ t, role, userId }) {
           <div className="flex flex-wrap items-center gap-2">
             <select value={language} onChange={(e) => setLanguage(e.target.value)} className={`${inputClass} max-w-xs`}>
               <option value="">{t.lessonsAllLanguages}</option>
-              {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+              {LESSON_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
             </select>
             <button onClick={() => setWriting(!writing)} className="font-medium text-teal-700 hover:underline">
               + {t.lessonsWrite}
@@ -68,7 +77,7 @@ export default function LessonsPanel({ t, role, userId }) {
                 {TOPICS.map((topic) => <option key={topic} value={topic}>{t["lessonTopic_" + topic]}</option>)}
               </select>
               <select value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} className={inputClass}>
-                {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+                {LESSON_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
               </select>
               <input placeholder={t.lessonsTitleField} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} />
               <textarea rows={4} placeholder={t.lessonsBodyField} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className={inputClass} />
@@ -96,7 +105,7 @@ export default function LessonsPanel({ t, role, userId }) {
               </button>
               {shown === l.id && (
                 <div className="mt-2">
-                  {SPOKEN.includes(l.language) ? <ListenButton t={t} lessonId={l.id} /> : <p className="mb-2 text-xs text-stone-500">{t.listenNoVoice}</p>}
+                  {l.language in SPOKEN ? <ListenButton t={t} lessonId={l.id} twoVoices={SPOKEN[l.language]} /> : <p className="mb-2 text-xs text-stone-500">{t.listenNoVoice}</p>}
                   <LessonSlides t={t} body={l.body} />
                   <p className="mt-2 whitespace-pre-wrap text-xs text-stone-500">{l.body}</p>
                   {l.reviewer_name && <p className="mt-1 text-xs text-stone-500">{t.lessonsReviewedBy} {l.reviewer_name}</p>}
