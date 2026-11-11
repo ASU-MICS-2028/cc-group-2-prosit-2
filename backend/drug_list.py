@@ -23,4 +23,7 @@ STARTER_DRUGS = [
     ("Paracetamol 500 mg tablet",                              "tablets",   500, None),
     ("Ferrous sulphate + folic acid tablet",                   "tablets",   300, None),
     ("Oxytocin 10 IU injection",                               "ampoules",  20,  None),
+    # Controlled (misuse risk): extra checks in rx_rules.py
+    ("Tramadol 50 mg capsule",                                 "capsules",  40,  None),
+    ("Diazepam 5 mg tablet",                                   "tablets",   30,  None),
 ]

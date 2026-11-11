@@ -6,7 +6,7 @@ import { FingerprintSignIn } from "./Fingerprint";
 
 const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "pharm1", "ghs1", "admin1"];
 
-export default function Login({ onLogin, t, lang, setLang }) {
+export default function Login({ onLogin, t, lang, setLang, onCheckPrescription }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -100,6 +100,10 @@ export default function Login({ onLogin, t, lang, setLang }) {
             </button>
           </form>
           <FingerprintSignIn t={t} onLogin={onLogin} setError={setError} />
+          {/* Outside pharmacies have no account: they check a prescription code here */}
+          <button type="button" onClick={onCheckPrescription} className="mt-4 w-full text-center text-sm font-medium text-teal-700 hover:underline">
+            💊 {t.rxPharmacyLink}
+          </button>
 
           {/* Only shown when running locally (npm run dev), never in a production build */}
           {import.meta.env.DEV && (

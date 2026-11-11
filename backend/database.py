@@ -14,8 +14,9 @@ import config  # noqa: F401  loads .env / AWS secrets before DATABASE_URL is rea
 import os
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+import rx_rules
 from drug_list import STARTER_DRUGS
 from lesson_list import STARTER_LESSONS
 
@@ -265,6 +266,16 @@ TABLES = [
         size         INTEGER NOT NULL,
         data         {blob} NOT NULL,
         created_at   TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- Fraud and safety warnings about prescriptions (eprescription.py), for GHS.
+    -- kind: controlled, duplicate, high_volume, code_guessing. No patient names.
+    CREATE TABLE IF NOT EXISTS prescription_flags (
+        id              {id},
+        prescription_id INTEGER REFERENCES prescriptions(id),
+        kind            TEXT NOT NULL,
+        detail          TEXT NOT NULL,
+        created_at      TEXT NOT NULL DEFAULT {now}
     )""",
     """
     -- Medical scans in DICOM, the hospital scan format (scans.py): X-ray, CT, ultrasound.
@@ -602,6 +613,14 @@ def migrate(conn):
     add_column_if_missing(conn, "referrals", "auto_escalated_at", "TEXT")
     # Height (cm), asked for in the brief's vital signs
     add_column_if_missing(conn, "observations", "height", DIALECT["postgres" if is_postgres() else "sqlite"]["real"])
+    # E-prescriptions any pharmacy can check and dispense once (eprescription.py)
+    for column in ["code", "valid_until", "outside_pharmacy", "outside_licence", "outside_pharmacist"]:
+        add_column_if_missing(conn, "prescriptions", column, "TEXT")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_code ON prescriptions (code)")
+    for row in conn.execute("SELECT id, created_at FROM prescriptions WHERE code IS NULL").fetchall():
+        valid = (datetime.strptime(str(row["created_at"])[:19], "%Y-%m-%d %H:%M:%S") + timedelta(days=rx_rules.VALID_DAYS))
+        conn.execute("UPDATE prescriptions SET code = ?, valid_until = ? WHERE id = ?",
+                     (rx_rules.new_code(), valid.strftime("%Y-%m-%d %H:%M:%S"), row["id"]))
     if is_postgres():
         allow_all_roles(conn)
         return  # PostgreSQL databases start from the current schema; the steps below are for old laptop files

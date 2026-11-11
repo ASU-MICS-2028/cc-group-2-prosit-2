@@ -8,8 +8,11 @@ Every stock change is written to stock_movements (who, when, why), so the quanti
 always be explained. Dispensing is all-or-nothing: every drug on the prescription is
 taken from stock together, or nothing changes.
 """
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 
+import rx_rules
 from auth import require_role
 from database import get_db, log_access, now_text
 from schemas import PrescriptionCreate, ReorderLevel, StockAdjust, StockReceive
@@ -89,6 +92,7 @@ def load_prescriptions(conn, where, params, facility):
     """Prescriptions with their drugs, and how much of each this facility has now."""
     rows = conn.execute(f"""
         SELECT rx.id, rx.status, rx.notes, rx.created_at, rx.dispensed_at, rx.referral_id,
+               rx.code, rx.valid_until, rx.outside_pharmacy, rx.outside_licence, rx.facility,
                p.ref, p.full_name, p.age, p.sex,
                doc.full_name AS prescribed_by_name, ph.full_name AS dispensed_by_name
         FROM prescriptions rx
@@ -108,35 +112,94 @@ def load_prescriptions(conn, where, params, facility):
             LEFT JOIN stock s ON s.drug_id = i.drug_id AND s.facility = ?
             WHERE i.prescription_id = ? ORDER BY i.id
         """, (facility, rx["id"])).fetchall()
-        prescriptions.append({**dict(rx), "items": [dict(i) for i in items]})
+        expired = rx["status"] == "pending" and bool(rx["valid_until"]) and rx["valid_until"] < now_text()
+        prescriptions.append({**dict(rx), "code": rx_rules.show_code(rx["code"]), "expired": expired,
+                              "items": [{**dict(i), "controlled": i["name"] in rx_rules.CONTROLLED} for i in items]})
     return prescriptions
+
+
+def days_ago(days):
+    return (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def add_flag(conn, prescription_id, kind, detail):
+    conn.execute("INSERT INTO prescription_flags (prescription_id, kind, detail, created_at) VALUES (?, ?, ?, ?)",
+                 (prescription_id, kind, detail, now_text()))
 
 
 @router.post("/referrals/{referral_id}/prescriptions")
 def create_prescription(referral_id: int, body: PrescriptionCreate, user=Depends(require_role("doctor"))):
+    """Write a prescription, after the fraud and safety checks in rx_rules.py."""
     conn = get_db()
     referral = get_doctor_referral(conn, referral_id, user)
     drug_ids = [item.drug_id for item in body.items]
     if len(set(drug_ids)) != len(drug_ids):
         fail(conn, 422, "Each drug can appear only once in a prescription")
+    names = {}
     for drug_id in drug_ids:
-        if not conn.execute("SELECT 1 FROM drugs WHERE id = ?", (drug_id,)).fetchone():
+        drug = conn.execute("SELECT name FROM drugs WHERE id = ?", (drug_id,)).fetchone()
+        if not drug:
             fail(conn, 422, "Unknown drug")
+        names[drug_id] = drug["name"]
 
+    # Check 1: quantity limit per drug (stops typos and "extra" quantities)
+    for item in body.items:
+        limit = rx_rules.max_quantity(names[item.drug_id])
+        if item.quantity > limit:
+            fail(conn, 422, f"{names[item.drug_id]}: at most {limit} on one prescription")
+
+    # Check 2: controlled drugs need a written reason
+    controlled = [names[d] for d in drug_ids if names[d] in rx_rules.CONTROLLED]
+    if controlled and len(body.notes.strip()) < 10:
+        fail(conn, 422, f"{', '.join(controlled)}: controlled drug. Write the reason in the notes.")
+
+    # Check 3: same drug for the same patient in the last 14 days (not cancelled) needs a reason
+    marks = ", ".join("?" for _ in drug_ids)
+    earlier = conn.execute(
+        f"SELECT d.name, rx.created_at, u.full_name FROM prescriptions rx "
+        f"JOIN prescription_items i ON i.prescription_id = rx.id JOIN drugs d ON d.id = i.drug_id "
+        f"JOIN users u ON u.id = rx.prescribed_by "
+        f"WHERE rx.patient_id = ? AND rx.status != 'cancelled' AND rx.created_at >= ? AND i.drug_id IN ({marks})",
+        (referral["patient_id"], days_ago(rx_rules.DUPLICATE_DAYS), *drug_ids)).fetchall()
+    duplicate_reason = body.duplicate_reason.strip()
+    if earlier and len(duplicate_reason) < 5:
+        found = "; ".join(f"{r['name']} ({str(r['created_at'])[:10]}, {r['full_name']})" for r in earlier)
+        fail(conn, 409, f"Already prescribed in the last {rx_rules.DUPLICATE_DAYS} days: {found}. "
+                        "To prescribe it again, give a reason.")
+
+    days = rx_rules.CONTROLLED_VALID_DAYS if controlled else rx_rules.VALID_DAYS
+    valid_until = (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    code = rx_rules.new_code()
     prescription_id = conn.execute(
-        "INSERT INTO prescriptions (patient_id, referral_id, prescribed_by, facility, notes, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
-        (referral["patient_id"], referral_id, user["id"], user["facility"], body.notes.strip() or None, now_text()),
+        "INSERT INTO prescriptions (patient_id, referral_id, prescribed_by, facility, notes, code, valid_until, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+        (referral["patient_id"], referral_id, user["id"], user["facility"], body.notes.strip() or None, code,
+         valid_until, now_text()),
     ).fetchone()["id"]
     for item in body.items:
         conn.execute(
             "INSERT INTO prescription_items (prescription_id, drug_id, quantity, instructions) VALUES (?, ?, ?, ?)",
             (prescription_id, item.drug_id, item.quantity, item.instructions.strip()),
         )
+
+    # Warnings for GHS (prescription allowed, but someone should be able to look)
+    if controlled:
+        add_flag(conn, prescription_id, "controlled", f"{', '.join(controlled)}. Reason: {body.notes.strip()}")
+        count = conn.execute(
+            f"SELECT COUNT(DISTINCT rx.id) AS n FROM prescriptions rx JOIN prescription_items i ON i.prescription_id = rx.id "
+            f"JOIN drugs d ON d.id = i.drug_id WHERE rx.prescribed_by = ? AND rx.created_at >= ? "
+            f"AND d.name IN ({', '.join('?' for _ in rx_rules.CONTROLLED)})",
+            (user["id"], days_ago(7), *sorted(rx_rules.CONTROLLED))).fetchone()["n"]
+        if count >= rx_rules.HIGH_VOLUME_CONTROLLED:
+            add_flag(conn, prescription_id, "high_volume", f"{count} controlled-drug prescriptions in 7 days by this doctor")
+    if earlier:
+        add_flag(conn, prescription_id, "duplicate",
+                 f"{', '.join(sorted({r['name'] for r in earlier}))} again within {rx_rules.DUPLICATE_DAYS} days. "
+                 f"Reason: {duplicate_reason}")
     log_access(conn, user["id"], "create_prescription", f"{referral['ref']} rx:{prescription_id}")
     conn.commit()
     conn.close()
-    return {"id": prescription_id}
+    return {"id": prescription_id, "code": rx_rules.show_code(code), "valid_until": valid_until}
 
 
 @router.get("/referrals/{referral_id}/prescriptions")
@@ -261,7 +324,7 @@ def pharmacy_prescriptions(user=Depends(require_role("pharmacist"))):
 @router.post("/pharmacy/prescriptions/{prescription_id}/dispense")
 def dispense(prescription_id: int, user=Depends(require_role("pharmacist"))):
     conn = get_db()
-    rx = conn.execute("SELECT id, status FROM prescriptions WHERE id = ? AND facility = ?",
+    rx = conn.execute("SELECT id, status, valid_until FROM prescriptions WHERE id = ? AND facility = ?",
                       (prescription_id, user["facility"])).fetchone()
     if not rx:
         log_access(conn, user["id"], "access_denied", f"prescription:{prescription_id}")
@@ -270,6 +333,8 @@ def dispense(prescription_id: int, user=Depends(require_role("pharmacist"))):
         raise HTTPException(status_code=404, detail="Prescription not found")
     if rx["status"] != "pending":
         fail(conn, 409, f"This prescription is already {rx['status']}")
+    if rx["valid_until"] and rx["valid_until"] < now_text():
+        fail(conn, 409, "This prescription has expired. The patient needs a new one from the doctor.")
 
     items = conn.execute("SELECT drug_id, quantity FROM prescription_items WHERE prescription_id = ?",
                          (prescription_id,)).fetchall()

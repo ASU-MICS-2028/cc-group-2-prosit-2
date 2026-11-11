@@ -202,6 +202,19 @@ The cap means a long-waiting MEDIUM case can catch up with a plain HIGH case, bu
 
 - **Prescriptions** from doctors at their own facility, waiting ones first. Shows the patient's name, reference, age and sex (to hand the drugs to the right person), but **not** their visit history or diagnosis notes (need-to-know).
 - **Dispense** is **all-or-nothing**: if any drug is short, nothing changes and the pharmacist sees every shortage at once. Stock goes down automatically. A prescription cannot be dispensed twice.
+
+### E-prescriptions for any pharmacy, and fraud checks (`backend/eprescription.py`, `backend/rx_rules.py`)
+**Why:** many patients buy their drugs at a community pharmacy that does not use HealthConnect. Forged or reused prescriptions and tramadol misuse are real problems in Ghana.
+- **Every prescription gets a code and a QR code** (e.g. `7KQ4-M9TX`, 8 random characters: about 850 billion possible codes) on a printable slip. The doctor sees the slip as soon as the prescription is written.
+- **Any pharmacy, no account needed:** scan the QR code (or click "Pharmacy? Check a prescription code" on the sign-in page and type it). The pharmacy sees whether it is **valid, already dispensed, cancelled or expired**, the drugs and instructions, the doctor and facility, and the patient's **initials, age and sex only** (Act 843). After handing over the drugs it records its name, **Pharmacy Council licence number** and pharmacist. **It works once**: a second pharmacy, or our own pharmacy, is refused. The doctor and our pharmacist see where it was dispensed.
+- **Fraud and safety checks** when the doctor prescribes:
+  - **Quantity limit** per drug (e.g. paracetamol 60): stops typos and "extra" quantities.
+  - **Controlled drugs** (tramadol, diazepam): a written reason is required, and the prescription is valid for **7 days** (others: 30).
+  - **The same drug for the same patient within 14 days** needs a reason (duplicate).
+  - **Expired** prescriptions are refused everywhere.
+  - **Code guessing:** 10 wrong codes in an hour from one internet address blocks it for an hour.
+- **GHS sees the warnings** ("Prescription warnings" on the dashboard): controlled drugs, duplicates with their reason, a doctor writing 5+ controlled-drug prescriptions in 7 days, code guessing. Doctors and facilities only, never patients.
+- **Limits (honest):** the licence number is recorded, not checked against the Pharmacy Council register (no access); the outside pharmacy's stock is not tracked; the codes are not sent by SMS, because patients agreed to SMS for appointment reminders only (purpose limitation). The limits and controlled list are demo examples, not GHS guidance.
 - **Stock:** quantity of each drug with **Out / Low / OK** (low = at or below the facility's own "reorder at" level). **Receive** a delivery, **Correct count** (expired, damaged, recount; a reason is required) and set the reorder level.
 - **Stock history:** every change with who, when and why, so any quantity can be explained. Also in the audit log.
 - **GHS officer** sees **medicine shortages by district**: how many pharmacies are out of or low on each drug (counts only, no patients). A shortage of a drug for an outbreak the forecast expects in that district is flagged.
@@ -586,6 +599,10 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | GET | `/scans/{id}/preview?center=&width=` | chv, nurse, doctor | JPEG preview; with `center` + `width`, the chosen contrast (window/level) |
 | GET | `/scans/{id}/dicom` | nurse, doctor | The full-quality de-identified `.dcm` file |
 | DELETE | `/scans/{id}` | nurse, doctor | Delete (uploader only) |
+| GET | `/rx/{code}` | **anyone** (no sign-in) | Check a prescription: status, drugs, doctor, patient initials/age/sex. 10 wrong codes an hour per address, then blocked |
+| POST | `/rx/{code}/dispense` | **anyone** (no sign-in) | Outside pharmacy records dispensing (pharmacy, licence, pharmacist); once only |
+| GET | `/prescriptions/{id}/qr.svg` | doctor, pharmacist (own facility) | QR code for the slip (holds only the link with the code) |
+| GET | `/surveillance/prescription-flags` | ghs | Fraud and safety warnings, last 30 days (no patients) |
 | GET | `/lessons/{id}/audio` | chv, nurse, doctor | The lesson spoken aloud (WAV), made once by Abena AI and then reused |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
@@ -740,7 +757,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 | Area | Not built yet |
 |---|---|
 | Health records (Week 1) | Voice-to-text notes; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | Whole DICOM series viewer and hospital PACS link (single DICOM images are built); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Telemedicine (Week 2) | Whole DICOM series viewer and hospital PACS link (single DICOM images are built); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); links to outside hospitals; checking pharmacy licences against the Pharmacy Council register (outside pharmacies and fraud checks are built) |
 | Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
@@ -759,7 +776,8 @@ Report and presentation are due **the Thursday after the mid-semester break**.
 | Referral + appointment SMS | **Built**; works only with a valid Arkesel key and a registered sender ID. Without a key, the app still works and shows "SMS not delivered" |
 | Risk scoring / triage | **Rule-based**, not ML; loosely based on WHO danger signs; not clinically validated. "Possible conditions" are prompts to test, not diagnoses |
 | `train_model.py` / XGBoost | **Evaluated, not used.** Kaggle Maternal Health Risk data (Bangladesh): 55% duplicate rows, honest HIGH-risk recall 57%, temperature in °F vs the app's °C. See [docs/ML_EVALUATION.md](docs/ML_EVALUATION.md) |
-| Pharmacy (stock, e-prescriptions) | **Built** (local and tests). Drug list and reorder levels are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
+| Pharmacy (stock, e-prescriptions) | **Built**. Drug list, reorder levels, quantity limits and the controlled-drug list are examples; no link to Ghana's real supply chain (e.g. Regional Medical Stores) |
+| Outside pharmacies (QR code, dispense once) | **Built**; the Pharmacy Council licence number is recorded but not verified (no access to the register) |
 | Video consults | **Built** (WebRTC + our signalling). Tested between two browser windows locally. TURN relay built and tested locally with coturn (relay-only call connected); the AWS relay server is part of the final deployment |
 | Cloud hosting | **Deployed** on AWS eu-north-1 with demo data (CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager), following [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) Steps 2 to 8. CloudWatch alarms email the team through SNS; the SMS-reminder Lambda is not built yet |
 | DHIMS2 integration | **Export built, sending simulated**: DHIS2-format file with placeholder IDs; real connection designed in [docs/DHIMS2_INTEGRATION.md](docs/DHIMS2_INTEGRATION.md) |

@@ -4,6 +4,7 @@ import StockOutsPanel from "./StockOutsPanel";
 import ImpactPanel from "./ImpactPanel";
 import { ImmunisationCoveragePanel } from "./ImmunisationPanel";
 import { SurveyResultsPanel } from "./SurveyPanel";
+import PrescriptionFlagsPanel from "./PrescriptionFlagsPanel";
 import CommunityAlertPanel from "./CommunityAlertPanel";
 import { WorkerCertificates } from "./TrainingPanel";
 import { EquipmentByDistrict } from "./EquipmentPanel";
@@ -139,6 +140,7 @@ export default function GhsApp(props) {
         <ImmunisationCoveragePanel t={t} />
 
         <SurveyResultsPanel t={t} />
+        <PrescriptionFlagsPanel t={t} />
 
         <WorkerCertificates t={t} />
 

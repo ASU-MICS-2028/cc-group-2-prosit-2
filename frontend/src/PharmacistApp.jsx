@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "./api";
 import Header from "./Header";
 import TrainingPanel from "./TrainingPanel";
-import { RxItems } from "./Prescriptions";
+import { RxItems, RxCodeLine } from "./Prescriptions";
 import { RX_STYLE, inputClass } from "./styles";
 
 const STOCK_STYLE = {
@@ -126,12 +126,13 @@ function PrescriptionCard({ rx, t, onDone }) {
       </div>
       <RxItems rx={rx} t={t} showStock />
       {rx.notes && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{rx.notes}</p>}
+      <RxCodeLine rx={rx} t={t} />
       <p className="mt-2 text-xs text-stone-500">
         {t.prescribedBy} {rx.prescribed_by_name} · {rx.created_at}
         {rx.dispensed_at && ` · ${t.dispensedBy} ${rx.dispensed_by_name} · ${rx.dispensed_at}`}
       </p>
       {error && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {rx.status === "pending" && (
+      {rx.status === "pending" && !rx.expired && (
         <button onClick={dispense} className="mt-3 rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800">
           {t.dispense}
         </button>

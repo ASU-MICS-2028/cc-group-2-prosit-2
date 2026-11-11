@@ -133,6 +133,7 @@ class PrescriptionItem(BaseModel):
 class PrescriptionCreate(BaseModel):
     items: list[PrescriptionItem] = Field(min_length=1, max_length=10)
     notes: str = Field("", max_length=300)
+    duplicate_reason: str = Field("", max_length=200)  # needed when the same drug was prescribed recently
 
 
 class StockReceive(BaseModel):

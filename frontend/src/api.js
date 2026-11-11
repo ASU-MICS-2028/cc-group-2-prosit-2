@@ -1,5 +1,5 @@
 // Every backend call goes through here, so the login token is added in one place
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+export const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export async function api(path, { method = "GET", body } = {}) {
   const token = sessionStorage.getItem("hc_token");
@@ -19,7 +19,9 @@ export async function api(path, { method = "GET", body } = {}) {
     window.location.reload();
   }
   if (!res.ok) {
-    throw new Error(typeof data.detail === "string" ? data.detail : "Please check the form and try again.");
+    const err = new Error(typeof data.detail === "string" ? data.detail : "Please check the form and try again.");
+    err.status = res.status; // e.g. 409 = "are you sure?" (duplicate prescription)
+    throw err;
   }
   return data;
 }

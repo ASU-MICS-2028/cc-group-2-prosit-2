@@ -10,3 +10,4 @@ webauthn>=2.5,<3  # fingerprint / face / PIN sign-in (passkeys.py)
 pydicom>=3,<4    # DICOM medical scans (scans.py)
 numpy            # scan pixels
 pillow           # scan previews (JPEG)
+segno            # QR codes on prescription slips (eprescription.py)

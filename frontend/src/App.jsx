@@ -8,6 +8,7 @@ import PharmacistApp from "./PharmacistApp";
 import GhsApp from "./GhsApp";
 import AdminApp from "./AdminApp";
 import ChangePassword from "./ChangePassword";
+import VerifyPrescription from "./VerifyPrescription";
 
 // Sessions from before offline encryption have no key: make them log in again
 if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
@@ -18,6 +19,8 @@ export default function App() {
   // Only need to check with the backend if a token was saved earlier
   const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem("hc_token")));
   const t = getText(lang);
+  // Prescription check for any pharmacy, no sign-in: the QR code opens ?rx=CODE
+  const [rxCode, setRxCode] = useState(() => new URLSearchParams(window.location.search).get("rx"));
 
   // On page load, ask the backend if the saved token is still valid
   useEffect(() => {
@@ -46,9 +49,17 @@ export default function App() {
     setUser(null);
   };
 
+  if (rxCode !== null) {
+    const back = () => {
+      window.history.replaceState(null, "", window.location.pathname); // drop ?rx= from the address
+      setRxCode(null);
+    };
+    return <VerifyPrescription t={t} initialCode={rxCode} onBack={back} />;
+  }
+
   if (checking) return null;
 
-  if (!user) return <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} />;
+  if (!user) return <Login onLogin={handleLogin} t={t} lang={lang} setLang={setLang} onCheckPrescription={() => setRxCode("")} />;
 
   // Temporary password (new or reset account): must set a new one first
   if (user.must_change_password) {

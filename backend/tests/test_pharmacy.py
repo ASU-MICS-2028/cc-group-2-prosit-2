@@ -47,7 +47,7 @@ def test_only_the_right_roles(client, login):
 def test_receive_adjust_and_history(client, login, audit):
     pharm = login("pharm1")
     stock = client.get("/pharmacy/stock", headers=pharm).json()
-    assert len(stock) == 15 and all(s["status"] == "out" for s in stock)  # starter list, nothing on the shelf yet
+    assert len(stock) == 17 and all(s["status"] == "out" for s in stock)  # starter list, nothing on the shelf yet
 
     amox = drug_id(client, pharm, "Amoxicillin")
     assert client.post(f"/pharmacy/stock/{amox}/receive", headers=pharm, json={"quantity": 500, "note": "Delivery"}).json() == {"quantity": 500}

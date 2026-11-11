@@ -25,6 +25,7 @@ from community_alerts import router as community_alerts_router
 from passkeys import router as passkeys_router
 from photos import router as photos_router
 from scans import router as scans_router
+from eprescription import router as eprescription_router
 from tts import router as tts_router
 from equipment import router as equipment_router
 from education import router as education_router
@@ -93,6 +94,7 @@ app.include_router(community_alerts_router)  # GHS health alert SMS to a distric
 app.include_router(passkeys_router)  # fingerprint / face / PIN sign-in (passkeys.py)
 app.include_router(photos_router)  # clinical photos and image sharing (photos.py)
 app.include_router(scans_router)  # DICOM medical scans: X-ray, CT, ultrasound (scans.py)
+app.include_router(eprescription_router)  # prescriptions any pharmacy can check and dispense once
 app.include_router(tts_router)  # spoken lessons in Twi, Ewe, English (tts.py, Abena AI)
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
