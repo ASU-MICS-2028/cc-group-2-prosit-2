@@ -86,6 +86,10 @@ HealthConnect Ghana aims to give CHVs, facilities, specialists and GHS one conne
 | Appointments + SMS confirmation and 24h reminder | ✅ Done |
 | CHV can refer MEDIUM cases with a reason | ✅ Done |
 | Inbox prioritised by risk, danger signs and waiting time | ✅ Done |
+| Emergency auto-escalation | ✅ Done: an urgent case (HIGH + danger sign) not marked arrived within 30 minutes is sent to a hospital doctor automatically, with an SMS ([backend/escalation.py](backend/escalation.py)) |
+| Child immunisation tracking | ✅ Done: Ghana EPI schedule from the child's date of birth, CHV records doses, "Vaccines due" list, GHS coverage by district ([backend/immunisation.py](backend/immunisation.py)). Schedule to be checked against the current GHS record book |
+| Household health surveys | ✅ Done: 6 yes/no questions, no names; GHS sees district percentages ([backend/survey.py](backend/survey.py)) |
+| Community health alert SMS | ✅ Done: GHS sends one SMS to a district's facilities and to residents who agreed (separate consent tick box); GHS never sees numbers ([backend/community_alerts.py](backend/community_alerts.py)). Delivery needs a valid Arkesel key |
 | Languages: English, Twi, Ewe, Ga, Dagbani | ✅ Done: 245 strings per language translated by Isaac and **reviewed by native speakers**, dropdown to switch. The 209 labels added later (pharmacy, System health, community and facility tools) are English for now; a Google Translate draft script is ready for Isaac to review. See [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Cloud deployment (AWS eu-north-1) | ✅ Deployed: CloudFront + S3, private load balancer, EC2 Auto Scaling, RDS PostgreSQL, Secrets Manager. See [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) |
 | Video consults (CHV, nurse, doctor) with audio-only mode | ✅ Done (local; TURN relay not built) |
@@ -559,6 +563,13 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/pharmacy/stock/{drug_id}/receive` · `/adjust` · `/reorder-level` | pharmacist | Delivery (+quantity), correct the count (reason required), set reorder level |
 | GET | `/pharmacy/history` | pharmacist | Last 100 stock changes at the facility |
 | GET | `/surveillance/stock` | ghs | Per district: number of pharmacies out of / low on each drug (no patient data) |
+| GET, POST | `/patients/{id}/immunisations` | chv | Child's vaccination card (due dates from the EPI schedule) / record a dose; `DELETE .../{vaccine}` undoes one |
+| POST | `/patients/{id}/birth-date` | chv | Child's date of birth (under 5) |
+| GET | `/chv/immunisations-due` | chv | The CHV's children with a dose overdue or due in 2 weeks |
+| GET | `/surveillance/immunisation` | ghs | Per district: children tracked, % up to date, % with measles dose 1 |
+| POST | `/surveys` | chv | Household survey (6 yes/no answers, no names) |
+| GET | `/surveillance/surveys` | ghs | Per district: % of households answering yes to each question |
+| GET, POST | `/alerts/community` | ghs | Send a health alert SMS to a district / list sent alerts (counts only); `/alerts/community/preview` shows how many it will reach |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
 
@@ -712,8 +723,8 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 | Area | Not built yet |
 |---|---|
 | Health records (Week 1) | Photo documentation; fingerprint login for patients who cannot read; voice-to-text notes; Hausa; true end-to-end encryption (we have encryption in transit and at rest) |
-| Telemedicine (Week 2) | Medical image sharing (X-rays, lab results); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; automatic emergency escalation; stronger prescription fraud checks; links to outside pharmacies and hospitals |
-| Surveillance (Week 3) | Mobile health surveys; automatic SMS outbreak alerts to communities; child and immunisation tracking; audio and video health lessons; machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
+| Telemedicine (Week 2) | Medical image sharing (X-rays, lab results); consultation recording and quality monitoring; testing on real 2G networks and a TURN relay; stronger prescription fraud checks; links to outside pharmacies and hospitals |
+| Surveillance (Week 3) | Recorded audio/video in lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |
 | Cloud | SMS reminders on Lambda; automatic deployment from GitHub; more than one server with load testing |
 

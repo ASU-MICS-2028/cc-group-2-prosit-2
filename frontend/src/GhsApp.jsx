@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import StockOutsPanel from "./StockOutsPanel";
 import ImpactPanel from "./ImpactPanel";
+import { ImmunisationCoveragePanel } from "./ImmunisationPanel";
+import { SurveyResultsPanel } from "./SurveyPanel";
+import CommunityAlertPanel from "./CommunityAlertPanel";
 import { WorkerCertificates } from "./TrainingPanel";
 import { EquipmentByDistrict } from "./EquipmentPanel";
 import Header from "./Header";
@@ -125,11 +128,17 @@ export default function GhsApp(props) {
 
         <ForecastPanel t={t} forecasts={data.forecasts} onSelect={setSelected} />
 
+        <CommunityAlertPanel t={t} districts={data.districts} alerts={data.alerts} />
+
         <StockOutsPanel t={t} forecasts={data.forecasts} />
 
         <EquipmentByDistrict t={t} />
 
         <ImpactPanel t={t} />
+
+        <ImmunisationCoveragePanel t={t} />
+
+        <SurveyResultsPanel t={t} />
 
         <WorkerCertificates t={t} />
 

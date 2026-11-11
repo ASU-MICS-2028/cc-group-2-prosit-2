@@ -35,6 +35,10 @@ export function ReminderFields({ t, value, onChange }) {
         </select>
       </div>
       <p className="col-span-2 -mt-1 text-xs text-stone-500">{t.remindHint}</p>
+      <label className="col-span-2 flex items-start gap-2 text-sm text-stone-700">
+        <input type="checkbox" checked={!!value.health_alerts} onChange={(e) => onChange({ ...value, health_alerts: e.target.checked })} className="mt-1" />
+        <span>{t.healthAlertsConsent}</span>
+      </label>
     </div>
   );
 }
@@ -42,14 +46,14 @@ export function ReminderFields({ t, value, onChange }) {
 // Patient page: how this patient is reminded, with "Change"
 export function ReminderSummary({ t, patient, onChanged }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState({ reminder_method: patient.reminder_method || "sms", language: patient.language || "" });
+  const [value, setValue] = useState({ reminder_method: patient.reminder_method || "sms", language: patient.language || "", health_alerts: !!patient.health_alerts });
   const [error, setError] = useState("");
 
   const save = async () => {
     try {
       await api(`/patients/${patient.id}/reminder-preference`, {
         method: "POST",
-        body: { reminder_method: value.reminder_method, language: value.language || null },
+        body: { reminder_method: value.reminder_method, language: value.language || null, health_alerts: value.health_alerts },
       });
       setEditing(false);
       onChanged();
@@ -63,7 +67,8 @@ export function ReminderSummary({ t, patient, onChanged }) {
       {!editing ? (
         <p>
           🔔 {t.remindHow}: <span className="font-medium text-stone-800">{t["remind_" + (patient.reminder_method || "sms")]}</span>
-          {patient.language && ` · ${languageName(patient.language)}`}{" "}
+          {patient.language && ` · ${languageName(patient.language)}`}
+          {!!patient.health_alerts && ` · 📢 ${t.healthAlertsShort}`}{" "}
           <button onClick={() => setEditing(true)} className="font-medium text-teal-700 hover:underline">
             {t.change}
           </button>

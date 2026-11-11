@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "./api";
 import { ReminderFields, RemindInPersonList } from "./ReminderPreference";
+import { VaccinesDueList } from "./ImmunisationPanel";
+import SurveyPanel from "./SurveyPanel";
 import LessonsPanel from "./LessonsPanel";
 import TrainingPanel from "./TrainingPanel";
 import Header from "./Header";
@@ -131,6 +133,8 @@ function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
       </div>
 
       <RemindInPersonList t={t} onOpen={onOpen} />
+      <VaccinesDueList t={t} onOpen={onOpen} />
+      <SurveyPanel t={t} />
       <LessonsPanel t={t} role="chv" userId={userId} />
       <TrainingPanel t={t} role="chv" userId={userId} />
 
@@ -179,7 +183,7 @@ function PatientList({ t, userId, patients, savedAt, onOpen, onRegister }) {
 }
 
 function RegisterPatient({ t, onDone, onBack }) {
-  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, phone: "", community: "", consent: false, reminder_method: "sms", language: "" });
+  const [form, setForm] = useState({ full_name: "", age: "", sex: "", pregnant: false, phone: "", community: "", consent: false, reminder_method: "sms", language: "", health_alerts: false });
   const canBePregnant = form.sex === "female" && Number(form.age) >= 10;
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);

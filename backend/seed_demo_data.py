@@ -12,6 +12,7 @@ Names are typical of each region (Dagbani names in Tamale, Fante names in Cape C
 demo looks realistic; any match with a real person is coincidence. Demo patients are recognised
 by their demo CHV (usernames demo_chv_...), so never register real patients under those accounts.
 """
+import json
 import os
 import random
 from datetime import datetime, timedelta, timezone
@@ -98,9 +99,10 @@ def remove_demo_data(conn):
     # Stock history stays (the stock really moved); it just no longer points at the prescription
     conn.execute(f"UPDATE stock_movements SET prescription_id = NULL WHERE prescription_id IN ({demo_rx})")
     conn.execute(f"DELETE FROM prescription_items WHERE prescription_id IN ({demo_rx})")
-    for table in ["healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
+    for table in ["immunisations", "healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
         conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({DEMO_PATIENTS})")
     conn.execute(f"DELETE FROM patients WHERE id IN ({DEMO_PATIENTS})")
+    conn.execute(f"DELETE FROM surveys WHERE chv_id IN (SELECT id FROM users WHERE username IN ({DEMO_CHVS}))")
 
 
 def create_demo_data(conn):
@@ -144,6 +146,65 @@ def create_demo_data(conn):
                      when.strftime("%Y-%m-%d %H:%M:%S")),
                 )
         count = create_demo_care(conn, district, chv_id, now, count, names)
+        count = create_demo_children(conn, district, chv_id, now, count, names)
+        create_demo_surveys(conn, district, chv_id, now)
+    return count
+
+
+# Share of demo households answering "yes": (nets, safe water, latrine, long cough, child without net, diarrhoea).
+# Invented: the north has fewer latrines and nets; Tamale has diarrhoea to match its cholera spike.
+SURVEY_RATES = {
+    "Bolgatanga Municipal": (0.55, 0.6, 0.3, 0.06, 0.3, 0.15),
+    "Tamale Metropolitan": (0.6, 0.45, 0.35, 0.05, 0.25, 0.45),
+    "Wa Municipal": (0.5, 0.55, 0.25, 0.08, 0.35, 0.15),
+    "Kumasi Metropolitan": (0.75, 0.85, 0.8, 0.03, 0.1, 0.08),
+    "Cape Coast Metropolitan": (0.7, 0.8, 0.7, 0.04, 0.15, 0.1),
+}
+
+
+def create_demo_surveys(conn, district, chv_id, now):
+    """Fake household surveys over the last 60 days (no names, like real ones)."""
+    from survey import CODES
+    rng = random.Random(f"surveys-{district}")
+    for _ in range(25):
+        answers = {code: rng.random() < rate for code, rate in zip(CODES, SURVEY_RATES[district])}
+        when = now - timedelta(days=rng.randint(0, 60), hours=rng.randint(0, 23))
+        conn.execute("INSERT INTO surveys (chv_id, district, community, people, answers, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                     (chv_id, district, rng.choice(COMMUNITIES[district]), rng.randint(2, 12), json.dumps(answers),
+                      when.strftime("%Y-%m-%d %H:%M:%S")))
+
+
+# How well each district vaccinates (invented), so the GHS coverage table shows a spread:
+# Kumasi does best, Wa worst.
+VACCINE_RATE = {"Bolgatanga Municipal": 0.8, "Tamale Metropolitan": 0.7, "Wa Municipal": 0.6,
+                "Kumasi Metropolitan": 0.92, "Cape Coast Metropolitan": 0.85}
+
+
+def create_demo_children(conn, district, chv_id, now, count, names):
+    """Fake children under 5 with a date of birth and the doses they had, for immunisation tracking."""
+    from immunisation_list import SCHEDULE
+    rng = random.Random(f"children-{district}")  # its own generator: the visits above never change
+    today = now.date()
+    for _ in range(12):
+        count += 1
+        sex = rng.choice(["female", "male"])
+        full_name, community = demo_person(names, district, sex)
+        born = today - timedelta(days=rng.randint(10, 4 * 365))
+        patient_id = conn.execute(
+            "INSERT INTO patients (ref, chv_id, full_name, age, sex, community, district, birth_date, consent) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING id",
+            (new_patient_ref(conn), chv_id, full_name, (today - born).days // 365, sex, community, district, born.isoformat()),
+        ).fetchone()["id"]
+        missed = False  # once a child misses a dose, later ones are often missed too
+        for code, _, age_days, _ in SCHEDULE:
+            given = born + timedelta(days=age_days + rng.randint(0, 10))
+            if given > today:
+                break
+            # Each dose has a small chance of being missed; after a miss the child drops out
+            missed = missed or rng.random() < (1 - VACCINE_RATE[district]) / 4
+            if not missed:
+                conn.execute("INSERT INTO immunisations (patient_id, vaccine, given_on, recorded_by) VALUES (?, ?, ?, ?)",
+                             (patient_id, code, given.isoformat(), chv_id))
     return count
 
 

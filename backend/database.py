@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS referrals (
     outcome        TEXT,
     updated_by     INTEGER REFERENCES users(id),
     created_at     TEXT NOT NULL DEFAULT {now},
-    updated_at     TEXT
+    updated_at     TEXT,
+    auto_escalated_at TEXT                                  -- urgent case sent on by the system (escalation.py)
 )
 """
 
@@ -92,6 +93,8 @@ TABLES = [
         language   TEXT,      -- language the patient speaks, for the CHV's visit
         community  TEXT,
         district   TEXT,      -- copied from the registering CHV
+        birth_date TEXT,      -- 'YYYY-MM-DD', children only: immunisation due dates
+        health_alerts INTEGER NOT NULL DEFAULT 0,  -- 1 = agreed to receive community health alert SMS
         consent    INTEGER NOT NULL CHECK (consent = 1),
         created_at TEXT NOT NULL DEFAULT {now}
     )""",
@@ -223,6 +226,39 @@ TABLES = [
         reference   TEXT UNIQUE NOT NULL,
         recorded_by INTEGER NOT NULL REFERENCES users(id),
         created_at  TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- FHIR Immunization. One row per vaccine dose given (Ghana EPI schedule in immunisation_list.py)
+    CREATE TABLE IF NOT EXISTS immunisations (
+        id          {id},
+        patient_id  INTEGER NOT NULL REFERENCES patients(id),
+        vaccine     TEXT NOT NULL,      -- dose code, e.g. 'penta1'
+        given_on    TEXT NOT NULL,      -- 'YYYY-MM-DD', from the child health record book
+        recorded_by INTEGER NOT NULL REFERENCES users(id),
+        created_at  TEXT NOT NULL DEFAULT {now},
+        UNIQUE (patient_id, vaccine)
+    )""",
+    """
+    -- Community health alert SMS sent by GHS to a district (community_alerts.py). Counts only, no numbers
+    CREATE TABLE IF NOT EXISTS community_alerts (
+        id         {id},
+        district   TEXT NOT NULL,
+        message    TEXT NOT NULL,
+        sent_by    INTEGER NOT NULL REFERENCES users(id),
+        recipients INTEGER NOT NULL,
+        delivered  INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- Household health survey by a CHV. No names: one row per household visit (survey.py)
+    CREATE TABLE IF NOT EXISTS surveys (
+        id         {id},
+        chv_id     INTEGER NOT NULL REFERENCES users(id),
+        district   TEXT,
+        community  TEXT,
+        people     INTEGER NOT NULL,   -- how many live in the household
+        answers    TEXT NOT NULL,      -- JSON object: question code -> yes/no (questions in survey.py)
+        created_at TEXT NOT NULL DEFAULT {now}
     )""",
     """
     -- Traditional healers a CHV works with. registration_no is as stated, not verified
@@ -483,6 +519,12 @@ def migrate(conn):
     conn.execute("UPDATE patients SET reminder_method = 'chv' WHERE reminder_method = 'voice'")
     add_column_if_missing(conn, "patients", "language", "TEXT")
     add_column_if_missing(conn, "users", "facility_manager", "INTEGER NOT NULL DEFAULT 0")
+    # Community health alerts: patients must agree before they get them (purpose limitation)
+    add_column_if_missing(conn, "patients", "health_alerts", "INTEGER NOT NULL DEFAULT 0")
+    # Child immunisation tracking (immunisation.py)
+    add_column_if_missing(conn, "patients", "birth_date", "TEXT")
+    # Emergency auto-escalation (escalation.py)
+    add_column_if_missing(conn, "referrals", "auto_escalated_at", "TEXT")
     # Height (cm), asked for in the brief's vital signs
     add_column_if_missing(conn, "observations", "height", DIALECT["postgres" if is_postgres() else "sqlite"]["real"])
     if is_postgres():

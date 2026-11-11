@@ -40,11 +40,13 @@ class PatientCreate(BaseModel):
     # sms = text message; chv = the CHV reminds the patient in person (for patients who cannot read)
     reminder_method: Literal["sms", "chv"] = "sms"
     language: Literal["en", "tw", "ee", "gaa", "dag"] | None = None
+    health_alerts: bool = False  # agreed to community health alert SMS (separate from reminders)
 
 
 class ReminderPreference(BaseModel):
     reminder_method: Literal["sms", "chv"]
     language: Literal["en", "tw", "ee", "gaa", "dag"] | None = None
+    health_alerts: bool = False
 
 
 class PregnancyUpdate(BaseModel):

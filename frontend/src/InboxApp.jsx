@@ -155,6 +155,9 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
           <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${PRIORITY_STYLE[r.priority_label]}`}>
             {t["priority_" + r.priority_label]}
           </span>
+          {!!r.auto_escalated && (
+            <span className="rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">⚡ {t.autoEscalated}</span>
+          )}
           {r.danger_signs.map((d) => (
             <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
               ⚠ {t["sym_" + d] || t["ds_" + d] || d}
@@ -211,6 +214,12 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
         </p>
       )}
 
+      {r.auto_escalated_at && !r.auto_escalated && (
+        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
+          ⚡ {t.autoEscalatedNote} <span className="font-semibold">{r.escalated_to}</span>
+        </p>
+      )}
+
       {r.healer_name && (
         <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           🌿 {t.healerSentBy} <span className="font-semibold">{r.healer_name}</span>
@@ -219,7 +228,7 @@ function ReferralCard({ r, t, isNurse, hospitals, onChanged, onBooked, onCall })
       )}
 
       <p className="mt-3 text-xs text-stone-500">
-        {t.referredBy} {r.referred_by_name}
+        {t.referredBy} {r.auto_escalated ? t.referredBySystem : r.referred_by_name}
         {r.from_facility && ` (${r.from_facility})`}
         {r.parent_id && ` · ${t.chvLabel}: ${r.chv_name}`} · {r.created_at}
       </p>

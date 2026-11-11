@@ -14,6 +14,7 @@ import { ReminderNote } from "./AppointmentsPanel";
 import { ReminderSummary } from "./ReminderPreference";
 import InsurancePanel from "./InsurancePanel";
 import HealerPanel from "./HealerPanel";
+import ImmunisationPanel from "./ImmunisationPanel";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
   const [data, setData] = useState(null);
@@ -157,6 +158,7 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
       <ReminderSummary t={t} patient={patient} onChanged={load} />
       <InsurancePanel t={t} patientId={patient.id} />
       <HealerPanel t={t} patientId={patient.id} />
+      {(patient.age < 5 || patient.birth_date) && <ImmunisationPanel t={t} patientId={patient.id} />}
 
       {appointments.length > 0 && (
         <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">

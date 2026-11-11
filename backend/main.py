@@ -19,6 +19,9 @@ from surveillance import router as surveillance_router
 from impact import router as impact_router
 from insurance import router as insurance_router
 from healers import router as healers_router
+from immunisation import router as immunisation_router
+from survey import router as survey_router
+from community_alerts import router as community_alerts_router
 from equipment import router as equipment_router
 from education import router as education_router
 from training import router as training_router
@@ -29,6 +32,7 @@ from auth import (verify_password, hash_password, create_token, get_user_allow_t
 from database import get_db, init_db, log_access, new_patient_ref, now_text
 from general_model import assess_general, advice_for
 from model import predict_risk
+from escalation import escalate_overdue, run_auto_escalation
 from priority import priority
 from reminders import REMIND_HOURS_BEFORE, appointment_message, send_due_reminders
 from schemas import (LoginRequest, PasswordChange, PatientCreate, PatientData, VitalsIn, ReferralUpdate, VisitIn,
@@ -56,6 +60,8 @@ async def background_loop():
             if REMINDERS_IN_PROCESS:
                 # Send reminders for appointments in the next 24 hours
                 await asyncio.to_thread(send_due_reminders)
+            # Urgent referrals nobody has seen in 30 minutes go to a hospital
+            await asyncio.to_thread(run_auto_escalation)
             # Demo only (DEMO_MODE=on): keep the fake surveillance data dated "now"
             await asyncio.to_thread(keep_demo_data_current)
         except Exception as err:  # keep the loop alive whatever happens
@@ -65,7 +71,7 @@ async def background_loop():
 
 @asynccontextmanager
 async def lifespan(app):
-    task = asyncio.create_task(background_loop()) if (REMINDERS_IN_PROCESS or DEMO_MODE) else None
+    task = asyncio.create_task(background_loop())  # auto-escalation always runs
     yield
     if task:
         task.cancel()  # stops with the server
@@ -77,6 +83,9 @@ app.include_router(surveillance_router)  # GHS dashboard (surveillance.py)
 app.include_router(impact_router)  # GHS: SDG 3 progress (impact.py)
 app.include_router(insurance_router)  # community insurance, simulated mobile money (insurance.py)
 app.include_router(healers_router)  # traditional healers working with CHVs (healers.py)
+app.include_router(immunisation_router)  # child immunisation tracking (immunisation.py)
+app.include_router(survey_router)  # household health surveys (survey.py)
+app.include_router(community_alerts_router)  # GHS health alert SMS to a district
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
 app.include_router(training_router)  # health worker training and certificates (training.py)
@@ -238,10 +247,10 @@ def create_patient(body: PatientCreate, user=Depends(require_role("chv"))):
     ref = new_patient_ref(conn)
     patient = conn.execute(
         "INSERT INTO patients (ref, chv_id, full_name, age, sex, pregnant, phone, community, district, consent, "
-        "reminder_method, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?) RETURNING *",
+        "reminder_method, language, health_alerts, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?) RETURNING *",
         (ref, user["id"], body.full_name.strip(), body.age, body.sex, int(body.pregnant),
          body.phone.strip() or None, body.community.strip(), user["district"], body.reminder_method,
-         body.language, now_text()),
+         body.language, int(body.health_alerts), now_text()),
     ).fetchone()
     log_access(conn, user["id"], "create_patient", ref)
     conn.commit()
@@ -254,8 +263,8 @@ def set_reminder_preference(patient_id: int, body: ReminderPreference, user=Depe
     # How this patient wants to be reminded: SMS, or the CHV in person (for patients who cannot read)
     conn = get_db()
     patient = get_own_patient(conn, patient_id, user)
-    conn.execute("UPDATE patients SET reminder_method = ?, language = ? WHERE id = ?",
-                 (body.reminder_method, body.language, patient_id))
+    conn.execute("UPDATE patients SET reminder_method = ?, language = ?, health_alerts = ? WHERE id = ?",
+                 (body.reminder_method, body.language, int(body.health_alerts), patient_id))
     log_access(conn, user["id"], "set_reminder_preference", f"{patient['ref']} {body.reminder_method}")
     conn.commit()
     conn.close()
@@ -458,8 +467,10 @@ def get_facility_referral(conn, referral_id, user):
 @app.get("/referrals")
 def list_referrals(user=Depends(require_role("nurse", "doctor"))):
     conn = get_db()
+    escalate_overdue(conn)  # opening any inbox also checks for urgent cases nobody has seen
     rows = conn.execute("""
         SELECT r.id, r.status, r.outcome, r.reason, r.parent_id, r.created_at, r.updated_at,
+               r.auto_escalated_at, (r.parent_id IS NOT NULL AND r.referred_by IS NULL) AS auto_escalated,
                p.ref, p.full_name, p.age, p.community,
                (SELECT im.paid_until FROM insurance_members im WHERE im.patient_id = r.patient_id) AS insured_until,
                (SELECT h.full_name FROM healer_referrals hr JOIN healers h ON h.id = hr.healer_id
@@ -647,14 +658,22 @@ def escalate_referral(referral_id: int, body: EscalateIn, user=Depends(require_r
         raise HTTPException(status_code=400, detail="Choose a hospital from the list")
 
     reason = body.reason.strip()
-    # New referral to the hospital, linked to this one...
     now = now_text()
-    conn.execute(
-        "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, parent_id, facility, reason, "
-        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (referral["observation_id"], referral["patient_id"], referral["chv_id"], user["id"],
-         referral_id, body.facility, reason, now),
-    )
+    auto = conn.execute(
+        "SELECT id FROM referrals WHERE parent_id = ? AND referred_by IS NULL AND status <> 'completed'", (referral_id,)
+    ).fetchone()
+    if auto:
+        # The system already sent this urgent case on: add the nurse's treatment to that referral
+        conn.execute("UPDATE referrals SET referred_by = ?, facility = ?, reason = ? WHERE id = ?",
+                     (user["id"], body.facility, f"{reason} (after auto-escalation)", auto["id"]))
+    else:
+        # New referral to the hospital, linked to this one...
+        conn.execute(
+            "INSERT INTO referrals (observation_id, patient_id, chv_id, referred_by, parent_id, facility, reason, "
+            "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (referral["observation_id"], referral["patient_id"], referral["chv_id"], user["id"],
+             referral_id, body.facility, reason, now),
+        )
     # ...and this one is closed, recording the nurse's treatment and where the patient went
     conn.execute(
         "UPDATE referrals SET status = 'completed', outcome = ?, updated_by = ?, updated_at = ? WHERE id = ?",

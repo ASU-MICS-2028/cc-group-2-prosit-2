@@ -48,6 +48,9 @@ SCREENS = {
     "StockOutsPanel.jsx": "GHS officer: medicine shortages",
     "ChangePassword.jsx": "Change password (first sign-in)",
     "SavedCopyNote.jsx": "Offline note (all users)",
+    "ImmunisationPanel.jsx": "CHV: child vaccinations (GHS sees totals)",
+    "SurveyPanel.jsx": "CHV: household survey (GHS sees totals)",
+    "CommunityAlertPanel.jsx": "GHS officer: community health alert SMS",
     "main.jsx": "App start-up",
 }
 
