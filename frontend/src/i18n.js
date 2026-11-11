@@ -715,6 +715,16 @@ const text = {
     cond_hypertension: "Mogyakɔsoro",
     pendingSync: "nhwehwɛmu a wɔakora so wɔ foon yi so, ɛretwɛn intanɛte.",
     offlineResult: "Anamɔnhwɛ so sunsuan a wɔyɛe wɔ foon yi so. Ɛbɛkɔ intanɛte mu sɛ wonya intanɛte a.",
+    // Added in PR #2; please have a native speaker review
+    newCheck: "Nyinsɛn nhwehwɛmu foforo",
+    assess: "Hwɛ asobo",
+    history: "Srasra a atwam",
+    noHistory: "Wɔnkyerɛw nhwehwɛmu biara ase da.",
+    referralSent: "Wɔamane no akɔ",
+    bookFollowUp: "Siesie nhyiamu a ɛdi so",
+    bookedFor: "Da a wɔahyɛ:",
+    bookedBy: "Nea ɔhyɛe:",
+    apptReasonPlaceholder: "Ntease (sɛ wopɛ a), sɛ BP nhwehwɛmu",
   },
   ee: {
     appName: "HealthConnect Ghana",
@@ -962,6 +972,16 @@ const text = {
     cond_hypertension: "Mɔgbododo tsɔtsi",
     pendingSync: "dzodzoewo dzra ɖo le foonu sia dzi, ele mɔmɔmɔ lalam.",
     offlineResult: "Offline adzesi, wobu le foonu sia dzi. Agage ɖe mɔmɔmɔ me ne nèkpɔ ŋusẽ.",
+    // Added in PR #2; please have a native speaker review
+    newCheck: "Fukpɔkpɔ me dzodzoe yeye",
+    assess: "Kpɔ afɔku",
+    history: "Kpɔkpɔ siwo va yi",
+    noHistory: "Womeŋlɔ kpɔkpɔ aɖeke ɖi haɖe o.",
+    referralSent: "Woɖoe ɖa",
+    bookFollowUp: "Ŋlɔ kpekpe si kplɔe ɖo ɖi",
+    bookedFor: "Ŋkeke si woɖo:",
+    bookedBy: "Ame si ŋlɔe ɖi:",
+    apptReasonPlaceholder: "Susu (ne èdi), le kpɔɖeŋu me BP dzodzoe",
   },
   gaa: {
     appName: "HealthConnect Ghana",
@@ -1209,6 +1229,16 @@ const text = {
     cond_hypertension: "Lá-tswee",
     pendingSync: "kwɛmɔi ni a-kora yɛ foonɛɛ nɔ, eemɛ sikanɛl.",
     offlineResult: "Offline hewoo, eebu yɛ foonɛɛ nɔ. Eebaaba kɛji onya sikanɛl.",
+    // Added in PR #2; please have a native speaker review
+    newCheck: "Hɔmɔ kwɛmɔ hee",
+    assess: "Kwɛmɔ oshara",
+    history: "Srasramɔi ni eho",
+    noHistory: "Aŋmalako kwɛmɔ ko kɛbashi ŋmɛnɛ.",
+    referralSent: "Atsu lɛ eya",
+    bookFollowUp: "To gbɛi kɛha kpeemɔ ni nyiɛ sɛɛ",
+    bookedFor: "Gbi ni ato:",
+    bookedBy: "Mɔ ni to:",
+    apptReasonPlaceholder: "Yiŋtsɔɔ (kɛji osumɔ), taakɛ BP kwɛmɔ",
   },
   dag: {
     appName: "HealthConnect Ghana",
@@ -1456,6 +1486,16 @@ const text = {
     cond_hypertension: "Zim-du'u / Hypertension",
     pendingSync: "vihibu din soŋ foonu ŋɔ zuɣu, di guhi siknal.",
     offlineResult: "Offline sɔŋsim, di mali foonu ŋɔ zuɣu. Di yɛn tuɣi a yi ti nyɛ siknal.",
+    // Added in PR #2; please have a native speaker review
+    newCheck: "Puni vihibu palli",
+    assess: "Vihimi yɛlimu",
+    history: "Kaahi din gari",
+    noHistory: "Bi na sabi vihibu shɛli.",
+    referralSent: "Timi chaŋ ya",
+    bookFollowUp: "Sabi dabu din pahi",
+    bookedFor: "Dabisili:",
+    bookedBy: "Ŋun sabi:",
+    apptReasonPlaceholder: "Daliri (a yi bɔra), kamani BP vihibu",
   },
 };
 

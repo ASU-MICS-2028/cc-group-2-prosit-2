@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
-import { getText } from "./i18n";
+import { getText, LANGUAGES } from "./i18n";
 import Login from "./Login";
 import ChvApp from "./ChvApp";
 import InboxApp from "./InboxApp";
@@ -13,11 +13,20 @@ import ChangePassword from "./ChangePassword";
 if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
 
 export default function App() {
-  const [lang, setLang] = useState("en");
+  // Language is a device preference, so it survives reloads and logouts
+  const [lang, setLang] = useState(() => {
+    const saved = localStorage.getItem("hc_lang");
+    return LANGUAGES.some((l) => l.code === saved) ? saved : "en";
+  });
   const [user, setUser] = useState(null);
   // Only need to check with the backend if a token was saved earlier
   const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem("hc_token")));
   const t = getText(lang);
+
+  useEffect(() => {
+    localStorage.setItem("hc_lang", lang);
+    document.documentElement.lang = lang; // "tw" = Twi (ISO 639-1)
+  }, [lang]);
 
   // On page load, ask the backend if the saved token is still valid
   useEffect(() => {
