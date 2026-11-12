@@ -563,6 +563,7 @@ const text = {
     insMonthsShort: "mo",
     insNetwork: "Network",
     insPay: "Pay (simulated)",
+    insPayReal: "Pay",
     insCovered: "Covered until",
     insNotCovered: "Not covered",
     impactTitle: "SDG 3 progress: is care reaching people?",

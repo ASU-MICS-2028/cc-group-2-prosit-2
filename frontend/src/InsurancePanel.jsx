@@ -82,7 +82,7 @@ export default function InsurancePanel({ t, patientId }) {
             </select>
           </label>
           <button onClick={() => send("pay", { months, network })} className={button}>
-            {t.insPay} GH₵{months * info.monthly_premium_ghs}
+            {info.simulated ? t.insPay : t.insPayReal} GH₵{months * info.monthly_premium_ghs}
           </button>
         </div>
       )}
