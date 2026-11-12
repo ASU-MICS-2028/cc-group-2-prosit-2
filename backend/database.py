@@ -256,6 +256,28 @@ TABLES = [
         created_at   TEXT NOT NULL DEFAULT {now}
     )""",
     """
+    -- End-to-end encryption (e2e.py). Each person's PUBLIC key, and a backup of their PRIVATE key
+    -- locked with their password: the server cannot open it.
+    CREATE TABLE IF NOT EXISTS user_keys (
+        user_id         INTEGER PRIMARY KEY REFERENCES users(id),
+        public_key      TEXT NOT NULL,
+        wrapped_private TEXT NOT NULL,
+        salt            TEXT NOT NULL,
+        iv              TEXT NOT NULL,
+        created_at      TEXT NOT NULL DEFAULT {now}
+    )""",
+    """
+    -- Each patient's data key, one locked copy per care team member (opened only with their private key)
+    CREATE TABLE IF NOT EXISTS patient_keys (
+        id          {id},
+        patient_id  INTEGER NOT NULL REFERENCES patients(id),
+        user_id     INTEGER NOT NULL REFERENCES users(id),
+        wrapped_key TEXT NOT NULL,
+        granted_by  INTEGER REFERENCES users(id),
+        created_at  TEXT NOT NULL DEFAULT {now},
+        UNIQUE (patient_id, user_id)
+    )""",
+    """
     -- Fraud and safety warnings about prescriptions (eprescription.py), for GHS.
     -- kind: controlled, duplicate, high_volume, code_guessing. No patient names.
     CREATE TABLE IF NOT EXISTS prescription_flags (
@@ -613,6 +635,8 @@ def migrate(conn):
     add_column_if_missing(conn, "referrals", "auto_escalated_at", "TEXT")
     # Height (cm), asked for in the brief's vital signs
     add_column_if_missing(conn, "observations", "height", DIALECT["postgres" if is_postgres() else "sqlite"]["real"])
+    # E2E photos: the phone locks the bytes, so the server cannot check they are a JPEG
+    add_column_if_missing(conn, "photos", "encrypted", "INTEGER NOT NULL DEFAULT 0")
     # E-prescriptions any pharmacy can check and dispense once (eprescription.py)
     for column in ["code", "valid_until", "outside_pharmacy", "outside_licence", "outside_pharmacist"]:
         add_column_if_missing(conn, "prescriptions", column, "TEXT")

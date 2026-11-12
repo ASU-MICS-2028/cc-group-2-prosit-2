@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { encrypt, decrypt } from "./crypto";
+import { lockNote } from "./e2e";
 
 // Checks done without signal wait here until the phone is back online.
 // localStorage survives closing the app; the health data inside is encrypted.
@@ -30,7 +31,12 @@ export async function syncPending(userId) {
       const check = await decrypt(item.enc);
       // Older queued items only had patientId (antenatal checks)
       const path = check.path || `/patients/${check.patientId}/assess`;
-      await api(path, { method: "POST", body: check.body });
+      let body = check.body;
+      // A note written offline is locked for the care team now (needs signal to get the patient key).
+      // If it cannot be locked yet, the check stays in the queue: a note is never sent unlocked.
+      const visit = path.match(/^\/patients\/(\d+)\/visit$/);
+      if (visit && body.notes) body = { ...body, notes: await lockNote(Number(visit[1]), body.notes) };
+      await api(path, { method: "POST", body });
       sent.add(item.id);
     } catch {
       // still offline, server error, or no key yet: keep it and try again later

@@ -23,9 +23,10 @@ MAGIC = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG": "image/png", b"RIFF": "image
 
 class PhotoIn(BaseModel):
     kind: str = Field(pattern=r"^(wound|skin|xray|lab|other)$")
-    caption: str = Field(default="", max_length=200)
+    caption: str = Field(default="", max_length=1000)  # 200 typed; longer when end-to-end encrypted
     consent: bool  # the patient agreed to this photo
-    image: str     # data URL: "data:image/jpeg;base64,...."
+    image: str     # data URL: "data:image/jpeg;base64,...."; encrypted: base64 of the locked bytes
+    encrypted: bool = False  # locked on the phone with the patient's key (e2e.py): the server cannot see it
 
 
 def check_access(conn, patient_id, user):
@@ -62,12 +63,25 @@ def decode(data_url):
 def upload(patient_id: int, body: PhotoIn, user=Depends(require_role("chv", "nurse", "doctor"))):
     if not body.consent:
         raise HTTPException(status_code=400, detail="The patient must agree before a photo is taken")
-    content_type, data = decode(body.image)
+    if body.encrypted:
+        # We cannot check what is inside (that is the point), only the size
+        try:
+            data = base64.b64decode(body.image, validate=True)
+        except (ValueError, binascii.Error):
+            raise HTTPException(status_code=400, detail="This file is not a photo")
+        if len(data) > MAX_BYTES:
+            raise HTTPException(status_code=400, detail="Photo too large. Please try again.")
+        content_type = "application/octet-stream"
+    else:
+        if len(body.caption) > 200:
+            raise HTTPException(status_code=422, detail="Caption can be at most 200 characters")
+        content_type, data = decode(body.image)
     conn = get_db()
     ref = check_access(conn, patient_id, user)
-    conn.execute("INSERT INTO photos (patient_id, uploaded_by, kind, caption, content_type, size, data, created_at) "
-                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                 (patient_id, user["id"], body.kind, body.caption.strip() or None, content_type, len(data), data, now_text()))
+    conn.execute("INSERT INTO photos (patient_id, uploaded_by, kind, caption, content_type, size, data, encrypted, created_at) "
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 (patient_id, user["id"], body.kind, body.caption.strip() or None, content_type, len(data), data,
+                  1 if body.encrypted else 0, now_text()))
     log_access(conn, user["id"], "upload_photo", f"{ref} {body.kind}")
     conn.commit()
     conn.close()
@@ -78,7 +92,7 @@ def upload(patient_id: int, body: PhotoIn, user=Depends(require_role("chv", "nur
 def list_photos(patient_id: int, user=Depends(require_role("chv", "nurse", "doctor"))):
     conn = get_db()
     ref = check_access(conn, patient_id, user)
-    rows = conn.execute("SELECT ph.id, ph.kind, ph.caption, ph.size, ph.created_at, ph.uploaded_by, "
+    rows = conn.execute("SELECT ph.id, ph.kind, ph.caption, ph.size, ph.encrypted, ph.created_at, ph.uploaded_by, "
                         "u.full_name AS uploaded_by_name, u.role AS uploaded_by_role, u.facility AS uploaded_by_facility "
                         "FROM photos ph JOIN users u ON u.id = ph.uploaded_by WHERE ph.patient_id = ? ORDER BY ph.id DESC",
                         (patient_id,)).fetchall()

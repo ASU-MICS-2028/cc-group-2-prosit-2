@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { api, apiImageUrl } from "./api";
+import { fromB64 } from "./e2eCrypto";
+import { lockNote, lockPhoto, openPhotoUrl } from "./e2e";
+import PrivateNote from "./PrivateNote";
 import { inputClass } from "./styles";
 
 const KINDS = ["wound", "skin", "xray", "lab", "other"];
@@ -30,16 +33,26 @@ async function shrink(file) {
   throw new Error("Photo too large");
 }
 
-function Thumb({ photo, onOpen }) {
+function Thumb({ photo, patientId, onOpen }) {
   const [src, setSrc] = useState(null);
+  const [locked, setLocked] = useState(false); // this phone cannot open it (yet)
   useEffect(() => {
     let url;
-    apiImageUrl(`/photos/${photo.id}`).then((u) => setSrc((url = u))).catch(() => {});
+    // End-to-end encrypted photos are opened here, on the phone; older ones come as they are
+    const load = photo.encrypted ? openPhotoUrl(patientId, photo.id) : apiImageUrl(`/photos/${photo.id}`);
+    load.then((u) => setSrc((url = u))).catch(() => setLocked(true));
     return () => url && URL.revokeObjectURL(url); // free the memory when the photo leaves the screen
-  }, [photo.id]);
+  }, [photo.id, photo.encrypted, patientId]);
   return (
-    <button onClick={() => src && onOpen(src, photo)} className="overflow-hidden rounded-xl border border-stone-200 bg-stone-100 text-left">
-      {src ? <img src={src} alt={photo.caption || photo.kind} className="h-24 w-full object-cover" /> : <div className="h-24 w-full animate-pulse" />}
+    <button onClick={() => src && onOpen(src, photo)} className="relative overflow-hidden rounded-xl border border-stone-200 bg-stone-100 text-left">
+      {src ? (
+        <img src={src} alt={photo.kind} className="h-24 w-full object-cover" />
+      ) : locked ? (
+        <div className="flex h-24 w-full items-center justify-center text-2xl">🔒</div>
+      ) : (
+        <div className="h-24 w-full animate-pulse" />
+      )}
+      {photo.encrypted ? <span className="absolute right-1 top-1 rounded bg-black/50 px-1 text-xs text-white">🔒</span> : null}
     </button>
   );
 }
@@ -66,7 +79,10 @@ export default function PhotosPanel({ t, patientId, userId }) {
     setError("");
     try {
       const image = await shrink(file);
-      await api(`/patients/${patientId}/photos`, { method: "POST", body: { kind, caption, consent, image } });
+      // End-to-end: the photo and caption are locked on this phone with the patient's key
+      const jpeg = fromB64(image.split(",")[1]);
+      const body = { kind, consent, encrypted: true, image: await lockPhoto(patientId, jpeg), caption: await lockNote(patientId, caption) };
+      await api(`/patients/${patientId}/photos`, { method: "POST", body });
       setAdding(false);
       setCaption("");
       setConsent(false);
@@ -129,7 +145,7 @@ export default function PhotosPanel({ t, patientId, userId }) {
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
           {photos.map((p) => (
             <div key={p.id}>
-              <Thumb photo={p} onOpen={(src, photo) => setOpen({ src, photo })} />
+              <Thumb photo={p} patientId={patientId} onOpen={(src, photo) => setOpen({ src, photo })} />
               <p className="mt-0.5 truncate text-xs text-stone-600">{t["photo_" + p.kind]}</p>
             </div>
           ))}
@@ -140,10 +156,8 @@ export default function PhotosPanel({ t, patientId, userId }) {
         <div onClick={() => setOpen(null)} className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4">
           <img src={open.src} alt={open.photo.caption || open.photo.kind} className="max-h-[75vh] max-w-full rounded-lg" />
           <div onClick={(e) => e.stopPropagation()} className="mt-3 max-w-lg rounded-xl bg-white p-3 text-sm text-stone-700">
-            <p className="font-semibold">
-              {t["photo_" + open.photo.kind]}
-              {open.photo.caption && `: ${open.photo.caption}`}
-            </p>
+            <p className="font-semibold">{t["photo_" + open.photo.kind]}</p>
+            <PrivateNote patientId={patientId} text={open.photo.caption} className="text-sm text-stone-700" />
             <p className="text-xs text-stone-500">
               {open.photo.uploaded_by_name} ({open.photo.uploaded_by_facility || open.photo.uploaded_by_role}) · {open.photo.created_at}
             </p>

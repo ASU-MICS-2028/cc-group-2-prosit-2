@@ -9,6 +9,7 @@ import GhsApp from "./GhsApp";
 import AdminApp from "./AdminApp";
 import ChangePassword from "./ChangePassword";
 import VerifyPrescription from "./VerifyPrescription";
+import { forgetPatientKeys } from "./e2e";
 
 // Sessions from before offline encryption have no key: make them log in again
 if (sessionStorage.getItem("hc_token") && !sessionStorage.getItem("hc_key")) sessionStorage.clear();
@@ -45,6 +46,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    forgetPatientKeys();
     sessionStorage.clear();
     setUser(null);
   };

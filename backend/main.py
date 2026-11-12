@@ -26,6 +26,7 @@ from passkeys import router as passkeys_router
 from photos import router as photos_router
 from scans import router as scans_router
 from eprescription import router as eprescription_router
+from e2e import router as e2e_router
 from tts import router as tts_router
 from equipment import router as equipment_router
 from education import router as education_router
@@ -95,6 +96,7 @@ app.include_router(passkeys_router)  # fingerprint / face / PIN sign-in (passkey
 app.include_router(photos_router)  # clinical photos and image sharing (photos.py)
 app.include_router(scans_router)  # DICOM medical scans: X-ray, CT, ultrasound (scans.py)
 app.include_router(eprescription_router)  # prescriptions any pharmacy can check and dispense once
+app.include_router(e2e_router)  # end-to-end encryption keys for notes and photos (e2e.py)
 app.include_router(tts_router)  # spoken lessons in Twi, Ewe, English (tts.py, Abena AI)
 app.include_router(equipment_router)  # medical equipment at each facility (equipment.py)
 app.include_router(education_router)  # health education lessons (education.py)
@@ -110,7 +112,7 @@ FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://1
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS,
-    allow_methods=["GET", "POST", "DELETE"],  # DELETE: remove a photo, vaccine record or fingerprint
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # PUT: save my encryption key; DELETE: remove a photo, vaccine record or fingerprint
     allow_headers=["Authorization", "Content-Type"],
 )
 

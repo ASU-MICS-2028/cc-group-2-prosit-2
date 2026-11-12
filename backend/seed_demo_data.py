@@ -100,7 +100,7 @@ def remove_demo_data(conn):
     conn.execute(f"UPDATE stock_movements SET prescription_id = NULL WHERE prescription_id IN ({demo_rx})")
     conn.execute(f"DELETE FROM prescription_items WHERE prescription_id IN ({demo_rx})")
     conn.execute(f"DELETE FROM prescription_flags WHERE prescription_id IN ({demo_rx})")
-    for table in ["photos", "scans", "immunisations", "healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
+    for table in ["patient_keys", "photos", "scans", "immunisations", "healer_referrals", "premium_checkouts", "premium_payments", "insurance_members", "prescriptions", "appointments", "referrals", "observations"]:
         conn.execute(f"DELETE FROM {table} WHERE patient_id IN ({DEMO_PATIENTS})")
     conn.execute(f"DELETE FROM patients WHERE id IN ({DEMO_PATIENTS})")
     conn.execute(f"DELETE FROM surveys WHERE chv_id IN (SELECT id FROM users WHERE username IN ({DEMO_CHVS}))")

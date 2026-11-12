@@ -17,6 +17,8 @@ import HealerPanel from "./HealerPanel";
 import ImmunisationPanel from "./ImmunisationPanel";
 import PhotosPanel from "./PhotosPanel";
 import ScansPanel from "./ScansPanel";
+import PrivateNote from "./PrivateNote";
+import { lockNote, shareIfPossible } from "./e2e";
 
 export default function PatientDetail({ t, user, patientId, syncTick, onQueued, onCall, onBack }) {
   const [data, setData] = useState(null);
@@ -42,6 +44,12 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
   );
 
   const load = () => fetchPatient().catch((err) => setError(err.message));
+
+  // If this phone holds the patient's private-notes key, give a copy to new care team members
+  // (e.g. the nurses at a facility the patient was just referred to)
+  useEffect(() => {
+    if (navigator.onLine) shareIfPossible(patientId);
+  }, [patientId, syncTick]);
 
   useEffect(() => {
     fetchPatient()
@@ -78,9 +86,12 @@ export default function PatientDetail({ t, user, patientId, syncTick, onQueued, 
     const path = kind === "general" ? `/patients/${patientId}/visit` : `/patients/${patientId}/assess`;
 
     if (!navigator.onLine) {
+      // Offline: the note waits in the encrypted queue and is locked for the care team when it is sent
       await saveOffline(path, body);
     } else {
       try {
+        // End-to-end: the note is locked on this phone; the server only gets scrambled text
+        if (body.notes) body = { ...body, notes: await lockNote(patientId, body.notes) };
         const res = await api(path, { method: "POST", body });
         finish({
           risk_level: res.observation.risk_level,
@@ -362,7 +373,7 @@ export function VisitSummary({ o, t }) {
       {readings.length > 0 && <p className="mt-2 text-sm text-stone-700">{readings.join(" · ")}</p>}
       {symptoms.length > 0 && <p className="mt-1 text-sm text-stone-600">{symptoms.join(", ")}</p>}
       <ConditionChips conditions={o.possible_conditions} t={t} />
-      {o.notes && <p className="mt-1 text-xs italic text-stone-500">{o.notes}</p>}
+      <PrivateNote patientId={o.patient_id} text={o.notes} />
     </>
   );
 }

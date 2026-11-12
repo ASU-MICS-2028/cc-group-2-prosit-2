@@ -392,6 +392,20 @@ Designed around the **Ghana Data Protection Act, 2012 (Act 843)**: consent, data
 | **CORS** | Only our own frontend origin may call the API from a browser |
 | **Secrets** | Kept in `backend/.env` (git-ignored), never printed or committed |
 | **No plain-text API caching** | The PWA caches the app itself, never API replies. Patient data kept for offline use is stored **only encrypted** (`patientCache.js`, AES-GCM, same per-user key) |
+| **End-to-end encryption (notes and photos)** | Visit notes, clinical photos and photo captions are **locked on the phone of the person who writes them** and opened only on the phones of the patient's care team (their CHV, and nurses and doctors at facilities the patient was referred to). The server, the database and its backups hold only scrambled data. See below |
+
+### End-to-end encryption (`backend/e2e.py`, `frontend/src/e2eCrypto.js`, `frontend/src/e2e.js`)
+**Why:** encryption at rest protects against a stolen disk, but whoever runs the server could still read every note. With end-to-end encryption, only the care team can read notes and photos.
+
+How the keys work (Web Crypto API, built into the browser; nothing extra to install):
+1. **Each CHV, nurse and doctor has a key pair** (RSA-OAEP 2048), made on their phone at their first password sign-in. The **public key** is like an open padlock anyone can use to lock something for that person; the **private key** opens it. The phone keeps the private key so that even the page's own code cannot copy it out (non-extractable, in IndexedDB). The server keeps a **backup** of it, locked with a key made from the person's password (PBKDF2, 600,000 rounds), so it works on a new phone. The server never has the password-made key.
+2. **Each patient has a random data key** (AES-GCM 256). Notes and photos are locked with it; AES-GCM also detects any change to the locked data.
+3. **The patient key is locked once for each care team member** with their public key. When someone new joins the team (e.g. the patient is referred to a hospital), the server cannot give them the key (it does not have it): the next team member who opens the patient locks a copy for them.
+4. **Fingerprint sign-in** uses the private key already saved on that phone. On a new phone, sign in with the password once.
+
+Checked: in the database a note looks like `e2e:v1:C5UWBG6Q9o7FW1IH…` and a photo does not start with a JPEG's bytes; the CHV, the nurse and (after the nurse opened the patient) the hospital doctor each read the note on their own phone. 7 tests (3 server, 4 with real keys in the browser code).
+
+**Not end-to-end (honest):** vital signs, symptoms and risk levels, because risk checks, inbox priority, auto-escalation and the GHS dashboard run on the server (they stay encrypted in transit and at rest); DICOM scans, because the server removes the patient's name from inside the file and makes the preview; referral reasons and nurse outcome notes (could be added the same way). The server decides who is on the care team and hands out public keys, so a server changed by an attacker could add a fake member, and the app's code itself comes from the server (true of every web app; apps like Signal show "safety numbers" to check keys). After an admin password reset the person gets a new key pair and waits for the team to share keys again.
 
 ### Before any real use (checklist)
 The demo password `Demo@1234` is printed in this public README, so the demo accounts must never reach real patients.
@@ -603,6 +617,11 @@ All routes except login need the header `Authorization: Bearer <token>`.
 | POST | `/rx/{code}/dispense` | **anyone** (no sign-in) | Outside pharmacy records dispensing (pharmacy, licence, pharmacist); once only |
 | GET | `/prescriptions/{id}/qr.svg` | doctor, pharmacist (own facility) | QR code for the slip (holds only the link with the code) |
 | GET | `/surveillance/prescription-flags` | ghs | Fraud and safety warnings, last 30 days (no patients) |
+| GET, PUT | `/e2e/my-key` | chv, nurse, doctor | My public key and my password-locked private key backup (PUT once; `replace` after a password reset) |
+| POST | `/e2e/my-key/rewrap` | chv, nurse, doctor | Same key pair, backup locked with my new password |
+| GET | `/patients/{id}/e2e-key` | care team | My locked copy of the patient's key |
+| GET | `/patients/{id}/e2e-missing` | care team | Team members who still need a copy, with their public keys |
+| POST | `/patients/{id}/e2e-keys` | care team holding the key (or the first person) | Store locked copies for team members |
 | GET | `/lessons/{id}/audio` | chv, nurse, doctor | The lesson spoken aloud (WAV), made once by Abena AI and then reused |
 | GET | `/admin/system-health` | admin | CloudWatch alarm states (cloud only; `available: false` on a laptop) |
 | POST | `/auth/change-password` | any logged-in user | `current_password`, `new_password`; the only route allowed while on a temporary password |
@@ -756,7 +775,7 @@ Designed or planned, but not built in this PROSIT. Listed so the report is hones
 
 | Area | Not built yet |
 |---|---|
-| Health records (Week 1) | Voice-to-text notes; true end-to-end encryption (we have encryption in transit and at rest) |
+| Health records (Week 1) | Voice-to-text notes; end-to-end encryption of vital signs (notes and photos are end-to-end encrypted; vitals must stay readable for server risk checks) |
 | Telemedicine (Week 2) | Whole DICOM series viewer and hospital PACS link (single DICOM images are built); consultation recording and quality monitoring; field test on real 2G phones (simulated 2G test done: [docs/NETWORK_2G_TEST.md](docs/NETWORK_2G_TEST.md)); links to outside hospitals; checking pharmacy licences against the Pharmacy Council register (outside pharmacies and fraud checks are built) |
 | Surveillance (Week 3) | Ga and Dagbani lesson audio (no Abena voice yet); video lessons (lessons are animated picture slides drawn by the phone); machine-learning prediction (needs real Ghanaian data); live DHIMS2 and WHO Africa reporting (need access) |
 | Sustainability (Week 4) | Live NHIS link and live mobile-money payments (need NHIA access, a business registration and an insurance licence); GHS register for training certificates |

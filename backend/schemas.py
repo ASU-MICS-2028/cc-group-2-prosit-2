@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -69,8 +69,16 @@ class VisitIn(BaseModel):
     weight: float | None = Field(None, gt=0, le=300)    # kg
     height: float | None = Field(None, ge=30, le=250)   # cm
     symptoms: list[Symptom] = []
-    notes: str = Field("", max_length=500)
+    # 500 characters typed; an end-to-end encrypted note ("e2e:v1:...") is about 4 times longer
+    notes: str = Field("", max_length=2800)
     recorded_at: datetime | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def typed_notes_max_500(cls, value):
+        if not value.startswith("e2e:v1:") and len(value) > 500:
+            raise ValueError("Notes can be at most 500 characters")
+        return value
 
 
 class PatientData(BaseModel):

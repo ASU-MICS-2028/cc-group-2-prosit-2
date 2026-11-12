@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "./api";
+import { rewrapMyKey } from "./e2e";
 import Logo from "./Logo";
 import { inputClass } from "./styles";
 
@@ -20,6 +21,8 @@ export default function ChangePassword({ user, t, onChanged, onLogout }) {
         method: "POST",
         body: { current_password: form.current, new_password: form.next },
       });
+      // Re-lock the backup of my private-notes key with the new password (if I have one yet)
+      await rewrapMyKey(form.current, form.next).catch(() => {});
       onChanged();
     } catch (err) {
       setError(err.message);

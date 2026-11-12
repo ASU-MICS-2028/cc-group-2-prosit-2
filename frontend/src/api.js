@@ -38,3 +38,11 @@ export async function apiBlobUrl(path) {
   return URL.createObjectURL(await res.blob());
 }
 export const apiImageUrl = apiBlobUrl;
+
+// Raw bytes (e.g. an end-to-end encrypted photo, opened on the phone by e2e.js)
+export async function apiBytes(path) {
+  const token = sessionStorage.getItem("hc_token");
+  const res = await fetch(API_URL + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("Could not load this file");
+  return res.arrayBuffer();
+}

@@ -3,6 +3,7 @@ import { api } from "./api";
 import Logo from "./Logo";
 import LanguageSelect from "./LanguageSelect";
 import { FingerprintSignIn } from "./Fingerprint";
+import { setupMyKeys } from "./e2e";
 
 const DEMO_USERS = ["chv1", "chv2", "nurse1", "nurse2", "doctor1", "pharm1", "ghs1", "admin1"];
 
@@ -19,6 +20,9 @@ export default function Login({ onLogin, t, lang, setLang, onCheckPrescription }
     try {
       const data = await api("/auth/login", { method: "POST", body: { username, password } });
       onLogin(data.token, data.user, data.offline_key);
+      // End-to-end encryption keys need the password, so only a password sign-in sets them up.
+      // In the background: signing in is not slowed down, and a failure only affects private notes.
+      if (["chv", "nurse", "doctor"].includes(data.user.role)) setupMyKeys(data.user.id, password).catch(() => {});
     } catch (err) {
       setError(err.message);
     }
